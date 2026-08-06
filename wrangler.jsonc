@@ -1,0 +1,11 @@
+{
+  // Tells `npx wrangler deploy` to serve this folder as a static site
+  // (Cloudflare Workers Static Assets) instead of looking for a Worker script.
+  // "directory": "." means "the folder this config file sits in" — so keep
+  // this file next to index.html.
+  "name": "haris-carpets",
+  "compatibility_date": "2026-08-06",
+  "assets": {
+    "directory": "."
+  }
+}
