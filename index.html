@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hari's Carpets — Carpet &amp; Flooring Showroom, Hounslow</title>
   <meta name="description" content="Hari's Carpets, Hounslow. Family-run for 30+ years. Carpets, wood, laminate, LVT, vinyl and rugs — supplied and fitted across London and the Home Counties. Free home measure.">
+  <meta name="theme-color" content="#1e4174">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 
   <header class="site-header">
-    <div class="wrap">
-      <a class="brand-mark" href="#/">Hari's Carpets <small>Hounslow · Est. 30+ yrs</small></a>
+    <div class="wrap-wide">
+      <a class="brand-mark" href="#/" aria-label="Hari's Carpets — home">
+        <span class="bn">Hari's Carpets</span>
+        <span class="br" aria-hidden="true"></span>
+        <small>Hounslow · Est. 30+ yrs</small>
+      </a>
       <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
       <nav class="nav">
         <a href="#/brands">Carpets</a>
@@ -26,20 +31,20 @@
         <a href="#/contact">Visit us</a>
       </nav>
       <button class="tray-btn" id="trayBtn" aria-label="Open sample tray">Samples <span class="count" id="trayCount">0</span></button>
-      <a class="btn btn-solid btn-sm header-cta" href="tel:+442085706502">Call 020 8570 6502</a>
+      <a class="btn btn-solid btn-sm header-cta" href="tel:+442085706502">020 8570 6502</a>
     </div>
   </header>
 
   <main id="app"><!-- views render here --></main>
 
-  <!-- SAMPLE TRAY -->
+  <!-- SAMPLE TRAY — removed from the DOM at load unless FEATURES.samples is on -->
   <div class="scrim" id="scrim"></div>
   <aside class="tray" id="tray" aria-label="Sample tray">
     <header><h3>Your samples</h3><button class="x" id="trayClose" aria-label="Close">&times;</button></header>
     <ul id="trayList"></ul>
     <footer>
       <p class="cap">Order up to 5 free carpet samples, delivered to your door.</p>
-      <button class="btn btn-solid" id="trayReq" style="width:100%" disabled>Request these samples</button>
+      <button class="btn btn-solid" id="trayReq" style="width:100%;justify-content:center" disabled>Request these samples</button>
     </footer>
   </aside>
 
@@ -47,7 +52,8 @@
     <div class="wrap">
       <div>
         <div class="fbrand">Hari's Carpets</div>
-        <p style="max-width:38ch;opacity:.85;margin-top:10px">Family-run flooring showroom in Hounslow. Carpets, wood, LVT, vinyl &amp; rugs — supplied and fitted across London and the Home Counties.</p>
+        <span class="br" aria-hidden="true"></span>
+        <p style="max-width:38ch;opacity:.85;margin-top:14px">Family-run flooring showroom in Hounslow. Carpets, wood, LVT, vinyl &amp; rugs — supplied and fitted across London and the Home Counties.</p>
       </div>
       <div>
         <h4>Shop</h4>
