@@ -72,44 +72,81 @@ const IMG = {
 
 /* ----------------------------------------------------------------------------
    VISUALISER
-   Each room needs a photo plus a greyscale mask marking the floor. The mask is
-   what makes the recolour land only on the floor and stop at the furniture.
+   Two steps: pick a flooring type, then a room. A type lists the rooms it makes
+   sense in — nobody wants stair carpet costed for a bathroom.
 
-   Masks are built by tools/make-floor-mask.py. It can only do rooms where the
-   floor is chromatically distinct from what it touches — see the notes in that
-   file for the ones that need cutting by hand. Add a mask PNG to assets/masks/
-   and a room here, and it appears in the picker.
+   Each room needs a photo and a greyscale floor mask. Masks come from
+   tools/make-floor-mask.py; see assets/README.md for which rooms it can do
+   automatically and which need cutting by hand. A room whose photo or mask is
+   missing is dropped from the picker at runtime rather than rendering broken,
+   so you can add an entry here before its assets exist.
    -------------------------------------------------------------------------- */
 const VIS_ROOMS = [
-  {
-    id: "living-room",
-    name: "Living room",
-    surface: "carpet",
-    photo: IMG.hero,
-    mask: "assets/masks/hero-living-room.png",
-    note: "Wool carpet, south-facing room, morning light.",
-  },
-  {
-    id: "kitchen",
-    name: "Kitchen",
-    surface: "lvt",
-    photo: IMG.lvt,
-    mask: "assets/masks/lvt-kitchen.png",
-    note: "LVT in an open-plan kitchen-diner.",
-  },
+  { id: "living-room", name: "Living room", photo: IMG.hero, mask: "assets/masks/hero-living-room.png",
+    note: "South-facing living room, morning light." },
+  { id: "bedroom", name: "Bedroom", photo: IMG.bedroom, mask: "assets/masks/bedroom-wool.png",
+    note: "Bedroom with soft daylight through curtains." },
+  { id: "kitchen", name: "Kitchen", photo: IMG.lvt, mask: "assets/masks/lvt-kitchen.png",
+    note: "Open-plan kitchen-diner, large windows." },
+  { id: "utility", name: "Utility", photo: IMG.vinyl, mask: "assets/masks/vinyl-utility.png",
+    note: "Utility room — the same floors suit a bathroom." },
+
+  /* Not yet live, both blocked on assets rather than code:
+       stairs   — photo is in /assets but its mask needs cutting by hand. The
+                  carpet matches the wall in colour, and sun-blown treads land
+                  in the same brightness band as the white spindles, so no
+                  automatic rule separates them. See assets/README.md.
+       bathroom — no photograph yet. Add one to /assets, mask it, add it here. */
 ];
 
-/* Which shades the picker offers per surface. Carpet pulls the real Westex
-   ranges out of BRANDS below, so there's one source of truth for colour. */
-const VIS_LVT_TONES = [
-  { name: "Pale Oak", code: "LVT-A", hex: "#cbb79a" },
-  { name: "Natural Oak", code: "LVT-B", hex: "#b39a74" },
-  { name: "Warm Walnut", code: "LVT-C", hex: "#8a6a45" },
-  { name: "Smoked Oak", code: "LVT-D", hex: "#6f6152" },
-  { name: "Grey Stone", code: "LVT-E", hex: "#a9a49c" },
-  { name: "Slate Stone", code: "LVT-F", hex: "#6b6d70" },
-  { name: "Charcoal", code: "LVT-G", hex: "#454749" },
-  { name: "Chalk", code: "LVT-H", hex: "#d8d3c8" },
+/* Named shade sets. Carpet is not listed here — it reads the real Westex
+   ranges out of BRANDS below, so colour has one source of truth. */
+const VIS_TONES = {
+  lvt: [
+    { name: "Pale Oak", code: "LVT-A", hex: "#cbb79a" },
+    { name: "Natural Oak", code: "LVT-B", hex: "#b39a74" },
+    { name: "Warm Walnut", code: "LVT-C", hex: "#8a6a45" },
+    { name: "Smoked Oak", code: "LVT-D", hex: "#6f6152" },
+    { name: "Grey Stone", code: "LVT-E", hex: "#a9a49c" },
+    { name: "Slate Stone", code: "LVT-F", hex: "#6b6d70" },
+    { name: "Charcoal", code: "LVT-G", hex: "#454749" },
+    { name: "Chalk", code: "LVT-H", hex: "#d8d3c8" },
+  ],
+  wood: [
+    { name: "Blonde Oak", code: "W-A", hex: "#d3b98f" },
+    { name: "Classic Oak", code: "W-B", hex: "#c09a63" },
+    { name: "Golden Oak", code: "W-C", hex: "#a97c42" },
+    { name: "Antique Oak", code: "W-D", hex: "#8a6743" },
+    { name: "Walnut", code: "W-E", hex: "#6d4d33" },
+    { name: "Smoked", code: "W-F", hex: "#57493c" },
+    { name: "Grey Wash", code: "W-G", hex: "#a49a8c" },
+    { name: "Ebony", code: "W-H", hex: "#3f382f" },
+  ],
+  vinyl: [
+    { name: "Light Oak", code: "V-A", hex: "#d7cbb4" },
+    { name: "Honey", code: "V-B", hex: "#b7a98d" },
+    { name: "Driftwood", code: "V-C", hex: "#9a9385" },
+    { name: "Clay Tile", code: "V-D", hex: "#8f8168" },
+    { name: "Slate Tile", code: "V-E", hex: "#6f6656" },
+    { name: "Graphite", code: "V-F", hex: "#48413a" },
+  ],
+  rug: [
+    { name: "Sand", code: "R-A", hex: "#c7b6a0" },
+    { name: "Terracotta", code: "R-B", hex: "#9c7c66" },
+    { name: "Chocolate", code: "R-C", hex: "#6e5a4a" },
+    { name: "Heather", code: "R-D", hex: "#8a6f7d" },
+    { name: "Plum", code: "R-E", hex: "#5a4351" },
+    { name: "Deep Teal", code: "R-F", hex: "#33424a" },
+  ],
+};
+
+/* Step one of the visualiser. rooms[] are ids from VIS_ROOMS above. */
+const VIS_TYPES = [
+  { id: "carpets", name: "Carpets",         palette: "carpet", rooms: ["living-room", "bedroom"] },
+  { id: "wood",    name: "Wood & Laminate", palette: "wood",   rooms: ["kitchen", "utility"] },
+  { id: "lvt",     name: "LVT",             palette: "lvt",    rooms: ["kitchen", "utility"] },
+  { id: "vinyl",   name: "Vinyl",           palette: "vinyl",  rooms: ["utility", "kitchen"] },
+  { id: "rugs",    name: "Luxury Rugs",     palette: "rug",    rooms: ["living-room"] },
 ];
 
 /* Four-up photo strip near the foot of the home page */

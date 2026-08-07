@@ -69,30 +69,60 @@ It writes a `_preview.jpg` alongside each mask with the matched area flooded
 magenta. **Always look at the preview before shipping** — a mask that bleeds is
 obvious there and invisible in the code.
 
-### Which rooms can be masked automatically
+### The three levers
 
-Matching works in chromaticity space, so it needs the floor to be a different
-*colour* from whatever it touches — not merely a different brightness. Currently
-automatic:
+Reach for them in this order — each one exists because the one before it wasn't
+enough for some room:
 
-- `hero-living-room` — carpet against wood floor and a grey sofa. Clean.
-- `lvt-kitchen` — pale floor against dark units. Clean apart from the island's
-  own cast shadow.
+- **`tol`** — chromaticity radius. Widen if the mask is patchy, tighten if it
+  bleeds into a neighbour of the same colour.
+- **`lum`** / **`lum_bands`** — luminance band(s). Several bands exist because
+  stair carpet occupies *two*: normal pile below 0.56 and sun-blown treads above
+  0.86, with the white spindles sitting in the gap between them.
+- **`poly`** — a hand-traced floor boundary in normalised coordinates. The last
+  resort, for when the floor and its neighbour are genuinely the same colour.
+- **`parts`** — several regions in one room, each with its own settings, unioned.
+  Use when one rule can't cover the whole floor.
+- **`connect: false`** — skip region growing. For floor sliced into disconnected
+  slivers (carpet seen between stair spindles) there is no single blob to grow
+  from, so the polygon has to do the confining.
 
-These two **cannot** be done automatically, with the measured reason recorded at
-the top of `tools/make-floor-mask.py`:
+### Room status
 
-- `bedroom-wool` — the carpet and the bed linen are the same colour to within
-  0.003 chromaticity, and they touch.
-- `stairs-wool-twist` — the carpet runs from sunlight to deep shadow, and the
-  wall colour falls inside that spread.
+| Room | Mask | Notes |
+|---|---|---|
+| `hero-living-room` | automatic | Clean. `tol` is deliberately wide so the rug's woven edge binding is included — leaving it out left a pale rim around every recolour. |
+| `bedroom-wool` | polygon | Carpet and bed linen match to within 0.003 chromaticity and touch, so colour can't cut it. The polygon cuts; chroma then trims the wood floor from the corners. |
+| `lvt-kitchen` | automatic | Clean apart from the island's own cast shadow. |
+| `vinyl-utility` | polygon only | Floor, walls and cabinet doors are all the same pale oak — the wall is within 0.003 of the floor. `tol` is left wide open on purpose; the polygon alone defines the floor. |
+| `stairs-wool-twist` | **needs hand-cutting** | See below. |
 
-To add either, cut the mask by hand: open the photo, select the floor, fill white
-on black, save a 1024px-wide greyscale PNG to `assets/masks/`. Then add the room
-to `VIS_ROOMS` in `data.js`. The visualiser doesn't care how a mask was made.
+### Stairs: why it needs cutting by hand
 
-Real supplier roomsets are usually easier to mask than these, because the
-photography is lit to make the floor read clearly.
+This is the one the script can't do, and it's worth knowing why before trying
+again. Three things stack up:
+
+1. The carpet and the wall it touches are nearly the same colour (0.019 apart).
+2. The carpet runs from full sun to deep shadow, so its own colour spread is
+   *wider* than its distance from the wall.
+3. Sun-blown treads land at luminance ~0.95 while the white spindles crossing
+   the flight sit at ~0.63 — so brightness can't separate carpet from spindle
+   either; the blown carpet is *brighter* than the thing to exclude.
+
+A polygon tight enough to exclude the wall also clips the treads. Cut it by
+hand: open the photo, select the carpet, fill white on black, save a 1024px-wide
+greyscale PNG as `assets/masks/stairs-wool-twist.png`, then add the room to
+`VIS_ROOMS` in `data.js`. Five minutes, and the visualiser doesn't care how a
+mask was made.
+
+### Bathroom
+
+There's no bathroom photograph in `/assets` yet. Add one, mask it, add it to
+`VIS_ROOMS`, and list `"bathroom"` in the relevant entries of `VIS_TYPES`. The
+utility room is standing in for it in the meantime — the same floors suit both.
+
+Real supplier roomsets are usually *easier* to mask than these, because they're
+lit to make the floor read clearly.
 
 ## Optimising
 

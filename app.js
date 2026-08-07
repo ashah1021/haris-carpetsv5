@@ -393,13 +393,18 @@ function viewContact() {
    stays a shadow and the pile texture survives. A flat fill would read as a
    sticker; this reads as carpet.
    ======================================================================== */
-const VIS = { room: null, colour: null, cache: {}, busy: false };
+const VIS = { type: null, room: null, colour: null, cache: {}, busy: false, dead: {} };
 
-const visPalette = (surface) => {
-  if (surface === "lvt") return [{ label: "LVT tones", colours: VIS_LVT_TONES }];
-  const westex = findBrand("westex");
-  return westex.ranges.map((r) => ({ label: r.name, colours: r.colours }));
-};
+const visRoom = (id) => VIS_ROOMS.find((r) => r.id === id);
+/* rooms this type offers, minus any whose assets failed to load */
+const visRoomsFor = (type) => type.rooms.map(visRoom).filter((r) => r && !VIS.dead[r.id]);
+
+function visPalette(type) {
+  if (type.palette === "carpet") {
+    return findBrand("westex").ranges.map((r) => ({ label: r.name, colours: r.colours }));
+  }
+  return [{ label: type.name, colours: VIS_TONES[type.palette] || [] }];
+}
 
 function loadImage(src) {
   return new Promise((res, rej) => {
@@ -476,12 +481,17 @@ async function visRender() {
     if (status) status.textContent = "";
     cv.style.visibility = "visible";
   } catch (e) {
-    /* opening index.html straight off disk taints the canvas — say so plainly */
-    if (status) {
-      status.innerHTML = location.protocol === "file:"
-        ? `The visualiser needs the site to be served over http, not opened as a file.
-           Run <code>npx http-server</code> in the project folder and reload.`
-        : `Couldn't load this room (${esc(e.message)}).`;
+    if (location.protocol === "file:") {
+      /* canvas pixel access is blocked on file:// — nothing to do but explain */
+      if (status) status.innerHTML = `The visualiser needs the site served over http, not opened as a file.
+        Run <code>npx http-server</code> in the project folder and reload.`;
+    } else {
+      /* a room missing its photo or mask drops out rather than showing broken */
+      VIS.dead[VIS.room.id] = true;
+      VIS.busy = false;
+      const left = visRoomsFor(VIS.type);
+      if (left.length) return visSelectRoom(left[0].id);
+      if (status) status.textContent = "No rooms are available for this flooring type yet.";
     }
   } finally { VIS.busy = false; }
 }
@@ -494,25 +504,39 @@ function visSyncCurrent() {
   $("#visCode").textContent = VIS.colour.code;
 }
 
-function visSelectRoom(id) {
-  const room = VIS_ROOMS.find((r) => r.id === id) || VIS_ROOMS[0];
-  VIS.room = room;
-  /* palettes differ per surface, so the old colour may not exist here */
-  VIS.colour = visPalette(room.surface)[0].colours[0];
-  app().querySelector("#visPanel").innerHTML = visPanelHtml();
-  const note = $(".vis-note");
-  if (note) note.textContent = `${room.note} Colours on screen are a guide only — screens vary, and wool takes light differently to a photograph. Come and see the real thing.`;
+function visSelectType(id) {
+  const type = VIS_TYPES.find((t) => t.id === id) || VIS_TYPES[0];
+  VIS.type = type;
+  VIS.colour = visPalette(type)[0].colours[0];
+  const rooms = visRoomsFor(type);
+  VIS.room = rooms[0] || null;
+  const host = app().querySelector("#visControls");
+  if (host) host.innerHTML = visControlsHtml();
   visSyncCurrent();
   visRender();
 }
 
-function visPanelHtml() {
-  const groups = visPalette(VIS.room.surface);
-  return groups.map((g) => `
+function visSelectRoom(id) {
+  VIS.room = visRoom(id) || visRoomsFor(VIS.type)[0];
+  const host = app().querySelector("#visControls");
+  if (host) host.innerHTML = visControlsHtml();
+  const note = $("#visNote");
+  if (note && VIS.room) note.textContent = VIS.room.note;
+  visRender();
+}
+
+function visRoomsHtml() {
+  const rooms = visRoomsFor(VIS.type);
+  return rooms.map((r) => `<button class="vis-room${VIS.room && r.id === VIS.room.id ? " on" : ""}"
+    data-vis-room="${esc(r.id)}">${esc(r.name)}</button>`).join("");
+}
+
+function visControlsHtml() {
+  return visPalette(VIS.type).map((g) => `
     <div class="vis-group">
       <h4>${esc(g.label)}</h4>
       <div class="vis-chips">
-        ${g.colours.map((c) => `<button class="vis-chip${c.code === VIS.colour.code ? " on" : ""}"
+        ${g.colours.map((c) => `<button class="vis-chip${VIS.colour && c.code === VIS.colour.code ? " on" : ""}"
             style="background:${c.hex}" data-vis-colour="${esc(c.code)}"
             title="${esc(c.name)} · ${esc(c.code)}" aria-label="${esc(c.name)}"></button>`).join("")}
       </div>
@@ -520,9 +544,9 @@ function visPanelHtml() {
 }
 
 function viewVisualiser() {
-  VIS.room = VIS.room || VIS_ROOMS[0];
-  const groups = visPalette(VIS.room.surface);
-  VIS.colour = VIS.colour || groups[0].colours[0];
+  VIS.type = VIS.type || VIS_TYPES[0];
+  VIS.colour = VIS.colour || visPalette(VIS.type)[0].colours[0];
+  VIS.room = VIS.room || visRoomsFor(VIS.type)[0];
 
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visualiser</p></div>
@@ -531,30 +555,41 @@ function viewVisualiser() {
       <div class="section-head">
         <div><span class="rule"></span><p class="kicker">See it before you buy it</p>
           <h2>Floor visualiser</h2>
-          <p>Pick a room, then try shades against it. The lighting in the photograph is kept,
-             so you get a fair idea of how a colour actually sits in a space.</p></div>
+          <p>Pick a flooring type, choose a room, then try shades against it. The lighting in
+             the photograph is kept, so you get a fair idea of how a colour sits in a space.</p></div>
       </div>
 
       <div class="vis">
         <div class="vis-stage">
-          <div class="vis-rooms">
-            ${VIS_ROOMS.map((r) => `<button class="vis-room${r.id === VIS.room.id ? " on" : ""}" data-vis-room="${esc(r.id)}">${esc(r.name)}</button>`).join("")}
+          <div class="vis-step">
+            <span class="vis-step-n">1</span><span class="vis-step-l">Flooring</span>
+            <div class="vis-opts">
+              ${VIS_TYPES.map((t) => `<button class="vis-room${t.id === VIS.type.id ? " on" : ""}"
+                data-vis-type="${esc(t.id)}">${esc(t.name)}</button>`).join("")}
+            </div>
           </div>
+          <div class="vis-step">
+            <span class="vis-step-n">2</span><span class="vis-step-l">Room</span>
+            <div class="vis-opts" id="visRooms">${visRoomsHtml()}</div>
+          </div>
+
           <div class="vis-frame">
             <canvas id="visCanvas" style="visibility:hidden"></canvas>
             <p class="vis-status" id="visStatus">Loading room…</p>
           </div>
-          <p class="vis-note">${esc(VIS.room.note)} Colours on screen are a guide only —
-             screens vary, and wool takes light differently to a photograph. Come and see the real thing.</p>
+          <p class="vis-note"><span id="visNote">${esc(VIS.room ? VIS.room.note : "")}</span>
+             Colours on screen are a guide only — screens vary, and wool takes light differently
+             to a photograph. Come and see the real thing.</p>
         </div>
 
         <aside class="vis-side">
+          <span class="vis-step-l" style="display:block;margin-bottom:10px">3 · Shade</span>
           <div class="vis-current">
             <span class="sw" id="visSwatch" style="background:${VIS.colour.hex}"></span>
             <div><strong id="visName">${esc(VIS.colour.name)}</strong>
               <small id="visCode">${esc(VIS.colour.code)}</small></div>
           </div>
-          <div id="visPanel">${visPanelHtml()}</div>
+          <div id="visControls">${visControlsHtml()}</div>
           <a class="btn btn-solid btn-sm" href="#/contact" style="width:100%;justify-content:center;margin-top:20px">Ask us about this colour</a>
         </aside>
       </div>
@@ -609,14 +644,22 @@ function wireEnquiry() {
 /* ---------- global events ---------- */
 document.addEventListener("click", (e) => {
   /* visualiser controls */
+  const vt = e.target.closest("[data-vis-type]");
+  if (vt) {
+    document.querySelectorAll("[data-vis-type]").forEach((b) => b.classList.toggle("on", b === vt));
+    visSelectType(vt.dataset.visType);
+    const rooms = $("#visRooms");
+    if (rooms) rooms.innerHTML = visRoomsHtml();
+    return;
+  }
   const vr = e.target.closest("[data-vis-room]");
   if (vr) {
-    document.querySelectorAll(".vis-room").forEach((b) => b.classList.toggle("on", b === vr));
+    document.querySelectorAll("[data-vis-room]").forEach((b) => b.classList.toggle("on", b === vr));
     return visSelectRoom(vr.dataset.visRoom);
   }
   const vc = e.target.closest("[data-vis-colour]");
   if (vc) {
-    const all = visPalette(VIS.room.surface).flatMap((g) => g.colours);
+    const all = visPalette(VIS.type).flatMap((g) => g.colours);
     const col = all.find((c) => c.code === vc.dataset.visColour);
     if (!col) return;
     VIS.colour = col;
