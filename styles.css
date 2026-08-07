@@ -300,6 +300,58 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .swatch.selected .pick { background: var(--blue); color: #fff; }
 
 /* =========================================================================
+   VISUALISER
+   ========================================================================= */
+.vis { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(22px, 3vw, 38px); align-items: start; }
+.vis-stage { min-width: 0; }
+.vis-rooms { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.vis-room {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 2px;
+  font-family: var(--f-display); font-size: 13px; letter-spacing: .07em; text-transform: uppercase;
+  padding: 9px 16px; color: var(--ink-soft); transition: background .18s, color .18s, border-color .18s;
+}
+.vis-room:hover { border-color: var(--blue); color: var(--blue); }
+.vis-room.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+.vis-frame { position: relative; background: var(--off); border: 1px solid var(--line); min-height: 260px; }
+.vis-frame canvas { display: block; width: 100%; height: auto; }
+.vis-status {
+  position: absolute; inset: 0; margin: 0; display: grid; place-content: center; text-align: center;
+  padding: 24px; font-size: 14.5px; color: var(--muted); pointer-events: none;
+}
+.vis-status:empty { display: none; }
+.vis-status code { background: var(--blue-tint); padding: 2px 6px; font-size: 13px; }
+.vis-note { font-size: 13.5px; color: var(--muted); margin: 12px 0 0; max-width: 70ch; }
+
+.vis-side { position: sticky; top: 92px; }
+.vis-current { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 3px solid var(--yellow); margin-bottom: 18px; }
+.vis-current .sw { width: 46px; height: 46px; border: 1px solid var(--line); flex: none; }
+.vis-current strong { display: block; font-size: 16px; line-height: 1.3; }
+.vis-current small { color: var(--muted); font-size: 12.5px; }
+
+.vis-group { margin-bottom: 18px; }
+.vis-group h4 {
+  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 8px; font-weight: 500;
+}
+.vis-chips { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.vis-chip {
+  aspect-ratio: 1; border: 1px solid var(--line); border-radius: 2px; padding: 0;
+  transition: transform .14s, box-shadow .14s;
+}
+.vis-chip:hover { transform: scale(1.14); box-shadow: var(--shadow); z-index: 2; }
+.vis-chip.on { box-shadow: 0 0 0 2px var(--blue); border-color: var(--blue); }
+
+@media (max-width: 900px) {
+  .vis { grid-template-columns: 1fr; }
+  .vis-side { position: static; }
+  .vis-chips { grid-template-columns: repeat(10, 1fr); }
+}
+@media (max-width: 520px) {
+  .vis-chips { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* =========================================================================
    SAMPLE TRAY (drawer)
    ========================================================================= */
 .tray { position: fixed; top: 0; right: 0; height: 100dvh; width: min(360px, 90vw); background: var(--paper);

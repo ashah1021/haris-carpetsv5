@@ -385,6 +385,183 @@ function viewContact() {
   </section>`;
 }
 
+/* ========================================================================
+   VISUALISER
+   Recolours the floor of a roomset while keeping the photograph's own
+   lighting. Each pixel's luminance is measured against the mean luminance of
+   the floor, and the chosen colour is scaled by that ratio — so a shadow
+   stays a shadow and the pile texture survives. A flat fill would read as a
+   sticker; this reads as carpet.
+   ======================================================================== */
+const VIS = { room: null, colour: null, cache: {}, busy: false };
+
+const visPalette = (surface) => {
+  if (surface === "lvt") return [{ label: "LVT tones", colours: VIS_LVT_TONES }];
+  const westex = findBrand("westex");
+  return westex.ranges.map((r) => ({ label: r.name, colours: r.colours }));
+};
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error("could not load " + src));
+    im.src = src;
+  });
+}
+
+/* Pull photo + mask into a reusable buffer, once per room. */
+async function visPrepare(room) {
+  if (VIS.cache[room.id]) return VIS.cache[room.id];
+
+  const [photo, mask] = await Promise.all([loadImage(room.photo), loadImage(room.mask)]);
+  const w = Math.min(1400, photo.naturalWidth);
+  const h = Math.round((photo.naturalHeight / photo.naturalWidth) * w);
+
+  const pc = document.createElement("canvas"); pc.width = w; pc.height = h;
+  const px = pc.getContext("2d", { willReadFrequently: true });
+  px.drawImage(photo, 0, 0, w, h);
+
+  const mc = document.createElement("canvas"); mc.width = w; mc.height = h;
+  const mx = mc.getContext("2d", { willReadFrequently: true });
+  mx.drawImage(mask, 0, 0, w, h);
+
+  const base = px.getImageData(0, 0, w, h);
+  const mdat = mx.getImageData(0, 0, w, h).data;
+
+  /* mean luminance of the floor — the anchor the chosen colour maps onto */
+  let sum = 0, n = 0;
+  const alpha = new Float32Array(w * h);
+  const lum = new Float32Array(w * h);
+  for (let i = 0, p = 0; i < mdat.length; i += 4, p++) {
+    const a = mdat[i] / 255;
+    alpha[p] = a;
+    const L = (0.2126 * base.data[i] + 0.7152 * base.data[i + 1] + 0.0722 * base.data[i + 2]) / 255;
+    lum[p] = L;
+    if (a > 0.5) { sum += L; n++; }
+  }
+  const ref = n ? sum / n : 0.6;
+
+  return (VIS.cache[room.id] = { w, h, base, alpha, lum, ref });
+}
+
+function visPaint(buf, hex) {
+  const t = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  const src = buf.base.data;
+  const out = new ImageData(new Uint8ClampedArray(src), buf.w, buf.h);
+  const d = out.data;
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    const a = buf.alpha[p];
+    if (a <= 0.004) continue;
+    /* ratio<1 in shadow, >1 in highlight — this is what keeps the pile visible */
+    const ratio = buf.lum[p] / buf.ref;
+    for (let k = 0; k < 3; k++) {
+      const lit = t[k] * ratio;
+      d[i + k] = src[i + k] * (1 - a) + (lit > 255 ? 255 : lit) * a;
+    }
+  }
+  return out;
+}
+
+async function visRender() {
+  const cv = $("#visCanvas");
+  if (!cv || VIS.busy) return;
+  VIS.busy = true;
+  const status = $("#visStatus");
+  try {
+    const buf = await visPrepare(VIS.room);
+    cv.width = buf.w; cv.height = buf.h;
+    cv.getContext("2d").putImageData(visPaint(buf, VIS.colour.hex), 0, 0);
+    if (status) status.textContent = "";
+    cv.style.visibility = "visible";
+  } catch (e) {
+    /* opening index.html straight off disk taints the canvas — say so plainly */
+    if (status) {
+      status.innerHTML = location.protocol === "file:"
+        ? `The visualiser needs the site to be served over http, not opened as a file.
+           Run <code>npx http-server</code> in the project folder and reload.`
+        : `Couldn't load this room (${esc(e.message)}).`;
+    }
+  } finally { VIS.busy = false; }
+}
+
+/* keep the "currently showing" readout in step with VIS.colour */
+function visSyncCurrent() {
+  const sw = $("#visSwatch"); if (!sw) return;
+  sw.style.background = VIS.colour.hex;
+  $("#visName").textContent = VIS.colour.name;
+  $("#visCode").textContent = VIS.colour.code;
+}
+
+function visSelectRoom(id) {
+  const room = VIS_ROOMS.find((r) => r.id === id) || VIS_ROOMS[0];
+  VIS.room = room;
+  /* palettes differ per surface, so the old colour may not exist here */
+  VIS.colour = visPalette(room.surface)[0].colours[0];
+  app().querySelector("#visPanel").innerHTML = visPanelHtml();
+  const note = $(".vis-note");
+  if (note) note.textContent = `${room.note} Colours on screen are a guide only — screens vary, and wool takes light differently to a photograph. Come and see the real thing.`;
+  visSyncCurrent();
+  visRender();
+}
+
+function visPanelHtml() {
+  const groups = visPalette(VIS.room.surface);
+  return groups.map((g) => `
+    <div class="vis-group">
+      <h4>${esc(g.label)}</h4>
+      <div class="vis-chips">
+        ${g.colours.map((c) => `<button class="vis-chip${c.code === VIS.colour.code ? " on" : ""}"
+            style="background:${c.hex}" data-vis-colour="${esc(c.code)}"
+            title="${esc(c.name)} · ${esc(c.code)}" aria-label="${esc(c.name)}"></button>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+function viewVisualiser() {
+  VIS.room = VIS.room || VIS_ROOMS[0];
+  const groups = visPalette(VIS.room.surface);
+  VIS.colour = VIS.colour || groups[0].colours[0];
+
+  return `
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visualiser</p></div>
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div><span class="rule"></span><p class="kicker">See it before you buy it</p>
+          <h2>Floor visualiser</h2>
+          <p>Pick a room, then try shades against it. The lighting in the photograph is kept,
+             so you get a fair idea of how a colour actually sits in a space.</p></div>
+      </div>
+
+      <div class="vis">
+        <div class="vis-stage">
+          <div class="vis-rooms">
+            ${VIS_ROOMS.map((r) => `<button class="vis-room${r.id === VIS.room.id ? " on" : ""}" data-vis-room="${esc(r.id)}">${esc(r.name)}</button>`).join("")}
+          </div>
+          <div class="vis-frame">
+            <canvas id="visCanvas" style="visibility:hidden"></canvas>
+            <p class="vis-status" id="visStatus">Loading room…</p>
+          </div>
+          <p class="vis-note">${esc(VIS.room.note)} Colours on screen are a guide only —
+             screens vary, and wool takes light differently to a photograph. Come and see the real thing.</p>
+        </div>
+
+        <aside class="vis-side">
+          <div class="vis-current">
+            <span class="sw" id="visSwatch" style="background:${VIS.colour.hex}"></span>
+            <div><strong id="visName">${esc(VIS.colour.name)}</strong>
+              <small id="visCode">${esc(VIS.colour.code)}</small></div>
+          </div>
+          <div id="visPanel">${visPanelHtml()}</div>
+          <a class="btn btn-solid btn-sm" href="#/contact" style="width:100%;justify-content:center;margin-top:20px">Ask us about this colour</a>
+        </aside>
+      </div>
+    </div>
+  </section>`;
+}
+
 function viewNotFound() {
   return `<section><div class="wrap"><span class="rule"></span><p class="kicker">404</p>
     <h2>We couldn't find that page</h2><p style="margin-top:14px"><a class="arrow-link" href="#/">Back to home →</a></p></div></section>`;
@@ -402,6 +579,7 @@ function render() {
     case "brand":    html = viewBrand(parts[1]); break;
     case "range":    html = viewRange(parts[1], parts[2]); break;
     case "category": html = viewCategory(parts[1]); break;
+    case "visualiser": html = viewVisualiser(); break;
     case "about":    html = viewAbout(); break;
     case "contact":  html = viewContact(); break;
     default:         html = viewNotFound();
@@ -415,6 +593,7 @@ function render() {
   $(".nav")?.classList.remove("show");
   window.scrollTo({ top: 0, behavior: "auto" });
   if (top === "contact") wireEnquiry();
+  if (top === "visualiser") visRender();
 }
 
 function wireEnquiry() {
@@ -429,6 +608,23 @@ function wireEnquiry() {
 
 /* ---------- global events ---------- */
 document.addEventListener("click", (e) => {
+  /* visualiser controls */
+  const vr = e.target.closest("[data-vis-room]");
+  if (vr) {
+    document.querySelectorAll(".vis-room").forEach((b) => b.classList.toggle("on", b === vr));
+    return visSelectRoom(vr.dataset.visRoom);
+  }
+  const vc = e.target.closest("[data-vis-colour]");
+  if (vc) {
+    const all = visPalette(VIS.room.surface).flatMap((g) => g.colours);
+    const col = all.find((c) => c.code === vc.dataset.visColour);
+    if (!col) return;
+    VIS.colour = col;
+    document.querySelectorAll(".vis-chip").forEach((b) => b.classList.toggle("on", b === vc));
+    visSyncCurrent();
+    return visRender();
+  }
+
   if (!SAMPLES_ON) return;
   const sw = e.target.closest(".swatch[data-sample]");
   if (sw) return toggleSample(JSON.parse(sw.dataset.sample));

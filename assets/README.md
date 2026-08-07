@@ -50,6 +50,50 @@ sh assets/fetch-images.sh
 Run it from the repo root. It needs plain outbound HTTPS to the generation CDN —
 it will not work from inside a restricted-egress sandbox, so run it locally.
 
+## Floor masks (the visualiser)
+
+`assets/masks/<room>.png` is a greyscale image where white marks the floor. The
+visualiser recolours only those pixels, scaling the chosen colour by each pixel's
+own luminance — so shadows stay shadows and the pile texture survives. Without a
+mask a room simply doesn't appear in the picker.
+
+Rebuild them with:
+
+```sh
+pip install Pillow numpy
+python3 tools/make-floor-mask.py            # all configured rooms
+python3 tools/make-floor-mask.py lvt-kitchen
+```
+
+It writes a `_preview.jpg` alongside each mask with the matched area flooded
+magenta. **Always look at the preview before shipping** — a mask that bleeds is
+obvious there and invisible in the code.
+
+### Which rooms can be masked automatically
+
+Matching works in chromaticity space, so it needs the floor to be a different
+*colour* from whatever it touches — not merely a different brightness. Currently
+automatic:
+
+- `hero-living-room` — carpet against wood floor and a grey sofa. Clean.
+- `lvt-kitchen` — pale floor against dark units. Clean apart from the island's
+  own cast shadow.
+
+These two **cannot** be done automatically, with the measured reason recorded at
+the top of `tools/make-floor-mask.py`:
+
+- `bedroom-wool` — the carpet and the bed linen are the same colour to within
+  0.003 chromaticity, and they touch.
+- `stairs-wool-twist` — the carpet runs from sunlight to deep shadow, and the
+  wall colour falls inside that spread.
+
+To add either, cut the mask by hand: open the photo, select the floor, fill white
+on black, save a 1024px-wide greyscale PNG to `assets/masks/`. Then add the room
+to `VIS_ROOMS` in `data.js`. The visualiser doesn't care how a mask was made.
+
+Real supplier roomsets are usually easier to mask than these, because the
+photography is lit to make the floor read clearly.
+
 ## Optimising
 
 The generated files are 2048px PNGs (~2–3 MB each). Before deploying:

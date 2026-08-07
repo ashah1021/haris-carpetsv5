@@ -70,6 +70,48 @@ const IMG = {
   rug:         "assets/rug-living-room.jpg",
 };
 
+/* ----------------------------------------------------------------------------
+   VISUALISER
+   Each room needs a photo plus a greyscale mask marking the floor. The mask is
+   what makes the recolour land only on the floor and stop at the furniture.
+
+   Masks are built by tools/make-floor-mask.py. It can only do rooms where the
+   floor is chromatically distinct from what it touches — see the notes in that
+   file for the ones that need cutting by hand. Add a mask PNG to assets/masks/
+   and a room here, and it appears in the picker.
+   -------------------------------------------------------------------------- */
+const VIS_ROOMS = [
+  {
+    id: "living-room",
+    name: "Living room",
+    surface: "carpet",
+    photo: IMG.hero,
+    mask: "assets/masks/hero-living-room.png",
+    note: "Wool carpet, south-facing room, morning light.",
+  },
+  {
+    id: "kitchen",
+    name: "Kitchen",
+    surface: "lvt",
+    photo: IMG.lvt,
+    mask: "assets/masks/lvt-kitchen.png",
+    note: "LVT in an open-plan kitchen-diner.",
+  },
+];
+
+/* Which shades the picker offers per surface. Carpet pulls the real Westex
+   ranges out of BRANDS below, so there's one source of truth for colour. */
+const VIS_LVT_TONES = [
+  { name: "Pale Oak", code: "LVT-A", hex: "#cbb79a" },
+  { name: "Natural Oak", code: "LVT-B", hex: "#b39a74" },
+  { name: "Warm Walnut", code: "LVT-C", hex: "#8a6a45" },
+  { name: "Smoked Oak", code: "LVT-D", hex: "#6f6152" },
+  { name: "Grey Stone", code: "LVT-E", hex: "#a9a49c" },
+  { name: "Slate Stone", code: "LVT-F", hex: "#6b6d70" },
+  { name: "Charcoal", code: "LVT-G", hex: "#454749" },
+  { name: "Chalk", code: "LVT-H", hex: "#d8d3c8" },
+];
+
 /* Four-up photo strip near the foot of the home page */
 const GALLERY = [
   { src: IMG.stairs,  alt: "Wool twist carpet fitted to a Victorian staircase and landing" },

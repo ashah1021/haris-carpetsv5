@@ -1,0 +1,3 @@
+# mask build artefacts — regenerate with tools/make-floor-mask.py
+assets/masks/*_preview.jpg
+__pycache__/
