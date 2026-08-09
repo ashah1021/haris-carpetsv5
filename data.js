@@ -54,20 +54,36 @@ const SOCIALS = [
    PHOTOGRAPHY
    One place for every image path on the site. Drop a real jpg at the same
    path and it appears — no code changes anywhere else.
+
+   IMG_BASE decides where the photos are served from:
+     ""                        the copies committed in /assets (default)
+     "https://pub-xxx.r2.dev/" the haris-carpets R2 bucket
+
+   The bucket already holds the same twelve files under the same keys, with
+   immutable cache headers and a CORS policy allowing GET from any origin —
+   the visualiser reads raw canvas pixels, which browsers block cross-origin
+   without that. Switching is this one line.
+
+   Floor masks are deliberately NOT moved; they stay in /assets/masks so the
+   visualiser keeps working even if the bucket is unreachable.
    -------------------------------------------------------------------------- */
+const IMG_BASE = "";
+
+const P = (f) => IMG_BASE + "assets/" + f;
+
 const IMG = {
-  hero:        "assets/hero-living-room.jpg",
-  showroom:    "assets/showroom.jpg",
-  fitting:     "assets/fitting-hands.jpg",
-  samples:     "assets/samples-counter.jpg",
-  stairs:      "assets/stairs-wool-twist.jpg",
-  bedroom:     "assets/bedroom-wool.jpg",
-  velvet:      "assets/velvet-living-room.jpg",
-  pile:        "assets/pile-detail.jpg",
-  wood:        "assets/wood-herringbone-kitchen.jpg",
-  lvt:         "assets/lvt-kitchen.jpg",
-  vinyl:       "assets/vinyl-utility.jpg",
-  rug:         "assets/rug-living-room.jpg",
+  hero:        P("hero-living-room.jpg"),
+  showroom:    P("showroom.jpg"),
+  fitting:     P("fitting-hands.jpg"),
+  samples:     P("samples-counter.jpg"),
+  stairs:      P("stairs-wool-twist.jpg"),
+  bedroom:     P("bedroom-wool.jpg"),
+  velvet:      P("velvet-living-room.jpg"),
+  pile:        P("pile-detail.jpg"),
+  wood:        P("wood-herringbone-kitchen.jpg"),
+  lvt:         P("lvt-kitchen.jpg"),
+  vinyl:       P("vinyl-utility.jpg"),
+  rug:         P("rug-living-room.jpg"),
 };
 
 /* ----------------------------------------------------------------------------

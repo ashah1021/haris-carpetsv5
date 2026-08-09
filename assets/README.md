@@ -124,11 +124,46 @@ utility room is standing in for it in the meantime — the same floors suit both
 Real supplier roomsets are usually *easier* to mask than these, because they're
 lit to make the floor read clearly.
 
-## Optimising
+## Serving from R2
 
-The generated files are 2048px PNGs (~2–3 MB each). Before deploying:
+The photos are also in the Cloudflare R2 bucket `haris-carpets`, under the same
+`assets/<name>.jpg` keys, with `Cache-Control: public, max-age=31536000,
+immutable` and a CORS policy allowing `GET`/`HEAD` from any origin. That CORS
+rule is not optional: the visualiser reads raw canvas pixels, and browsers block
+that cross-origin without it.
+
+To switch the site over, set one line in `data.js`:
+
+```js
+const IMG_BASE = "https://pub-<hash>.r2.dev/";   // "" = serve from this repo
+```
+
+Floor masks stay in `/assets/masks` on purpose — small, and it keeps the
+visualiser working even if the bucket is unreachable.
+
+### Re-uploading after replacing photos
 
 ```sh
-# needs imagemagick
-for f in assets/*.jpg; do convert "$f" -resize 2000x -quality 82 "$f"; done
+pip install boto3 Pillow
+export R2_ACCOUNT=<cloudflare account id>
+export AWS_ACCESS_KEY_ID=<r2 access key id>
+export AWS_SECRET_ACCESS_KEY=<r2 secret access key>
+python3 tools/sync-r2.py
+```
+
+Because the cache headers are immutable, **change the filename when you replace
+a photo** rather than overwriting it — otherwise browsers and Cloudflare will
+keep serving the old one for up to a year.
+
+## Optimising
+
+`tools/sync-r2.py` resizes to 2000px (hero) / 1600px (everything else) and
+converts to progressive JPEG at quality 82. That took the set from 59.7 MB to
+3.5 MB — 6% of the original — with no visible loss at the sizes the site
+displays. The committed copies have already been through it.
+
+To re-run on the local copies without uploading:
+
+```sh
+python3 tools/sync-r2.py --local
 ```
