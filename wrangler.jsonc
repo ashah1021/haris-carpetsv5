@@ -1,11 +1,28 @@
 {
-  // Tells `npx wrangler deploy` to serve this folder as a static site
-  // (Cloudflare Workers Static Assets) instead of looking for a Worker script.
-  // "directory": "." means "the folder this config file sits in" — so keep
-  // this file next to index.html.
+  // Static site (Cloudflare Workers Static Assets) with a small Worker in
+  // front of it. "directory": "." means "the folder this config file sits in",
+  // so keep this file next to index.html.
+  //
+  // The Worker exists to serve /assets/*.jpg from the R2 bucket rather than
+  // from the deployment bundle, keeping the URLs same-origin. See worker.js.
   "name": "haris-carpets",
+  "main": "worker.js",
   "compatibility_date": "2026-08-06",
+
   "assets": {
-    "directory": "."
-  }
+    "directory": ".",
+    // lets the Worker hand anything it doesn't handle back to static assets
+    "binding": "ASSETS",
+    // static assets are normally served before the Worker ever runs, which
+    // would mean the bundled photos always win over R2. This flips the order
+    // so the Worker gets first look; it passes everything else straight on.
+    "run_worker_first": true
+  },
+
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "haris-carpets"
+    }
+  ]
 }

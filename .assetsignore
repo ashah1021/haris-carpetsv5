@@ -1,0 +1,11 @@
+# Files here are NOT uploaded as static assets.
+# "assets.directory" is "." (the repo root), so without this the deployment
+# would publish local dev state and tooling alongside the site.
+.wrangler
+node_modules
+tools
+*.md
+wrangler.jsonc
+worker.js
+.gitignore
+.assetsignore

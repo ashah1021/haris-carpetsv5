@@ -126,20 +126,36 @@ lit to make the floor read clearly.
 
 ## Serving from R2
 
-The photos are also in the Cloudflare R2 bucket `haris-carpets`, under the same
-`assets/<name>.jpg` keys, with `Cache-Control: public, max-age=31536000,
-immutable` and a CORS policy allowing `GET`/`HEAD` from any origin. That CORS
-rule is not optional: the visualiser reads raw canvas pixels, and browsers block
-that cross-origin without it.
+The photos live in the Cloudflare R2 bucket `haris-carpets` under
+`assets/<name>.jpg`, with `Cache-Control: public, max-age=31536000, immutable`.
 
-To switch the site over, set one line in `data.js`:
+`worker.js` serves them from the site's **own origin**, at the same
+`/assets/<name>.jpg` URLs the repo uses. Nothing in the site needs to know where
+a photo came from. This is deliberate rather than incidental:
 
-```js
-const IMG_BASE = "https://pub-<hash>.r2.dev/";   // "" = serve from this repo
+- **No CORS to maintain.** The visualiser reads raw canvas pixels, and browsers
+  taint the canvas for cross-origin images unless CORS is exactly right. Serving
+  same-origin removes that failure mode entirely.
+- **No dependency on `r2.dev`.** Cloudflare rate-limits the public bucket URL and
+  says plainly it is not for production traffic.
+
+`wrangler.jsonc` sets `assets.run_worker_first: true`, without which static
+assets are served before the Worker ever runs and the bundled photos would
+always win over R2.
+
+**The bundled copies in this folder are the fallback, not dead weight.** If R2 is
+unreachable or an object is missing, `worker.js` hands the request to the static
+assets instead — so a bucket problem degrades to slightly larger images rather
+than a site with no photographs on it. That is what `tools/worker.test.mjs`
+exists to protect:
+
+```sh
+node tools/worker.test.mjs      # no deps, no network
 ```
 
-Floor masks stay in `/assets/masks` on purpose — small, and it keeps the
-visualiser working even if the bucket is unreachable.
+If you would rather bypass the Worker and serve straight from the bucket's public
+URL, set `IMG_BASE` in `data.js` to `https://pub-<hash>.r2.dev/`. The bucket
+already carries a CORS policy allowing `GET`/`HEAD` from any origin for that case.
 
 ### Re-uploading after replacing photos
 

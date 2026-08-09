@@ -55,17 +55,19 @@ const SOCIALS = [
    One place for every image path on the site. Drop a real jpg at the same
    path and it appears — no code changes anywhere else.
 
-   IMG_BASE decides where the photos are served from:
-     ""                        the copies committed in /assets (default)
-     "https://pub-xxx.r2.dev/" the haris-carpets R2 bucket
+   Photos live in the Cloudflare R2 bucket `haris-carpets`. In production they
+   are served by worker.js from the site's own origin at these same
+   /assets/<name>.jpg URLs, so there is no CORS to get right — which matters
+   because the visualiser reads raw canvas pixels, and a cross-origin image
+   taints the canvas. The copies committed here stay as a fallback for local
+   development and for any request R2 cannot answer.
 
-   The bucket already holds the same twelve files under the same keys, with
-   immutable cache headers and a CORS policy allowing GET from any origin —
-   the visualiser reads raw canvas pixels, which browsers block cross-origin
-   without that. Switching is this one line.
+   IMG_BASE only needs setting to serve photos from somewhere else entirely,
+   e.g. the bucket's public URL instead of through the Worker:
+     ""                        this origin  (default — Worker serves from R2)
+     "https://pub-xxx.r2.dev/" the bucket's public URL, cross-origin
 
-   Floor masks are deliberately NOT moved; they stay in /assets/masks so the
-   visualiser keeps working even if the bucket is unreachable.
+   Floor masks are never served from R2; they stay in /assets/masks.
    -------------------------------------------------------------------------- */
 const IMG_BASE = "";
 
