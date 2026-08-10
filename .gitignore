@@ -5,3 +5,4 @@ __pycache__/
 # wrangler local dev state (also excluded from the deploy via .assetsignore)
 .wrangler/
 node_modules/
+catalogue.generated.js
