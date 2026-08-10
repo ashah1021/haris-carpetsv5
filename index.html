@@ -22,32 +22,23 @@
       </a>
       <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
       <nav class="nav">
-        <a href="#/brands">Carpets</a>
-        <a href="#/category/wood-laminate">Wood &amp; Laminate</a>
-        <a href="#/category/lvt">LVT</a>
-        <a href="#/category/vinyl">Vinyl</a>
-        <a href="#/category/rugs">Rugs</a>
+        <a href="#/catalogue/carpets">Carpets</a>
+        <a href="#/catalogue/wood">Wood &amp; Laminate</a>
+        <a href="#/catalogue/lvt">LVT</a>
+        <a href="#/catalogue/vinyl">Vinyl</a>
+        <a href="#/catalogue/rugs">Rugs</a>
         <a href="#/visualiser">Visualiser</a>
         <a href="#/about">About</a>
         <a href="#/contact">Visit us</a>
       </nav>
-      <button class="tray-btn" id="trayBtn" aria-label="Open sample tray">Samples <span class="count" id="trayCount">0</span></button>
+      <a class="fav-btn" id="favBtn" href="#/favourites" aria-label="My saved shades">
+        <span aria-hidden="true">&#9829;</span> My list <span class="count" id="favCount">0</span>
+      </a>
       <a class="btn btn-solid btn-sm header-cta" href="tel:+442085706502">020 8570 6502</a>
     </div>
   </header>
 
   <main id="app"><!-- views render here --></main>
-
-  <!-- SAMPLE TRAY — removed from the DOM at load unless FEATURES.samples is on -->
-  <div class="scrim" id="scrim"></div>
-  <aside class="tray" id="tray" aria-label="Sample tray">
-    <header><h3>Your samples</h3><button class="x" id="trayClose" aria-label="Close">&times;</button></header>
-    <ul id="trayList"></ul>
-    <footer>
-      <p class="cap">Order up to 5 free carpet samples, delivered to your door.</p>
-      <button class="btn btn-solid" id="trayReq" style="width:100%;justify-content:center" disabled>Request these samples</button>
-    </footer>
-  </aside>
 
   <footer class="site-footer">
     <div class="wrap">
@@ -58,12 +49,13 @@
       </div>
       <div>
         <h4>Shop</h4>
-        <a href="#/brands">Carpets</a>
-        <a href="#/category/wood-laminate">Wood &amp; Laminate</a>
-        <a href="#/category/lvt">LVT</a>
-        <a href="#/category/vinyl">Vinyl</a>
-        <a href="#/category/rugs">Rugs</a>
+        <a href="#/catalogue/carpets">Carpets</a>
+        <a href="#/catalogue/wood">Wood &amp; Laminate</a>
+        <a href="#/catalogue/lvt">LVT</a>
+        <a href="#/catalogue/vinyl">Vinyl</a>
+        <a href="#/catalogue/rugs">Rugs</a>
         <a href="#/visualiser">Visualiser</a>
+        <a href="#/favourites">My list</a>
       </div>
       <div>
         <h4>Visit</h4>
