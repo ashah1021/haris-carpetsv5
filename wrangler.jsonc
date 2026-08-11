@@ -1,16 +1,18 @@
 {
   // Static site (Cloudflare Workers Static Assets) with a small Worker in
-  // front of it. "directory": "." means "the folder this config file sits in",
-  // so keep this file next to index.html.
+  // front of it, which serves /assets/*.jpg out of the R2 bucket. See worker.js.
   //
-  // The Worker exists to serve /assets/*.jpg from the R2 bucket rather than
-  // from the deployment bundle, keeping the URLs same-origin. See worker.js.
+  // The site lives in ./public rather than the repo root. That is deliberate:
+  // with "directory": "." the deploy published everything not explicitly
+  // ignored, including .git — and a fresh clone packs its objects into a single
+  // file well over the 25 MiB per-asset limit, which fails the build. A
+  // dedicated directory means only what belongs on the web can ever be served.
   "name": "haris-carpets",
   "main": "worker.js",
   "compatibility_date": "2026-08-06",
 
   "assets": {
-    "directory": ".",
+    "directory": "./public",
     // lets the Worker hand anything it doesn't handle back to static assets
     "binding": "ASSETS",
     // static assets are normally served before the Worker ever runs, which

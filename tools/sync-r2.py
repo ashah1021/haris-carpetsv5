@@ -57,7 +57,7 @@ def main():
             endpoint_url=f"https://{account}.r2.cloudflarestorage.com")
 
     before = after = 0
-    for path in sorted(glob.glob("assets/*.jpg")):
+    for path in sorted(glob.glob("public/assets/*.jpg")):
         size_in = os.path.getsize(path)
         name, data = optimise(path)
         if client:

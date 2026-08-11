@@ -1,4 +1,8 @@
-# /assets — site photography
+# Photography and the catalogue pipeline
+
+> The site's public files live in `public/`. Paths below are relative to the
+> repo root, so image files sit at `public/assets/…` and are served at
+> `/assets/…`.
 
 Every image path on the site is declared once, in the `IMG` object at the top of
 `data.js`. Drop a file at the matching path here and it appears everywhere it's
@@ -44,7 +48,7 @@ imagery in it. Before this goes anywhere near a customer, replace them with:
 ## Fetching the placeholders
 
 ```sh
-sh assets/fetch-images.sh
+sh public/assets/fetch-images.sh
 ```
 
 Run it from the repo root. It needs plain outbound HTTPS to the generation CDN —
@@ -52,7 +56,7 @@ it will not work from inside a restricted-egress sandbox, so run it locally.
 
 ## Floor masks (the visualiser)
 
-`assets/masks/<room>.png` is a greyscale image where white marks the floor. The
+`public/assets/masks/<room>.png` is a greyscale image where white marks the floor. The
 visualiser recolours only those pixels, scaling the chosen colour by each pixel's
 own luminance — so shadows stay shadows and the pile texture survives. Without a
 mask a room simply doesn't appear in the picker.
@@ -111,7 +115,7 @@ again. Three things stack up:
 
 A polygon tight enough to exclude the wall also clips the treads. Cut it by
 hand: open the photo, select the carpet, fill white on black, save a 1024px-wide
-greyscale PNG as `assets/masks/stairs-wool-twist.png`, then add the room to
+greyscale PNG as `public/assets/masks/stairs-wool-twist.png`, then add the room to
 `VIS_ROOMS` in `data.js`. Five minutes, and the visualiser doesn't care how a
 mask was made.
 

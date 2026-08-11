@@ -139,7 +139,7 @@ def main():
                       ContentType="image/jpeg",
                       CacheControl="public, max-age=31536000, immutable")
         # keep a local copy so the site works without the bucket
-        local = os.path.join(ROOT, "assets", "ranges", name)
+        local = os.path.join(ROOT, "public", "assets", "ranges", name)
         os.makedirs(os.path.dirname(local), exist_ok=True)
         with open(local, "wb") as fh:
             fh.write(buf.getvalue())

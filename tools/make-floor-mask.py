@@ -26,8 +26,8 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "assets")
-OUT = os.path.join(ROOT, "assets", "masks")
+SRC = os.path.join(ROOT, "public", "assets")
+OUT = os.path.join(ROOT, "public", "assets", "masks")
 
 WORK_W = 1024  # masks are built (and shipped) at this width
 
