@@ -96,3 +96,5 @@
 .vz-upload { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 18px 0 22px; }
 .vz-upload .btn { cursor: pointer; }
 .vz-priv { font-size: 13px; color: var(--muted); }
+.vz-warn { margin: 0; font-size: 13.5px; color: #9a3412; flex-basis: 100%; }
+.vz-warn:empty { display: none; }

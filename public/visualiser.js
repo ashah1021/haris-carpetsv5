@@ -21,7 +21,7 @@
 
   const VIS = {
     type: null, room: null, colour: null, rangeId: null,
-    search: "", cache: {}, busy: false, dead: {}, tol: 0.018,
+    search: "", cache: {}, busy: false, dead: {}, tol: 0.012,
   };
 
   /* "Your room" is a synthetic room built from an uploaded photo. It never
@@ -177,28 +177,63 @@
     VIS.dead.own = false;
   }
 
-  /* grow the floor out from the tapped point */
+  /* Grow the floor out from the tapped point.
+     Chromaticity alone is not enough, and a neutral room is where it fails:
+     a grey carpet, white walls, white wardrobes and a white ceiling all sit at
+     roughly (0.333, 0.333), so a colour-only test walks straight off the floor
+     and floods the room. What separates them is brightness, and what stops the
+     fill at the skirting board is that the step there is abrupt. So three tests
+     rather than one:
+
+       colour     within tol of the tapped patch, as before
+       brightness within a window of the tapped patch, so a grey floor cannot
+                  reach a white wall
+       continuity no single step brighter or darker than STEP between adjacent
+                  pixels, which follows a floor as the light falls across it but
+                  stops dead at an edge
+
+     The tapped patch is averaged over a few pixels because one pixel can be
+     noise or a speck of dirt. */
+  const EDGE_STEP = 0.055;   // largest luminance jump the fill will cross
+
   function pickFloor(px, py, tol) {
-    const b = ownBuf; if (!b) return;
+    const b = ownBuf; if (!b) return 0;
     const { w, h, cr, cg, lum } = b;
-    const start = py * w + px;
-    const tr = cr[start], tg = cg[start];
+
+    let tr = 0, tg = 0, tl = 0, seedN = 0;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const x = px + dx, y = py + dy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const p = y * w + x;
+        tr += cr[p]; tg += cg[p]; tl += lum[p]; seedN++;
+      }
+    }
+    tr /= seedN; tg /= seedN; tl /= seedN;
+
+    const lumWin = 0.07 + tol * 6;   // the slider widens both windows together
     const seen = new Uint8Array(w * h);
     const alpha = new Float32Array(w * h);
+    const start = py * w + px;
     const stack = [start];
     seen[start] = 1;
     let sum = 0, n = 0;
+
     while (stack.length) {
       const p = stack.pop();
       const dr = cr[p] - tr, dg = cg[p] - tg;
-      if (Math.sqrt(dr * dr + dg * dg) > tol || lum[p] < 0.05) continue;
+      if (Math.sqrt(dr * dr + dg * dg) > tol) continue;
+      if (Math.abs(lum[p] - tl) > lumWin) continue;
       alpha[p] = 1; sum += lum[p]; n++;
+
       const x = p % w, y = (p / w) | 0;
-      if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
-      if (x < w - 1 && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
-      if (y > 0 && !seen[p - w]) { seen[p - w] = 1; stack.push(p - w); }
-      if (y < h - 1 && !seen[p + w]) { seen[p + w] = 1; stack.push(p + w); }
+      const lp = lum[p];
+      if (x > 0 && !seen[p - 1] && Math.abs(lum[p - 1] - lp) < EDGE_STEP) { seen[p - 1] = 1; stack.push(p - 1); }
+      if (x < w - 1 && !seen[p + 1] && Math.abs(lum[p + 1] - lp) < EDGE_STEP) { seen[p + 1] = 1; stack.push(p + 1); }
+      if (y > 0 && !seen[p - w] && Math.abs(lum[p - w] - lp) < EDGE_STEP) { seen[p - w] = 1; stack.push(p - w); }
+      if (y < h - 1 && !seen[p + w] && Math.abs(lum[p + w] - lp) < EDGE_STEP) { seen[p + w] = 1; stack.push(p + w); }
     }
+
     /* soften the edge so the recolour does not end on a hard jagged line */
     const soft = new Float32Array(w * h);
     for (let y = 1; y < h - 1; y++) {
@@ -209,7 +244,8 @@
     }
     b.alpha = soft;
     b.ref = n ? sum / n : 0.6;
-    b.picked = n > 500;   // a stray tap on a picture frame is not a floor
+    b.picked = n > 500;              // a stray tap on a picture frame is not a floor
+    b.coverage = n / (w * h);
     return n;
   }
 
@@ -303,7 +339,8 @@
       <div class="vz-own">
         <p><b>Tap the floor in your photo</b> to tell us which part to recolour.
            If it grabs too much or too little, nudge the slider and tap again.</p>
-        <label class="vz-tol">Match <input type="range" id="vzTol" min="6" max="40" value="${Math.round(VIS.tol * 1000)}"></label>
+        <label class="vz-tol">Match <input type="range" id="vzTol" min="4" max="30" value="${Math.round(VIS.tol * 1000)}"></label>
+        <p class="vz-warn" id="vzWarn"></p>
       </div>` : ""}
 
       <div class="vz-upload">
@@ -363,6 +400,14 @@
     const y = Math.round((e.clientY - r.top) / r.height * ownBuf.h);
     if (x < 0 || y < 0 || x >= ownBuf.w || y >= ownBuf.h) return;
     pickFloor(x, y, VIS.tol);
+    const warn = document.querySelector("#vzWarn");
+    if (warn) {
+      /* a floor is a big part of a photo but never almost all of it; past ~65%
+         the fill has escaped and saying so beats leaving them to wonder */
+      warn.textContent = ownBuf.coverage > 0.65
+        ? "That selected most of the picture — lower Match and tap the floor again."
+        : (ownBuf.picked ? "" : "That didn't look like a floor — try tapping an open area of it.");
+    }
     draw();
   }
 
