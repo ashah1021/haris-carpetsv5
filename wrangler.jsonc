@@ -7,7 +7,10 @@
   // ignored, including .git — and a fresh clone packs its objects into a single
   // file well over the 25 MiB per-asset limit, which fails the build. A
   // dedicated directory means only what belongs on the web can ever be served.
-  "name": "haris-carpets",
+  // Must match the Workers Builds project name, which is haris-carpetsv5. With
+  // "haris-carpets" here the CI overrode it on every build, and a local
+  // `wrangler deploy` would have gone to a different Worker entirely.
+  "name": "haris-carpetsv5",
   "main": "worker.js",
   "compatibility_date": "2026-08-06",
 
