@@ -132,9 +132,11 @@ h2 { font-size: clamp(27px, 3.4vw, 40px); }
    HEADER
    ========================================================================= */
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--paper); border-bottom: 1px solid var(--line); }
-.site-header .wrap-wide { display: flex; align-items: center; gap: 26px; height: 76px; }
+/* the header shares the body's 1200px container so the wordmark lines up with
+   the page content rather than sitting outboard of it */
+.site-header .wrap { display: flex; align-items: center; gap: 22px; height: 76px; }
 
-.brand-mark { text-decoration: none; display: block; line-height: 1; }
+.brand-mark { text-decoration: none; display: block; line-height: 1; flex: none; white-space: nowrap; }
 .brand-mark .bn {
   font-family: var(--f-display); font-size: clamp(20px, 2vw, 25px); font-weight: 500;
   letter-spacing: .07em; text-transform: uppercase; color: var(--blue); display: block;
@@ -147,19 +149,19 @@ h2 { font-size: clamp(27px, 3.4vw, 40px); }
   text-transform: uppercase; color: var(--muted);
 }
 
-.nav { display: flex; gap: 24px; margin-left: auto; }
+.nav { display: flex; gap: 26px; margin-left: auto; }
 .nav a {
-  text-decoration: none; color: var(--ink-soft); font-size: 15px;
+  text-decoration: none; color: var(--ink-soft); font-size: 15px; white-space: nowrap;
   font-family: var(--f-display); letter-spacing: .05em; text-transform: uppercase;
   padding: 6px 0; border-bottom: 3px solid transparent; transition: color .18s, border-color .18s;
 }
 .nav a:hover, .nav a.active { color: var(--blue); border-color: var(--yellow); }
-.header-cta { margin-left: 8px; }
+.header-cta { margin-left: 8px; white-space: nowrap; flex: none; }
 .nav-toggle { display: none; margin-left: auto; background: none; border: 0; font-size: 22px; color: var(--blue); }
 
 /* favourites pill */
 .fav-btn {
-  margin-left: 6px; background: var(--blue-tint); color: var(--blue-deep); text-decoration: none;
+  margin-left: 6px; white-space: nowrap; flex: none; background: var(--blue-tint); color: var(--blue-deep); text-decoration: none;
   border: 1px solid transparent; border-radius: 2px; padding: 10px 14px;
   font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
   display: inline-flex; align-items: center; gap: 7px; transition: background .18s, color .18s;
@@ -305,90 +307,6 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
   opacity: 0; transition: opacity .15s; }
 .swatch:hover .pick, .swatch.selected .pick { opacity: 1; }
 .swatch.selected .pick { background: var(--blue); color: #fff; }
-
-/* =========================================================================
-   VISUALISER
-   ========================================================================= */
-.vis { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(22px, 3vw, 38px); align-items: start; }
-.vis-stage { min-width: 0; }
-.vis-step { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.vis-step-n {
-  width: 22px; height: 22px; flex: none; display: grid; place-items: center;
-  background: var(--blue); color: #fff; border-radius: 50%;
-  font-family: var(--f-display); font-size: 12px; font-weight: 500;
-}
-.vis-step-l {
-  font-family: var(--f-display); font-size: 12px; letter-spacing: .13em;
-  text-transform: uppercase; color: var(--muted); margin-right: 4px;
-}
-.vis-opts { display: flex; gap: 8px; flex-wrap: wrap; }
-.vis-room {
-  background: var(--paper); border: 1px solid var(--line); border-radius: 2px;
-  font-family: var(--f-display); font-size: 13px; letter-spacing: .07em; text-transform: uppercase;
-  padding: 9px 16px; color: var(--ink-soft); transition: background .18s, color .18s, border-color .18s;
-}
-.vis-room:hover { border-color: var(--blue); color: var(--blue); }
-.vis-room.on { background: var(--blue); border-color: var(--blue); color: #fff; }
-
-.vis-frame { position: relative; background: var(--off); border: 1px solid var(--line); min-height: 260px; }
-.vis-frame canvas { display: block; width: 100%; height: auto; }
-.vis-status {
-  position: absolute; inset: 0; margin: 0; display: grid; place-content: center; text-align: center;
-  padding: 24px; font-size: 14.5px; color: var(--muted); pointer-events: none;
-}
-.vis-status:empty { display: none; }
-.vis-status code { background: var(--blue-tint); padding: 2px 6px; font-size: 13px; }
-.vis-note { font-size: 13.5px; color: var(--muted); margin: 12px 0 0; max-width: 70ch; }
-
-.vis-side { position: sticky; top: 92px; }
-.vis-current { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 3px solid var(--yellow); margin-bottom: 18px; }
-.vis-current .sw { width: 46px; height: 46px; border: 1px solid var(--line); flex: none; }
-.vis-current strong { display: block; font-size: 16px; line-height: 1.3; }
-.vis-current small { color: var(--muted); font-size: 12.5px; }
-
-.vis-group { margin-bottom: 18px; }
-.vis-group h4 {
-  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .13em; text-transform: uppercase;
-  color: var(--muted); margin: 0 0 8px; font-weight: 500;
-}
-.vis-chips { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
-.vis-chip {
-  aspect-ratio: 1; border: 1px solid var(--line); border-radius: 2px; padding: 0;
-  transition: transform .14s, box-shadow .14s;
-}
-.vis-chip:hover { transform: scale(1.14); box-shadow: var(--shadow); z-index: 2; }
-.vis-chip.on { box-shadow: 0 0 0 2px var(--blue); border-color: var(--blue); }
-
-@media (max-width: 900px) {
-  .vis { grid-template-columns: 1fr; }
-  .vis-side { position: static; }
-  .vis-chips { grid-template-columns: repeat(10, 1fr); }
-}
-@media (max-width: 520px) {
-  .vis-chips { grid-template-columns: repeat(8, 1fr); }
-}
-
-/* =========================================================================
-   SAMPLE TRAY (drawer)
-   ========================================================================= */
-.tray { position: fixed; top: 0; right: 0; height: 100dvh; width: min(360px, 90vw); background: var(--paper);
-  border-left: 1px solid var(--line); z-index: 80; transform: translateX(100%); transition: transform .28s ease;
-  display: flex; flex-direction: column; box-shadow: -20px 0 50px -30px rgba(20,41,74,.5); }
-.tray.open { transform: none; }
-.tray header { padding: 20px; border-bottom: 3px solid var(--yellow); display: flex; justify-content: space-between; align-items: center; }
-.tray header h3 { font-size: 20px; }
-.tray .x { background: none; border: 0; font-size: 22px; line-height: 1; color: var(--muted); }
-.tray ul { list-style: none; margin: 0; padding: 12px 20px; overflow: auto; flex: 1; }
-.tray li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.tray li .sw { width: 34px; height: 34px; border: 1px solid var(--line); flex: none; }
-.tray li .info { flex: 1; font-size: 14px; }
-.tray li .info small { display: block; font-size: 11.5px; color: var(--muted); }
-.tray li .rm { background: none; border: 0; color: var(--muted); font-size: 18px; }
-.tray .empty { padding: 40px 20px; color: var(--muted); text-align: center; font-size: 15px; }
-.tray footer { padding: 18px 20px; border-top: 1px solid var(--line); }
-.tray footer .cap { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-.scrim { position: fixed; inset: 0; background: rgba(12,26,48,.4); z-index: 70; opacity: 0; pointer-events: none; transition: opacity .28s; }
-.scrim.open { opacity: 1; pointer-events: auto; }
 
 /* =========================================================================
    FORMS / CONTACT
@@ -609,4 +527,44 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 @media (max-width: 760px) {
   #zoomBody { grid-template-columns: 1fr; }
   .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+
+/* =========================================================================
+   MOTION
+   One idea, applied consistently: things fade up a short distance the first
+   time they are seen, and interactive elements respond quickly. Anything
+   longer than ~450ms starts to feel like waiting rather than polish, and the
+   whole lot is dropped for prefers-reduced-motion (see the block at the end).
+   ========================================================================= */
+.will-reveal { opacity: 0; transform: translateY(14px); }
+.will-reveal.seen {
+  opacity: 1; transform: none;
+  transition: opacity .5s ease, transform .5s cubic-bezier(.22,.61,.36,1);
+}
+/* cards in a grid arrive together rather than one behind the other — a
+   stagger long enough to notice is a stagger long enough to annoy */
+#app .card.will-reveal, #app .cat-tile.will-reveal { transition-duration: .42s; }
+
+.btn, .chip, .fav, .arrow-link, .card, .cat-tile, .swatch {
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+  transition-duration: .18s; transition-timing-function: ease;
+}
+.btn:active, .chip:active { transform: translateY(1px); }
+.cat-tile:hover .cat-cap { background: linear-gradient(transparent, rgba(12,26,48,.92)); }
+
+/* the lightbox scales in from the tile rather than appearing */
+.zoom-panel { animation: zoomIn .24s cubic-bezier(.22,.61,.36,1); }
+@keyframes zoomIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+.zoom { animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* focus that is visible without being loud — keyboard users get a real ring */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .will-reveal, .will-reveal.seen { opacity: 1 !important; transform: none !important; }
+  .zoom-panel, .zoom { animation: none !important; }
 }

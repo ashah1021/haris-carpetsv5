@@ -10,23 +10,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <!-- optional add-on; delete this line and visualiser.css to ship without it -->
+  <link rel="stylesheet" href="./visualiser.css">
 </head>
 <body>
 
   <header class="site-header">
-    <div class="wrap-wide">
+    <div class="wrap">
       <a class="brand-mark" href="#/" aria-label="Hari's Carpets — home">
         <span class="bn">Hari's Carpets</span>
         <span class="br" aria-hidden="true"></span>
         <small>Hounslow · Est. 30+ yrs</small>
       </a>
       <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+      <!-- Four items, not eight: the catalogue page carries its own type tabs,
+           so listing every floor type here only crowded the wordmark out. -->
       <nav class="nav">
-        <a href="#/catalogue/carpets">Carpets</a>
-        <a href="#/catalogue/wood">Wood &amp; Laminate</a>
-        <a href="#/catalogue/lvt">LVT</a>
-        <a href="#/catalogue/vinyl">Vinyl</a>
-        <a href="#/catalogue/rugs">Rugs</a>
+        <a href="#/catalogue">Catalogue</a>
         <a href="#/visualiser">Visualiser</a>
         <a href="#/about">About</a>
         <a href="#/contact">Visit us</a>
@@ -80,6 +80,8 @@
   </footer>
 
   <script src="./data.js"></script>
+  <!-- optional add-on; must load before app.js, which checks for it -->
+  <script src="./visualiser.js"></script>
   <script src="./app.js"></script>
   <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
 </body>

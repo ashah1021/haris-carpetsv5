@@ -23,6 +23,11 @@
    -------------------------------------------------------------------------- */
 const FEATURES = {
   samples: false,
+
+  /* The floor visualiser is a separable add-on, not part of the website build.
+     false hides every entry point and stops it loading; visualiser.js and
+     visualiser.css can then be deleted with nothing else to change. */
+  visualiser: true,
 };
 
 const BUSINESS = {

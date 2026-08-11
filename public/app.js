@@ -215,7 +215,7 @@ function openZoom(key) {
       <div class="zoom-actions">
         ${heart(sw.key)}<span class="zoom-favlabel">Save to my list</span>
       </div>
-      <a class="btn btn-solid btn-sm" href="#/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>` : ""}
       <a class="btn btn-ghost btn-sm" href="#/range/${esc(sw.rangeId)}" data-zoom-close>All ${esc(sw.range)} shades</a>
     </div>`;
   box.classList.add("open");
@@ -284,7 +284,7 @@ function viewHome() {
       <div><span class="rule"></span><h2>Every floor, one showroom</h2>
         <p>Wool carpet, engineered wood, laminate, LVT, sheet vinyl and rugs — all under
            one roof on Hanworth Road, and all fitted by us.</p></div>
-      <a class="arrow-link" href="#/visualiser">Try colours in a room →</a>
+      ${VISUALISER_ON ? `<a class="arrow-link" href="#/visualiser">Try colours in a room →</a>` : ""}
     </div>
     <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
   </div></section>
@@ -416,7 +416,7 @@ function viewCatalogue(typeId) {
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(type.blurb)}</p></div>
-      <a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
     </div>
 
     <div class="filters">
@@ -480,8 +480,9 @@ function viewRange(id) {
       ${photo(r.photo, r.alt || `${r.name} flooring`, "4-3")}
       <div><span class="rule"></span><h1>${esc(r.name)}</h1><p class="lede">${esc(r.blurb)}</p>
         <ul class="spec">${spec.map(([k, v]) => `<li><div><span class="sl">${esc(k)}</span>${esc(v)}</div></li>`).join("")}</ul>
-        <p style="margin-top:26px">
-          <a class="btn btn-solid" href="#/visualiser/${esc(r.id)}">See this range in a room</a></p></div>
+        <p style="margin-top:26px">${VISUALISER_ON
+          ? `<a class="btn btn-solid" href="#/visualiser/${esc(r.id)}">See this range in a room</a>`
+          : `<a class="btn btn-solid" href="#/contact">Ask us about this range</a>`}</p></div>
     </div>
   </div></section>
   <section class="sec-alt"><div class="wrap">
@@ -600,205 +601,10 @@ function viewNotFound() {
     <h2>We couldn't find that page</h2><p style="margin-top:14px"><a class="arrow-link" href="#/">Back to home →</a></p></div></section>`;
 }
 
-/* =========================================================================
-   VISUALISER
-   Recolours the floor of a roomset while keeping the photograph's own
-   lighting: each pixel's luminance is measured against the mean luminance of
-   the floor and the chosen colour scaled by that ratio, so a shadow stays a
-   shadow and the pile texture survives. A flat fill reads as a sticker.
-   ========================================================================= */
-const VIS = { type: null, room: null, colour: null, cache: {}, busy: false, dead: {} };
-
-const visRoom = (id) => VIS_ROOMS.find((r) => r.id === id);
-const visRoomsFor = (type) => (type.rooms || []).map(visRoom).filter((r) => r && !VIS.dead[r.id]);
-
-/* palette comes straight from the catalogue, grouped by range */
-const visPalette = (type) =>
-  rangesOfType(type.id).map((r) => ({ label: `${r.brand} · ${r.name}`, rangeId: r.id, colours: r.colours }));
-
-const visFlat = (type) => visPalette(type).flatMap((g) =>
-  g.colours.map((c) => ({ ...c, rangeId: g.rangeId })));
-
-function loadImage(src) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.crossOrigin = "anonymous";
-    im.onload = () => res(im);
-    im.onerror = () => rej(new Error("could not load " + src));
-    im.src = src;
-  });
-}
-
-async function visPrepare(room) {
-  if (VIS.cache[room.id]) return VIS.cache[room.id];
-  const [photoImg, maskImg] = await Promise.all([loadImage(room.photo), loadImage(room.mask)]);
-  const w = Math.min(1400, photoImg.naturalWidth);
-  const h = Math.round((photoImg.naturalHeight / photoImg.naturalWidth) * w);
-
-  const pc = document.createElement("canvas"); pc.width = w; pc.height = h;
-  const px = pc.getContext("2d", { willReadFrequently: true });
-  px.drawImage(photoImg, 0, 0, w, h);
-  const mc = document.createElement("canvas"); mc.width = w; mc.height = h;
-  const mx = mc.getContext("2d", { willReadFrequently: true });
-  mx.drawImage(maskImg, 0, 0, w, h);
-
-  const base = px.getImageData(0, 0, w, h);
-  const mdat = mx.getImageData(0, 0, w, h).data;
-
-  let sum = 0, n = 0;
-  const alpha = new Float32Array(w * h), lum = new Float32Array(w * h);
-  for (let i = 0, p = 0; i < mdat.length; i += 4, p++) {
-    const a = mdat[i] / 255;
-    alpha[p] = a;
-    const L = (0.2126 * base.data[i] + 0.7152 * base.data[i + 1] + 0.0722 * base.data[i + 2]) / 255;
-    lum[p] = L;
-    if (a > 0.5) { sum += L; n++; }
-  }
-  return (VIS.cache[room.id] = { w, h, base, alpha, lum, ref: n ? sum / n : 0.6 });
-}
-
-function visPaint(buf, hex) {
-  const t = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-  const src = buf.base.data;
-  const out = new ImageData(new Uint8ClampedArray(src), buf.w, buf.h);
-  const d = out.data;
-  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
-    const a = buf.alpha[p];
-    if (a <= 0.004) continue;
-    const ratio = buf.lum[p] / buf.ref;
-    for (let k = 0; k < 3; k++) {
-      const lit = t[k] * ratio;
-      d[i + k] = src[i + k] * (1 - a) + (lit > 255 ? 255 : lit) * a;
-    }
-  }
-  return out;
-}
-
-async function visRender() {
-  const cv = $("#visCanvas");
-  if (!cv || VIS.busy || !VIS.room) return;
-  VIS.busy = true;
-  const status = $("#visStatus");
-  try {
-    const buf = await visPrepare(VIS.room);
-    cv.width = buf.w; cv.height = buf.h;
-    cv.getContext("2d").putImageData(visPaint(buf, VIS.colour.hex), 0, 0);
-    if (status) status.textContent = "";
-    cv.style.visibility = "visible";
-  } catch (e) {
-    if (location.protocol === "file:") {
-      if (status) status.innerHTML = `The visualiser needs the site served over http, not opened as a file.
-        Run <code>npx http-server</code> in the project folder and reload.`;
-    } else {
-      VIS.dead[VIS.room.id] = true;
-      VIS.busy = false;
-      const left = visRoomsFor(VIS.type);
-      if (left.length) return visSelectRoom(left[0].id);
-      if (status) status.textContent = "No rooms are available for this flooring type yet.";
-    }
-  } finally { VIS.busy = false; }
-}
-
-function visSyncCurrent() {
-  const sw = $("#visSwatch"); if (!sw) return;
-  sw.style.background = VIS.colour.hex;
-  $("#visName").textContent = VIS.colour.name;
-  $("#visCode").textContent = VIS.colour.code;
-  const fav = $("#visFav");
-  if (fav && VIS.colour.rangeId) {
-    const key = VIS.colour.rangeId + ":" + VIS.colour.code;
-    fav.outerHTML = heart(key).replace('class="fav', 'id="visFav" class="fav');
-  }
-}
-
-function visSelectType(id) {
-  VIS.type = TYPES.find((t) => t.id === id) || TYPES[0];
-  VIS.colour = visFlat(VIS.type)[0];
-  VIS.room = visRoomsFor(VIS.type)[0] || null;
-  const rooms = $("#visRooms"); if (rooms) rooms.innerHTML = visRoomsHtml();
-  const host = $("#visControls"); if (host) host.innerHTML = visControlsHtml();
-  const note = $("#visNote"); if (note && VIS.room) note.textContent = VIS.room.note;
-  visSyncCurrent();
-  visRender();
-}
-
-function visSelectRoom(id) {
-  VIS.room = visRoom(id) || visRoomsFor(VIS.type)[0];
-  const rooms = $("#visRooms"); if (rooms) rooms.innerHTML = visRoomsHtml();
-  const note = $("#visNote"); if (note && VIS.room) note.textContent = VIS.room.note;
-  visRender();
-}
-
-const visRoomsHtml = () => visRoomsFor(VIS.type).map((r) =>
-  `<button class="chip${VIS.room && r.id === VIS.room.id ? " on" : ""}" data-vis-room="${esc(r.id)}">${esc(r.name)}</button>`).join("");
-
-const visControlsHtml = () => visPalette(VIS.type).map((g) => `
-  <div class="vis-group">
-    <h4><a href="#/range/${esc(g.rangeId)}">${esc(g.label)}</a></h4>
-    <div class="vis-chips">
-      ${g.colours.map((col) => `<button class="vis-chip${VIS.colour && col.code === VIS.colour.code && g.rangeId === VIS.colour.rangeId ? " on" : ""}"
-          style="background:${col.hex}" data-vis-colour="${esc(g.rangeId + ":" + col.code)}"
-          title="${esc(col.name)} · ${esc(col.code)}" aria-label="${esc(col.name)}"></button>`).join("")}
-    </div>
-  </div>`).join("");
-
-function viewVisualiser(rangeId) {
-  /* arriving from a range page preselects that range's type and first colour */
-  if (rangeId) {
-    const r = findRange(rangeId);
-    if (r) {
-      VIS.type = findType(r.type) || TYPES[0];
-      VIS.colour = { ...r.colours[0], rangeId: r.id };
-      VIS.room = visRoomsFor(VIS.type)[0] || null;
-    }
-  }
-  VIS.type = VIS.type || TYPES[0];
-  VIS.colour = VIS.colour || visFlat(VIS.type)[0];
-  VIS.room = VIS.room || visRoomsFor(VIS.type)[0];
-  const favKey = VIS.colour.rangeId ? VIS.colour.rangeId + ":" + VIS.colour.code : "";
-
-  return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visualiser</p></div>
-  <section><div class="wrap">
-    <div class="section-head">
-      <div><span class="rule"></span><p class="kicker">See it before you buy it</p>
-        <h2>Floor visualiser</h2>
-        <p>Pick a flooring type, choose a room, then try shades against it. The lighting in
-           the photograph is kept, so you get a fair idea of how a colour sits in a space.</p></div>
-    </div>
-
-    <div class="vis">
-      <div class="vis-stage">
-        <div class="vis-step"><span class="vis-step-n">1</span><span class="vis-step-l">Flooring</span>
-          <div class="vis-opts">${TYPES.map((t) =>
-            `<button class="chip${t.id === VIS.type.id ? " on" : ""}" data-vis-type="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div>
-        </div>
-        <div class="vis-step"><span class="vis-step-n">2</span><span class="vis-step-l">Room</span>
-          <div class="vis-opts" id="visRooms">${visRoomsHtml()}</div>
-        </div>
-        <div class="vis-frame">
-          <canvas id="visCanvas" style="visibility:hidden"></canvas>
-          <p class="vis-status" id="visStatus">Loading room…</p>
-        </div>
-        <p class="vis-note"><span id="visNote">${esc(VIS.room ? VIS.room.note : "")}</span>
-           Colours on screen are a guide only — screens vary, and wool takes light differently
-           to a photograph. Come and see the real thing.</p>
-      </div>
-
-      <aside class="vis-side">
-        <span class="vis-step-l" style="display:block;margin-bottom:10px">3 · Shade</span>
-        <div class="vis-current">
-          <span class="sw" id="visSwatch" style="background:${VIS.colour.hex}"></span>
-          <div><strong id="visName">${esc(VIS.colour.name)}</strong>
-            <small id="visCode">${esc(VIS.colour.code)}</small></div>
-          ${favKey ? heart(favKey).replace('class="fav', 'id="visFav" class="fav') : ""}
-        </div>
-        <div id="visControls">${visControlsHtml()}</div>
-        <a class="btn btn-solid btn-sm" href="#/contact" style="width:100%;justify-content:center;margin-top:20px">Ask us about this colour</a>
-      </aside>
-    </div>
-  </div></section>`;
-}
+/* The visualiser lives in visualiser.js and is optional — see FEATURES.
+   The site only ever reaches it through window.Visualiser, so the module can be
+   deleted outright without touching anything here. */
+const VISUALISER_ON = typeof FEATURES !== "undefined" && FEATURES.visualiser && !!window.Visualiser;
 
 /* =========================================================================
    ROUTER
@@ -811,7 +617,7 @@ function render() {
     case "catalogue":  html = viewCatalogue(parts[1]); break;
     case "range":      html = viewRange(parts[1]); break;
     case "favourites": html = viewFavourites(parts[1]); break;
-    case "visualiser": html = viewVisualiser(parts[1]); break;
+    case "visualiser": html = VISUALISER_ON ? window.Visualiser.view(parts[1]) : viewNotFound(); break;
     case "about":      html = viewAbout(); break;
     case "contact":    html = viewContact(); break;
     default:           html = viewNotFound();
@@ -827,7 +633,8 @@ function render() {
   window.scrollTo({ top: 0, behavior: "auto" });
   favSyncCount();
   if (top === "contact") wireEnquiry();
-  if (top === "visualiser") visRender();
+  if (top === "visualiser" && VISUALISER_ON) window.Visualiser.mount();
+  reveal();
 }
 
 function wireEnquiry() {
@@ -846,6 +653,25 @@ function wireEnquiry() {
     f.innerHTML = `<h3 style="margin-bottom:8px">Thanks — we'll be in touch.</h3>
       <p class="desc">This is a demo confirmation. Wire the form to a real endpoint to receive enquiries.</p>`;
   });
+}
+
+/* Sections fade up once as they come into view. Deliberately restrained: one
+   short transform, only on first sight, and skipped entirely when the visitor
+   has asked for reduced motion. */
+let revealObserver;
+function reveal() {
+  const wants = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const targets = document.querySelectorAll("#app section, #app .cat-tile, #app .card");
+  if (!wants || !("IntersectionObserver" in window)) {
+    targets.forEach((el) => el.classList.add("seen"));
+    return;
+  }
+  revealObserver ||= new IntersectionObserver((entries, obs) => {
+    for (const en of entries) {
+      if (en.isIntersecting) { en.target.classList.add("seen"); obs.unobserve(en.target); }
+    }
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.04 });
+  targets.forEach((el) => { el.classList.add("will-reveal"); revealObserver.observe(el); });
 }
 
 /* ---------- global events ---------- */
@@ -872,24 +698,6 @@ document.addEventListener("click", (e) => {
   const view = e.target.closest("[data-view]");
   if (view) { CAT.view = view.dataset.view; return render(); }
 
-  const vt = e.target.closest("[data-vis-type]");
-  if (vt) {
-    document.querySelectorAll("[data-vis-type]").forEach((b) => b.classList.toggle("on", b === vt));
-    return visSelectType(vt.dataset.visType);
-  }
-  const vr = e.target.closest("[data-vis-room]");
-  if (vr) return visSelectRoom(vr.dataset.visRoom);
-  const vc = e.target.closest("[data-vis-colour]");
-  if (vc) {
-    const [rangeId, code] = vc.dataset.visColour.split(":");
-    const col = visFlat(VIS.type).find((x) => x.rangeId === rangeId && x.code === code);
-    if (!col) return;
-    VIS.colour = col;
-    document.querySelectorAll(".vis-chip").forEach((b) => b.classList.toggle("on", b === vc));
-    visSyncCurrent();
-    return visRender();
-  }
-
   if (e.target.id === "favShare") {
     const link = favLink();
     navigator.clipboard?.writeText(link).then(
@@ -913,6 +721,9 @@ window.addEventListener("hashchange", () => { closeZoom(); render(); });
 window.addEventListener("DOMContentLoaded", () => {
   if (!SAMPLES_ON) ["#trayBtn", "#tray", "#scrim"].forEach((s) => $(s)?.remove());
   favLoad();
+  if (!VISUALISER_ON) {
+    document.querySelectorAll('a[href^="#/visualiser"]').forEach((a) => a.remove());
+  }
   render();
   favSyncCount();
   $("#navToggle").addEventListener("click", () => $(".nav").classList.toggle("show"));

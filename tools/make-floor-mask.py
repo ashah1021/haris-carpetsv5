@@ -82,17 +82,25 @@ ROOMS = {
                 poly=[(0.08, 0.0), (0.45, 0.0), (0.45, 0.34), (0.30, 0.45), (0.08, 0.34)]),
         ]),
 
+    # A box ROI was not enough: the cabinet toe-kicks sit at the same height as
+    # the floor behind the island, so a straight cut either clipped the floor or
+    # painted the plinths. The polygon traces the actual floor/unit junction —
+    # down around the island, back up to the run of units behind it.
     "lvt-kitchen": dict(
-        seeds=[(0.50, 0.90), (0.30, 0.78), (0.70, 0.80), (0.09, 0.53), (0.15, 0.62)],
-        tol=0.017, lum=(0.24, 0.88), roi=(0.0, 0.42, 1.0, 1.0), close=17),
+        seeds=[(0.50, 0.90), (0.30, 0.78), (0.70, 0.80), (0.09, 0.60), (0.15, 0.66)],
+        tol=0.017, lum=(0.24, 0.88), close=5,
+        poly=[(0.0, 1.0), (0.0, 0.470), (0.200, 0.435), (0.295, 0.450),
+              (0.300, 0.570), (0.520, 0.570), (0.527, 0.492),
+              (1.0, 0.512), (1.0, 1.0)]),
 
     # Floor, wall and cabinet doors are all the same pale oak — wall is within
     # 0.003 of the floor. Polygon only; chroma is left loose on purpose.
     "vinyl-utility": dict(
         seeds=[(0.30, 0.90), (0.45, 0.72), (0.08, 0.78)],
-        tol=0.075, lum=(0.30, 1.00), close=9, connect=False,
-        poly=[(0.0, 1.0), (0.0, 0.625), (0.325, 0.435), (0.360, 0.550),
-              (0.505, 0.565), (0.86, 0.785), (1.0, 0.82), (1.0, 1.0)]),
+        tol=0.075, lum=(0.30, 1.00), close=3, connect=False,
+        poly=[(0.0, 1.0), (0.0, 0.540), (0.200, 0.478), (0.325, 0.442),
+              (0.348, 0.560), (0.500, 0.567), (0.615, 0.612), (0.720, 0.655),
+              (0.855, 0.742), (1.0, 0.775), (1.0, 1.0)]),
 }
 
 # ---------------------------------------------------------------------------
