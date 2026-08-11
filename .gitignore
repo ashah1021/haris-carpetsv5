@@ -1,0 +1,8 @@
+# mask build artefacts — regenerate with tools/make-floor-mask.py
+public/assets/masks/*_preview.jpg
+__pycache__/
+
+# wrangler local dev state (also excluded from the deploy via .assetsignore)
+.wrangler/
+node_modules/
+catalogue.generated.js

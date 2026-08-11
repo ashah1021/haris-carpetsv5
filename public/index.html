@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hari's Carpets — Carpet &amp; Flooring Showroom, Hounslow</title>
+  <meta name="description" content="Hari's Carpets, Hounslow. Family-run for 30+ years. Carpets, wood, laminate, LVT, vinyl and rugs — supplied and fitted across London and the Home Counties. Free home measure.">
+  <meta name="theme-color" content="#1e4174">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <!-- optional add-on; delete this line and visualiser.css to ship without it -->
+  <link rel="stylesheet" href="./visualiser.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand-mark" href="#/" aria-label="Hari's Carpets — home">
+        <span class="bn">Hari's Carpets</span>
+        <span class="br" aria-hidden="true"></span>
+        <small>Hounslow · Est. 30+ yrs</small>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+      <!-- Four items, not eight: the catalogue page carries its own type tabs,
+           so listing every floor type here only crowded the wordmark out. -->
+      <nav class="nav">
+        <a href="#/catalogue">Catalogue</a>
+        <a href="#/visualiser">Visualiser</a>
+        <a href="#/about">About</a>
+        <a href="#/contact">Visit us</a>
+      </nav>
+      <a class="fav-btn" id="favBtn" href="#/favourites" aria-label="My saved shades">
+        <span aria-hidden="true">&#9829;</span> My list <span class="count" id="favCount">0</span>
+      </a>
+      <a class="btn btn-solid btn-sm header-cta" href="tel:+442085706502">020 8570 6502</a>
+    </div>
+  </header>
+
+  <main id="app"><!-- views render here --></main>
+
+  <!-- lightbox for a single shade; filled by openZoom() in app.js -->
+  <div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="Shade detail">
+    <div class="zoom-panel" role="document">
+      <button class="zoom-x" id="zoomClose" aria-label="Close">&times;</button>
+      <div id="zoomBody"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div>
+        <div class="fbrand">Hari's Carpets</div>
+        <span class="br" aria-hidden="true"></span>
+        <p style="max-width:38ch;opacity:.85;margin-top:14px">Family-run flooring showroom in Hounslow. Carpets, wood, LVT, vinyl &amp; rugs — supplied and fitted across London and the Home Counties.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <a href="#/catalogue/carpets">Carpets</a>
+        <a href="#/catalogue/wood">Wood &amp; Laminate</a>
+        <a href="#/catalogue/lvt">LVT</a>
+        <a href="#/catalogue/vinyl">Vinyl</a>
+        <a href="#/catalogue/rugs">Rugs</a>
+        <a href="#/visualiser">Visualiser</a>
+        <a href="#/favourites">My list</a>
+      </div>
+      <div>
+        <h4>Visit</h4>
+        <a href="https://www.google.com/maps/place/Hari's+Carpets/@51.4624955,-0.3671699,17z" target="_blank" rel="noopener">267 Hanworth Road,<br>Hounslow, TW3 3RZ</a>
+        <a href="tel:+442085706502">020 8570 6502</a>
+        <a href="mailto:sales@hariscarpets.co.uk">sales@hariscarpets.co.uk</a>
+        <a href="https://www.instagram.com/hariscarpets/" target="_blank" rel="noopener">Instagram @hariscarpets</a>
+      </div>
+      <div class="fine">
+        <span>© <span id="yr"></span> Hari's Carpets. All rights reserved.</span>
+        <span>Westex · Cormar · Furlong · Hugh Mackay · Victoria</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./data.js"></script>
+  <!-- optional add-on; must load before app.js, which checks for it -->
+  <script src="./visualiser.js"></script>
+  <script src="./app.js"></script>
+  <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
+</body>
+</html>
