@@ -33,7 +33,9 @@ Image.MAX_IMAGE_PIXELS = None
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUCKET = "haris-carpets"
-PHOTO_W = 1600
+PHOTO_W = 1600      # range roomset
+SWATCH_W = 560      # per-colour swatch tile, also used by the lightbox
+COLOUR_ROOM_W = 1200  # per-colour roomset where the supplier shot one
 
 # Westex sent no roomsets; these keep the existing stand-in photography.
 WESTEX_FALLBACK = ["IMG.velvet", "IMG.hero", "IMG.bedroom", "IMG.stairs", "IMG.pile"]
@@ -96,7 +98,8 @@ def main():
     # de-duplicate colours within a range, keeping first seen
     for key, cols in groups.items():
         seen, out = set(), []
-        for c in sorted(cols, key=lambda x: x["colour"]):
+        # approx readings come from roomsets; a flat swatch of the same shade wins
+        for c in sorted(cols, key=lambda x: (x["colour"].lower(), bool(x.get("approx")))):
             if c["colour"].lower() in seen:
                 continue
             seen.add(c["colour"].lower())
@@ -146,7 +149,73 @@ def main():
     with ThreadPoolExecutor(16) as ex:
         for (key, _), (name, size) in zip(photo_for.items(), ex.map(push, photo_for.items())):
             uploaded[key] = name
-    print(f"uploaded {len(uploaded)} range photos to r2://{BUCKET}/assets/ranges/\n")
+    print(f"uploaded {len(uploaded)} range photos to r2://{BUCKET}/assets/ranges/")
+
+    # ---- per-colour swatch tiles -------------------------------------------
+    # A flat hex block tells you the colour but nothing about the carpet. The
+    # supplier already photographed every swatch, so ship those instead: the
+    # pile, the twist and the fleck are the things a customer is actually
+    # choosing between.
+    def resize_upload(raw, key_out, width, square=False):
+        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        if square:
+            side = min(im.size)
+            im = im.crop(((im.width - side) // 2, (im.height - side) // 2,
+                          (im.width + side) // 2, (im.height + side) // 2))
+        if im.width > width:
+            im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=82, optimize=True, progressive=True)
+        data = buf.getvalue()
+        s3.put_object(Bucket=BUCKET, Key=key_out, Body=data, ContentType="image/jpeg",
+                      CacheControl="public, max-age=31536000, immutable")
+        return len(data)
+
+    jobs = []
+    for key, cols in groups.items():
+        rid = slug(key[0], tidy(*key)[0])
+        for col in cols:
+            col["slug"] = slug(col["colour"])
+            jobs.append((col["key"], f"assets/swatches/{rid}/{col['slug']}.jpg"))
+
+    def do_swatch(j):
+        src, dst = j
+        return resize_upload(s3.get_object(Bucket=BUCKET, Key=src)["Body"].read(), dst, SWATCH_W, square=True)
+
+    total = 0
+    with ThreadPoolExecutor(24) as ex:
+        for n, size in enumerate(ex.map(do_swatch, jobs), 1):
+            total += size
+            if n % 200 == 0:
+                print(f"  swatches {n}/{len(jobs)}")
+    print(f"uploaded {len(jobs)} swatch tiles ({total/1e6:.1f}MB)")
+
+    # ---- per-colour roomsets, where the supplier shot one -------------------
+    # Cormar and Hugh Mackay name roomsets after the shade, so they can be
+    # matched back to an individual colour rather than only to a range.
+    room_jobs, have_room = [], set()
+    for key, cols in groups.items():
+        rid = slug(key[0], tidy(*key)[0])
+        brand = key[0]
+        pool = [r for r in roomsets if r["brand"] == brand
+                and r["file"].lower().endswith((".jpg", ".jpeg", ".png"))]
+        for col in cols:
+            needle = col["colour"].lower().replace(" ", "")
+            hit = next((r for r in pool
+                        if needle in r["file"].lower().replace(" ", "").replace("-", "")), None)
+            if hit:
+                room_jobs.append((hit["key"], f"assets/roomsets/{rid}/{col['slug']}.jpg"))
+                have_room.add((rid, col["slug"]))
+
+    def do_room(j):
+        src, dst = j
+        return resize_upload(s3.get_object(Bucket=BUCKET, Key=src)["Body"].read(), dst, COLOUR_ROOM_W)
+
+    if room_jobs:
+        with ThreadPoolExecutor(24) as ex:
+            rtotal = sum(ex.map(do_room, room_jobs))
+        print(f"uploaded {len(room_jobs)} per-colour roomsets ({rtotal/1e6:.1f}MB)\n")
+
 
     # ---- emit the JS --------------------------------------------------------
     lines = []
@@ -167,7 +236,7 @@ def main():
     photo: {photo}, alt: {json.dumps(name + " carpet")},
     blurb: {json.dumps(f"{len(cols)} shades. Colours read from {brand} roomset photography, so treat them as a guide until the swatch book is in." if approx else f"{len(cols)} shades, measured from the {brand} swatch photographs.")},
     colours: [
-{chr(10).join('      c(' + json.dumps(x['colour']) + ', ' + json.dumps(x['colour'][:3].upper() + str(n + 1).zfill(2)) + ', ' + json.dumps(x['hex']) + '),' for n, x in enumerate(cols))}
+{chr(10).join('      c(' + json.dumps(x['colour']) + ', ' + json.dumps(x['colour'][:3].upper() + str(n + 1).zfill(2)) + ', ' + json.dumps(x['hex']) + (', 1' if (rid, x['slug']) in have_room else '') + '),' for n, x in enumerate(cols))}
     ],
   }},""")
 

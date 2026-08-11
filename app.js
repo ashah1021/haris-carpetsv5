@@ -53,10 +53,19 @@ function hsl(hex) {
 
 function colourFamily(hex) {
   const { h, s, l } = hsl(hex);
+  const warm = h >= 18 && h < 75;   /* the beige-through-brown side of the wheel */
   if (l <= 0.18) return "Charcoal & Black";
-  /* near-neutral: split by lightness rather than hue, which is meaningless here */
-  if (s < 0.08) return l >= 0.85 ? "Cream & White" : l >= 0.30 ? "Grey" : "Charcoal & Black";
-  if (h >= 60 && h < 170) return "Green";
+  /* Near-neutral: hue is noise at this saturation, so go by lightness — but keep
+     the warm/cool distinction, because a warm mid grey is what the trade calls a
+     beige and filing it under "Grey" is what made this list feel wrong.
+     The threshold is 0.10 rather than 0.08 because shades like Westex Abalone
+     (#b4b5a8, s=0.08, h=65) were landing in Green on a technicality. */
+  if (s < 0.10) {
+    if (l >= 0.85) return "Cream & White";
+    if (l < 0.32) return "Charcoal & Black";
+    return warm && l >= 0.55 ? "Beige & Sand" : "Grey";
+  }
+  if (h >= 70 && h < 170) return "Green";
   if (h >= 170 && h < 260) return "Blue";
   if (h >= 260 && h < 330) return "Heather & Plum";
   if (h >= 330 || h < 15) return s > 0.25 ? "Red & Terracotta" : "Heather & Plum";
@@ -74,10 +83,13 @@ function allSwatches(typeId) {
     if (typeId && range.type !== typeId) continue;
     for (const col of range.colours) {
       out.push({
-        key: range.id + ":" + col.code,
+        /* keyed on the colour name, not the generated code: codes are renumbered
+           whenever the catalogue is rebuilt, which would break saved lists and
+           every shared link. */
+        key: range.id + ":" + slugify(col.name),
         name: col.name, code: col.code, hex: col.hex,
         rangeId: range.id, range: range.name, brand: range.brand, type: range.type,
-        family: colourFamily(col.hex),
+        family: colourFamily(col.hex), room: col.room,
       });
     }
   }
@@ -156,22 +168,63 @@ function photo(src, alt, ratio = "4-3", cls = "") {
   </div>`;
 }
 
+/* Must match slug() in tools/emit-catalogue.py — these build the paths that
+   script uploaded to, so the two have to agree exactly. */
+const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const swatchImg = (sw) => P("swatches/" + sw.rangeId + "/" + slugify(sw.name) + ".jpg");
+const roomImg = (sw) => P("roomsets/" + sw.rangeId + "/" + slugify(sw.name) + ".jpg");
+
 const heart = (key) => `<button class="fav${isFav(key) ? " on" : ""}" data-fav="${esc(key)}"
   aria-pressed="${isFav(key)}" title="${isFav(key) ? "Saved — click to remove" : "Save this shade"}"
   aria-label="Save this shade">♥</button>`;
 
-/* one colour tile, used on catalogue, range and favourites pages */
+/* One colour tile. The hex sits behind the photograph so the tile is the right
+   colour the instant it paints, and stays right if the photo never arrives. */
 function swatchTile(sw, opts = {}) {
   return `<div class="swatch">
     ${heart(sw.key)}
-    <a class="col" style="background:${sw.hex}" href="#/range/${esc(sw.rangeId)}"
-       aria-label="${esc(sw.name)} — ${esc(sw.range)}"></a>
+    <button class="col" style="background:${sw.hex}" data-zoom="${esc(sw.key)}"
+            aria-label="View ${esc(sw.name)} larger">
+      <img src="${swatchImg(sw)}" alt="${esc(sw.name)} — ${esc(sw.range)}" loading="lazy" onerror="this.remove()">
+      ${sw.room ? `<span class="pin" title="Photographed in a room">Room</span>` : ""}
+    </button>
     <span class="meta">
       <span class="cn">${esc(sw.name)}</span>
-      <span class="cc">${esc(sw.code)}</span>
       ${opts.showRange === false ? "" : `<span class="cr">${esc(sw.brand)} · ${esc(sw.range)}</span>`}
     </span>
   </div>`;
+}
+
+/* ---- lightbox: the big view of one shade ---- */
+function openZoom(key) {
+  const sw = allSwatches().find((s) => s.key === key);
+  if (!sw) return;
+  const box = $("#zoom");
+  $("#zoomBody").innerHTML = `
+    <div class="zoom-media">
+      <div class="zoom-main" style="background:${sw.hex}">
+        <img src="${swatchImg(sw)}" alt="${esc(sw.name)}" onerror="this.remove()">
+      </div>
+      ${sw.room ? `<div class="zoom-room"><img src="${roomImg(sw)}" alt="${esc(sw.name)} in a room" onerror="this.closest('.zoom-room').remove()">
+        <span class="zoom-cap">${esc(sw.name)} photographed in a room</span></div>` : ""}
+    </div>
+    <div class="zoom-info">
+      <p class="kicker">${esc(sw.brand)}</p>
+      <h3>${esc(sw.name)}</h3>
+      <p class="zoom-sub"><a href="#/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.code)} · ${esc(sw.family)}</p>
+      <div class="zoom-actions">
+        ${heart(sw.key)}<span class="zoom-favlabel">Save to my list</span>
+      </div>
+      <a class="btn btn-solid btn-sm" href="#/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>
+      <a class="btn btn-ghost btn-sm" href="#/range/${esc(sw.rangeId)}" data-zoom-close>All ${esc(sw.range)} shades</a>
+    </div>`;
+  box.classList.add("open");
+  document.body.style.overflow = "hidden";
+  $("#zoomClose").focus();
+}
+function closeZoom() {
+  $("#zoom")?.classList.remove("open");
+  document.body.style.overflow = "";
 }
 
 function rangeCard(r) {
@@ -299,7 +352,21 @@ function viewHome() {
 }
 
 /* ---------- catalogue: filterable by brand and colour family ---------- */
-const CAT = { view: "ranges", brand: "", family: "" };
+const CAT = { view: "colours", brand: "", family: "", sort: "range" };
+
+/* Counts shown on each chip are faceted: the number next to a brand is how many
+   you get if you pick it *given the colour filter already on*, and vice versa.
+   A chip that would give you nothing is disabled rather than left to look
+   clickable — the old version let you filter your way to an empty grid with no
+   hint why. */
+function facetCounts(all, active) {
+  const brands = {}, families = {};
+  for (const s of all) {
+    if (!active.family || s.family === active.family) brands[s.brand] = (brands[s.brand] || 0) + 1;
+    if (!active.brand || s.brand === active.brand) families[s.family] = (families[s.family] || 0) + 1;
+  }
+  return { brands, families };
+}
 
 function viewCatalogue(typeId) {
   const type = typeId ? findType(typeId) : null;
@@ -311,64 +378,75 @@ function viewCatalogue(typeId) {
     <section><div class="wrap">
       <div class="section-head"><div><span class="rule"></span><p class="kicker">Everything we supply</p>
         <h2>The catalogue</h2>
-        <p>Every floor we stock, by type. Browse by range or straight by colour, and save
-           anything you like to your list as you go.</p></div></div>
+        <p>Every floor we stock, by type. Tap any shade to see it close up, and save
+           the ones you like to your list as you go.</p></div></div>
       <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
     </div></section>`;
   }
 
-  const ranges = rangesOfType(type.id);
-  const brands = [...new Set(ranges.map((r) => r.brand))].sort();
-  let swatches = allSwatches(type.id);
-  const familiesPresent = FAMILIES.filter((f) => swatches.some((s) => s.family === f));
+  const all = allSwatches(type.id);
+  const counts = facetCounts(all, CAT);
+  const brands = [...new Set(rangesOfType(type.id).map((r) => r.brand))].sort();
+  const families = FAMILIES.filter((f) => all.some((s) => s.family === f));
 
-  if (CAT.brand) swatches = swatches.filter((s) => s.brand === CAT.brand);
-  if (CAT.family) swatches = swatches.filter((s) => s.family === CAT.family);
-  const shown = CAT.brand ? ranges.filter((r) => r.brand === CAT.brand) : ranges;
+  let shown = all;
+  if (CAT.brand) shown = shown.filter((s) => s.brand === CAT.brand);
+  if (CAT.family) shown = shown.filter((s) => s.family === CAT.family);
 
-  const chip = (label, active, attr, val) =>
-    `<button class="chip${active ? " on" : ""}" data-${attr}="${esc(val)}">${esc(label)}</button>`;
+  const ranges = rangesOfType(type.id).filter((r) => !CAT.brand || r.brand === CAT.brand);
 
-  const body = CAT.view === "colours" || CAT.family
-    ? (swatches.length
-        ? `<div class="swatch-grid">${swatches.map((s) => swatchTile(s)).join("")}</div>`
-        : `<p class="empty-note">No colours match those filters.</p>`)
+  /* the active filters, spelled out and individually removable */
+  const active = [];
+  if (CAT.brand) active.push(`<button class="pill" data-brand="">${esc(CAT.brand)} <i>&times;</i></button>`);
+  if (CAT.family) active.push(`<button class="pill" data-family="">${esc(CAT.family)} <i>&times;</i></button>`);
+
+  const chip = (label, n, on, attr, val) =>
+    `<button class="chip${on ? " on" : ""}${n === 0 ? " off" : ""}" ${n === 0 ? "disabled" : ""}
+       data-${attr}="${esc(val)}">${esc(label)}<span class="n">${n}</span></button>`;
+
+  const body = CAT.view === "ranges"
+    ? `<div class="grid cols-3">${ranges.map(rangeCard).join("")}</div>`
     : (shown.length
-        ? `<div class="grid cols-3">${shown.map(rangeCard).join("")}</div>`
-        : `<p class="empty-note">No ranges match those filters.</p>`);
+        ? `<div class="swatch-grid">${shown.map((s) => swatchTile(s)).join("")}</div>`
+        : `<p class="empty-note">Nothing matches those two filters together.
+             <button class="linkish" data-clear="1">Clear filters</button></p>`);
 
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> / ${esc(type.name)}</p></div>
   <section><div class="wrap">
     <div class="section-head">
-      <div><span class="rule"></span><p class="kicker">${ranges.length} range${ranges.length === 1 ? "" : "s"} · ${allSwatches(type.id).length} colours</p>
-        <h2>${esc(type.name)}</h2><p>${esc(type.blurb)}</p></div>
+      <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(type.blurb)}</p></div>
       <a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>
     </div>
 
     <div class="filters">
       <div class="filter-row">
-        <span class="filter-label">Type</span>
-        <div class="chips">${TYPES.map((t) =>
-          `<a class="chip${t.id === type.id ? " on" : ""}" href="${t.route}">${esc(t.name)}</a>`).join("")}</div>
-      </div>
-      <div class="filter-row">
         <span class="filter-label">Brand</span>
-        <div class="chips">${chip("All", !CAT.brand, "brand", "")}${brands.map((b) => chip(b, CAT.brand === b, "brand", b)).join("")}</div>
+        <div class="chips">${chip("All brands", all.length, !CAT.brand, "brand", "")}${
+          brands.map((b) => chip(b, counts.brands[b] || 0, CAT.brand === b, "brand", b)).join("")}</div>
       </div>
       <div class="filter-row">
         <span class="filter-label">Colour</span>
-        <div class="chips">${chip("All", !CAT.family, "family", "")}${familiesPresent.map((f) =>
-          `<button class="chip swatch-chip${CAT.family === f ? " on" : ""}" data-family="${esc(f)}">
-             <i style="background:${familySample(f, type.id)}"></i>${esc(f)}</button>`).join("")}</div>
+        <div class="chips">${chip("All colours", all.length, !CAT.family, "family", "")}${
+          families.map((f) => `<button class="chip swatch-chip${CAT.family === f ? " on" : ""}${(counts.families[f] || 0) === 0 ? " off" : ""}"
+            ${(counts.families[f] || 0) === 0 ? "disabled" : ""} data-family="${esc(f)}">
+            <i style="background:${familySample(f, type.id)}"></i>${esc(f)}<span class="n">${counts.families[f] || 0}</span></button>`).join("")}</div>
       </div>
       <div class="filter-row">
-        <span class="filter-label">Show</span>
+        <span class="filter-label">View</span>
         <div class="chips">
-          ${chip("Ranges", CAT.view === "ranges" && !CAT.family, "view", "ranges")}
-          ${chip("Every colour", CAT.view === "colours" || !!CAT.family, "view", "colours")}
+          <button class="chip${CAT.view === "colours" ? " on" : ""}" data-view="colours">Every shade</button>
+          <button class="chip${CAT.view === "ranges" ? " on" : ""}" data-view="ranges">By collection</button>
         </div>
       </div>
+    </div>
+
+    <div class="result-bar">
+      <p class="result-count">${CAT.view === "ranges"
+        ? `<b>${ranges.length}</b> collection${ranges.length === 1 ? "" : "s"}`
+        : `<b>${shown.length}</b> of ${all.length} shades`}</p>
+      ${active.length ? `<div class="active-filters">${active.join("")}
+        <button class="linkish" data-clear="1">Clear all</button></div>` : ""}
     </div>
 
     ${body}
@@ -389,8 +467,9 @@ function viewRange(id) {
                         ["Pile", r.spec.pile], ["Widths", r.spec.widths], ["Suitability", r.spec.use]]
                       : [["Brand", r.brand], ["Range code", r.code]];
   const swatches = r.colours.map((col) => ({
-    key: r.id + ":" + col.code, name: col.name, code: col.code, hex: col.hex,
-    rangeId: r.id, range: r.name, brand: r.brand, type: r.type, family: colourFamily(col.hex),
+    key: r.id + ":" + slugify(col.name), name: col.name, code: col.code, hex: col.hex,
+    rangeId: r.id, range: r.name, brand: r.brand, type: r.type,
+    family: colourFamily(col.hex), room: col.room,
   }));
 
   return `
@@ -408,7 +487,7 @@ function viewRange(id) {
   <section class="sec-alt"><div class="wrap">
     <div class="colours-head"><div><span class="rule"></span>
       <p class="kicker">${r.colours.length} shades</p><h2>Colours</h2></div>
-      <span class="hint">Tap ♥ to save a shade to your list — it's kept on this device, nothing is sent.</span></div>
+      <span class="hint">Tap a shade to see it close up. Tap ♥ to save it — kept on this device, nothing is sent.</span></div>
     <div class="swatch-grid">${swatches.map((s) => swatchTile(s, { showRange: false })).join("")}</div>
   </div></section>`;
 }
@@ -774,12 +853,24 @@ document.addEventListener("click", (e) => {
   const fav = e.target.closest("[data-fav]");
   if (fav) return favToggle(fav.dataset.fav);
 
+  const zoom = e.target.closest("[data-zoom]");
+  if (zoom) return openZoom(zoom.dataset.zoom);
+  if (e.target.closest("[data-zoom-close]") || e.target.id === "zoomClose"
+      || e.target.id === "zoom") return closeZoom();
+
+  const clear = e.target.closest("[data-clear]");
+  if (clear) { CAT.brand = ""; CAT.family = ""; return render(); }
+
   const brand = e.target.closest("[data-brand]");
   if (brand) { CAT.brand = brand.dataset.brand; return render(); }
   const family = e.target.closest("[data-family]");
-  if (family) { CAT.family = family.dataset.family; return render(); }
+  if (family) {
+    CAT.family = family.dataset.family;
+    if (CAT.family) CAT.view = "colours";   /* a colour filter is meaningless on collection cards */
+    return render();
+  }
   const view = e.target.closest("[data-view]");
-  if (view) { CAT.view = view.dataset.view; if (view.dataset.view === "ranges") CAT.family = ""; return render(); }
+  if (view) { CAT.view = view.dataset.view; return render(); }
 
   const vt = e.target.closest("[data-vis-type]");
   if (vt) {
@@ -817,7 +908,8 @@ document.addEventListener("click", (e) => {
   }
 });
 
-window.addEventListener("hashchange", render);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeZoom(); });
+window.addEventListener("hashchange", () => { closeZoom(); render(); });
 window.addEventListener("DOMContentLoaded", () => {
   if (!SAMPLES_ON) ["#trayBtn", "#tray", "#scrim"].forEach((s) => $(s)?.remove());
   favLoad();

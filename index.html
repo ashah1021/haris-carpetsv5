@@ -40,6 +40,14 @@
 
   <main id="app"><!-- views render here --></main>
 
+  <!-- lightbox for a single shade; filled by openZoom() in app.js -->
+  <div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="Shade detail">
+    <div class="zoom-panel" role="document">
+      <button class="zoom-x" id="zoomClose" aria-label="Close">&times;</button>
+      <div id="zoomBody"></div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="wrap">
       <div>

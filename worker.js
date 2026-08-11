@@ -20,12 +20,17 @@
 const PHOTO_DIR = "/assets/";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 
-/** Only bare .jpg filenames directly inside /assets/ come from R2.
- *  Anything nested (/assets/masks/…) stays a static asset. */
+/** Photography under /assets/ comes from R2 — including the nested per-colour
+ *  swatch and roomset tiles (/assets/swatches/<range>/<colour>.jpg).
+ *  Floor masks are the exception: they are .png, they live in the bundle, and
+ *  the visualiser must keep working when the bucket does not. */
 function photoKey(pathname) {
   if (!pathname.startsWith(PHOTO_DIR)) return null;
   const name = pathname.slice(PHOTO_DIR.length);
-  if (!/^[A-Za-z0-9._-]+\.jpg$/.test(name)) return null;
+  if (name.startsWith("masks/")) return null;
+  // at most two folders deep, no traversal, jpg only
+  if (!/^(?:[A-Za-z0-9._-]+\/){0,2}[A-Za-z0-9._-]+\.jpg$/.test(name)) return null;
+  if (name.split("/").some((seg) => seg === "." || seg === "..")) return null;
   return "assets/" + name;
 }
 

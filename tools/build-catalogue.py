@@ -78,6 +78,40 @@ def camel_split(s):
     return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", s)
 
 
+# Words that describe a finish or a board format, never a colour. A name is cut
+# at the first of these: "Chic Brushed & Smoked UV Lacquered Plank" is the shade
+# "Chic", photographed on a particular board.
+FINISH_WORDS = {"brushed", "smoked", "uv", "lacquered", "oiled", "matt", "plank",
+                "herringbone", "fishbone", "parquet", "render", "worn", "tile",
+                "stone", "wood", "engineered", "roomset", "lifestyle"}
+VARIANT_TAIL = re.compile(r"(\s+[A-Za-z]?\d+)+$")   # "Sand Dune P1", "Nimbus Cloud 2"
+LETTER_TAIL = re.compile(r"\s+[A-Z]$")              # "Sand Dune L"
+
+
+def normalise_colour(name):
+    """Collapse the supplier's shot variants down to the shade itself.
+
+    Hugh Mackay ship one shade several times over — "Sand Dune", "Sand Dune L",
+    "Sand Dune P1", "Sand Dune P2" are the same carpet lit four ways, and
+    "Puddle Duck & Nimbus Cloud 3" is a room containing two of them. Listing
+    those as separate colours is what makes a catalogue unreadable.
+    """
+    if not name:
+        return None
+    s = name.split("&")[0].strip()      # a pairing shot is filed under its first shade
+    s = VARIANT_TAIL.sub("", s).strip()
+    s = LETTER_TAIL.sub("", s).strip()
+    kept = []
+    for tok in s.split():
+        if tok.lower() in FINISH_WORDS:
+            break
+        kept.append(tok)
+    s = " ".join(kept).strip()
+    if len(s) < 3 or re.fullmatch(r"[\d\s]+", s):
+        return None                      # a board size, not a shade
+    return s
+
+
 def parse_easicare(stem, rng):
     """Hugh Mackay marks close-ups with a trailing "Cameo" or "C" and leads with
     the range, sometimes with "Easicare" in front of that:
@@ -196,6 +230,7 @@ def classify(key):
                 rng = re.sub(r"\s+(Swatch|Roomset)s?$", "", segs[-1], flags=re.I).strip()
 
         colour = parse_easicare(stem, rng) if brand == "Hugh Mackay" else parse_colour(stem, rng)
+        colour = normalise_colour(colour)
 
         return {"brand": brand, "type": ftype, "kind": kind, "range": rng,
                 "collection": collection, "colour": colour, "key": key, "file": name,

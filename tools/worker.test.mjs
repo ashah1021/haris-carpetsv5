@@ -64,6 +64,12 @@ await check('R2 throwing does not break the site', async()=>{
   const r = await worker.fetch(req('/assets/hero-living-room.jpg'), makeEnv({throws:true}), ctx);
   eq(await r.text(),'ASSETS:/assets/hero-living-room.jpg','fallback on throw');
 });
+await check('nested swatch tile is served from R2', async()=>{
+  cacheStore.clear();
+  const env = makeEnv({present:['assets/swatches/westex-ultima/alabaster.jpg']});
+  const r = await worker.fetch(req('/assets/swatches/westex-ultima/alabaster.jpg'), env, ctx);
+  eq(await r.text(),'JPEGBYTES','served from R2');
+});
 await check('nested mask path stays a static asset', async()=>{
   cacheStore.clear();
   const r = await worker.fetch(req('/assets/masks/hero-living-room.png'), makeEnv(), ctx);
@@ -97,7 +103,7 @@ await check('POST is not intercepted', async()=>{
 });
 await check('traversal cannot escape the photo prefix', async()=>{
   cacheStore.clear();
-  for (const p of ['/assets/../data.js','/assets/..%2f..%2fdata.js','/assets/sub/dir.jpg']) {
+  for (const p of ['/assets/../data.js','/assets/..%2f..%2fdata.js','/assets/a/b/c/d.jpg']) {
     const r = await worker.fetch(req(p), makeEnv({present:['assets/../data.js']}), ctx);
     const t = await r.text();
     if (t === 'JPEGBYTES') throw new Error('served R2 object for '+p);
