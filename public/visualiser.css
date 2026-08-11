@@ -80,3 +80,19 @@
   .vz-stage { display: flex; flex-direction: column-reverse; }
   .vz-strip { max-height: 180px; }
 }
+
+/* ---- your own photo ---- */
+.vz-stage.own canvas { cursor: crosshair; }
+.vz-own {
+  background: var(--blue-tint); border-left: 4px solid var(--yellow);
+  padding: 14px 18px; margin: 14px 0 0;
+  display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+}
+.vz-own p { margin: 0; font-size: 14.5px; color: var(--blue-ink); max-width: 62ch; }
+.vz-tol { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--blue-deep);
+  font-family: var(--f-display); letter-spacing: .08em; text-transform: uppercase; }
+.vz-tol input { width: 150px; accent-color: var(--blue); }
+
+.vz-upload { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 18px 0 22px; }
+.vz-upload .btn { cursor: pointer; }
+.vz-priv { font-size: 13px; color: var(--muted); }

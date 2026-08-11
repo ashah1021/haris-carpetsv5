@@ -21,11 +21,20 @@
 
   const VIS = {
     type: null, room: null, colour: null, rangeId: null,
-    search: "", cache: {}, busy: false, dead: {},
+    search: "", cache: {}, busy: false, dead: {}, tol: 0.018,
   };
 
-  const roomById = (id) => VIS_ROOMS.find((r) => r.id === id);
-  const roomsFor = (type) => (type.rooms || []).map(roomById).filter((r) => r && !VIS.dead[r.id]);
+  /* "Your room" is a synthetic room built from an uploaded photo. It never
+     leaves the browser — the file is read with FileReader and everything below
+     runs on a canvas, so no photograph of anyone's house is uploaded anywhere. */
+  const OWN = { id: "own", name: "Your room", note: "Your photo — tap your floor to select it." };
+  let ownBuf = null;
+
+  const roomById = (id) => (id === "own" ? OWN : VIS_ROOMS.find((r) => r.id === id));
+  const roomsFor = (type) => {
+    const list = (type.rooms || []).map(roomById).filter((r) => r && !VIS.dead[r.id]);
+    return ownBuf ? list.concat(OWN) : list;
+  };
   const rangesFor = (type) => CATALOGUE.filter((r) => r.type === type.id);
 
   /* shades on offer right now: one collection, or a name search across the type */
@@ -52,6 +61,7 @@
   }
 
   async function prepare(room) {
+    if (room.id === "own") return ownBuf;
     if (VIS.cache[room.id]) return VIS.cache[room.id];
     const [photo, mask] = await Promise.all([loadImage(room.photo), loadImage(room.mask)]);
     const w = Math.min(1400, photo.naturalWidth);
@@ -104,7 +114,9 @@
     try {
       const buf = await prepare(VIS.room);
       cv.width = buf.w; cv.height = buf.h;
-      cv.getContext("2d").putImageData(paint(buf, VIS.colour.hex), 0, 0);
+      /* before a floor is picked, show the photo as it is rather than a recolour */
+      const showPlain = VIS.room.id === "own" && !buf.picked;
+      cv.getContext("2d").putImageData(showPlain ? buf.base : paint(buf, VIS.colour.hex), 0, 0);
       cv.classList.add("ready");
       const st = document.querySelector("#visStatus");
       if (st) st.textContent = "";
@@ -125,6 +137,80 @@
       VIS.busy = false;
       stage?.classList.remove("busy");
     }
+  }
+
+  /* ---------------- your own photo ----------------
+     Selecting the floor is the whole problem: there is no mask for a stranger's
+     living room. So the visitor points at their floor and we grow a region out
+     from there, matching in chromaticity — r/(r+g+b), g/(r+g+b) — rather than
+     raw RGB. Chromaticity barely moves as light falls across a floor, so one
+     threshold holds from the window to the far corner, where an RGB threshold
+     would stop at the first shadow. Same approach as the pre-built rooms, just
+     seeded by a tap instead of by hand. */
+  function readPhoto(file) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = fr.result; };
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function loadOwn(file) {
+    const im = await readPhoto(file);
+    const w = Math.min(1200, im.naturalWidth);
+    const h = Math.round((im.naturalHeight / im.naturalWidth) * w);
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    cv.getContext("2d", { willReadFrequently: true }).drawImage(im, 0, 0, w, h);
+    const base = cv.getContext("2d").getImageData(0, 0, w, h);
+
+    const lum = new Float32Array(w * h);
+    const cr = new Float32Array(w * h), cg = new Float32Array(w * h);
+    for (let i = 0, p = 0; i < base.data.length; i += 4, p++) {
+      const r = base.data[i], g = base.data[i + 1], b = base.data[i + 2];
+      const sum = r + g + b || 1;
+      cr[p] = r / sum; cg[p] = g / sum;
+      lum[p] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+    ownBuf = { w, h, base, lum, cr, cg, alpha: new Float32Array(w * h), ref: 0.6, picked: false };
+    VIS.room = OWN;
+    VIS.dead.own = false;
+  }
+
+  /* grow the floor out from the tapped point */
+  function pickFloor(px, py, tol) {
+    const b = ownBuf; if (!b) return;
+    const { w, h, cr, cg, lum } = b;
+    const start = py * w + px;
+    const tr = cr[start], tg = cg[start];
+    const seen = new Uint8Array(w * h);
+    const alpha = new Float32Array(w * h);
+    const stack = [start];
+    seen[start] = 1;
+    let sum = 0, n = 0;
+    while (stack.length) {
+      const p = stack.pop();
+      const dr = cr[p] - tr, dg = cg[p] - tg;
+      if (Math.sqrt(dr * dr + dg * dg) > tol || lum[p] < 0.05) continue;
+      alpha[p] = 1; sum += lum[p]; n++;
+      const x = p % w, y = (p / w) | 0;
+      if (x > 0 && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
+      if (x < w - 1 && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
+      if (y > 0 && !seen[p - w]) { seen[p - w] = 1; stack.push(p - w); }
+      if (y < h - 1 && !seen[p + w]) { seen[p + w] = 1; stack.push(p + w); }
+    }
+    /* soften the edge so the recolour does not end on a hard jagged line */
+    const soft = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const p = y * w + x;
+        soft[p] = (alpha[p] * 4 + alpha[p - 1] + alpha[p + 1] + alpha[p - w] + alpha[p + w]) / 8;
+      }
+    }
+    b.alpha = soft;
+    b.ref = n ? sum / n : 0.6;
+    b.picked = n > 500;   // a stray tap on a picture frame is not a floor
+    return n;
   }
 
   /* ---------------- markup ---------------- */
@@ -199,7 +285,7 @@
             chip(r.name, VIS.room && r.id === VIS.room.id, "vz-room", r.id)).join("")}</div></div>
       </div>
 
-      <div class="vz-stage">
+      <div class="vz-stage${VIS.room.id === "own" ? " own" : ""}">
         <canvas id="visCanvas"></canvas>
         <p class="vis-status" id="visStatus">Loading room…</p>
         <div class="vz-now">
@@ -212,6 +298,21 @@
         </div>
       </div>
       <p class="vz-note" id="vzNote">${esc(VIS.room.note)} Screens vary — come and see the real thing.</p>
+
+      ${VIS.room.id === "own" ? `
+      <div class="vz-own">
+        <p><b>Tap the floor in your photo</b> to tell us which part to recolour.
+           If it grabs too much or too little, nudge the slider and tap again.</p>
+        <label class="vz-tol">Match <input type="range" id="vzTol" min="6" max="40" value="${Math.round(VIS.tol * 1000)}"></label>
+      </div>` : ""}
+
+      <div class="vz-upload">
+        <label class="btn btn-ghost btn-sm">
+          Use a photo of your own room
+          <input type="file" id="vzFile" accept="image/*" hidden>
+        </label>
+        <span class="vz-priv">Stays on your device — the photo is never uploaded.</span>
+      </div>
 
       <div class="vz-controls" id="vzControls">${controls()}</div>
     </div></section>`;
@@ -248,7 +349,25 @@
     syncNow(); draw();
   }
 
+  async function onFile(e) {
+    if (e.target.id !== "vzFile" || !e.target.files || !e.target.files[0]) return;
+    await loadOwn(e.target.files[0]);
+    render();               // re-render so the room chip and prompt appear
+  }
+
+  function onCanvasClick(e) {
+    const cv = e.target.closest("#visCanvas");
+    if (!cv || !ownBuf || VIS.room.id !== "own") return;
+    const r = cv.getBoundingClientRect();
+    const x = Math.round((e.clientX - r.left) / r.width * ownBuf.w);
+    const y = Math.round((e.clientY - r.top) / r.height * ownBuf.h);
+    if (x < 0 || y < 0 || x >= ownBuf.w || y >= ownBuf.h) return;
+    pickFloor(x, y, VIS.tol);
+    draw();
+  }
+
   function onClick(e) {
+    if (e.target.closest("#visCanvas")) return onCanvasClick(e);
     const t = e.target.closest("[data-vz-type]");
     if (t) return setType(t.dataset.vzType);
 
@@ -274,6 +393,10 @@
   }
 
   function onChange(e) {
+    if (e.target.id === "vzTol") {
+      VIS.tol = Number(e.target.value) / 1000;
+      return;
+    }
     if (e.target.id === "vzRange") {
       VIS.rangeId = e.target.value; VIS.search = "";
       const box = document.querySelector("#vzSearch"); if (box) box.value = "";
@@ -292,7 +415,7 @@
   }
 
   document.addEventListener("click", onClick);
-  document.addEventListener("change", onChange);
+  document.addEventListener("change", (e) => { onFile(e); onChange(e); });
   document.addEventListener("input", onInput);
 
   window.Visualiser = { view, mount: draw };

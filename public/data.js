@@ -96,10 +96,15 @@ const IMG = {
    so an entry can be added here before its assets exist.
    -------------------------------------------------------------------------- */
 const VIS_ROOMS = [
-  { id: "living-room", name: "Living room", photo: IMG.hero, mask: "assets/masks/hero-living-room.png",
-    note: "South-facing living room, morning light." },
-  { id: "bedroom", name: "Bedroom", photo: IMG.bedroom, mask: "assets/masks/bedroom-wool.png",
-    note: "Bedroom with soft daylight through curtains." },
+  /* Real supplier roomsets, so the carpet is fitted wall to wall. The earlier
+     living room was a rug on floorboards, which showed a rug changing colour
+     rather than a fitted carpet — the wrong thing to be selling. */
+  { id: "living-room", name: "Living room", photo: P("room-living-carpet.jpg"),
+    mask: "assets/masks/room-living-carpet.png",
+    note: "Fitted wall to wall, north-facing room." },
+  { id: "bedroom", name: "Bedroom", photo: P("room-bedroom-carpet.jpg"),
+    mask: "assets/masks/room-bedroom-carpet.png",
+    note: "Fitted bedroom carpet, evening light." },
   { id: "kitchen", name: "Kitchen", photo: IMG.lvt, mask: "assets/masks/lvt-kitchen.png",
     note: "Open-plan kitchen-diner, large windows." },
   { id: "utility", name: "Utility", photo: IMG.vinyl, mask: "assets/masks/vinyl-utility.png",

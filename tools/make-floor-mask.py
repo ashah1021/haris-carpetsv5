@@ -93,6 +93,21 @@ ROOMS = {
               (0.300, 0.570), (0.520, 0.570), (0.527, 0.492),
               (1.0, 0.512), (1.0, 1.0)]),
 
+    # Real supplier roomsets: wall-to-wall carpet, which is what the visualiser
+    # is actually selling. Strongly coloured walls make these the easy case —
+    # chroma separates them outright, so only a loose ROI is needed to keep the
+    # match below the skirting line.
+    "room-living-carpet": dict(
+        seeds=[(0.50, 0.92), (0.08, 0.80), (0.93, 0.86)],
+        # 0.026 leaves the carpet seen through the glass coffee table unmasked,
+        # which reads as a reflection. Widening it to take that in also recoloured
+        # the tray and candlestick sitting on the glass, which reads as a bug.
+        tol=0.026, lum=(0.30, 1.00), roi=(0.0, 0.505, 1.0, 1.0), close=11),
+
+    "room-bedroom-carpet": dict(
+        seeds=[(0.50, 0.93), (0.10, 0.85), (0.90, 0.88)],
+        tol=0.026, lum=(0.28, 1.00), roi=(0.0, 0.60, 1.0, 1.0), close=11),
+
     # Floor, wall and cabinet doors are all the same pale oak — wall is within
     # 0.003 of the floor. Polygon only; chroma is left loose on purpose.
     "vinyl-utility": dict(
