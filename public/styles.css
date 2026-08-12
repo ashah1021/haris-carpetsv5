@@ -386,6 +386,64 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 
 
 /* =========================================================================
+   STYLE TILES — "what sort of carpet are you after?"
+   Big photographs, because this is the step where somebody is deciding by
+   eye. The tiles come before the filters on the page for the same reason:
+   a picture of a loop pile explains "loop pile" faster than the words do.
+   ========================================================================= */
+.styles { margin: 0 0 42px; }
+.styles-head {
+  font-family: var(--f-display); font-size: clamp(19px, 2.2vw, 24px);
+  font-weight: 500; margin: 0 0 20px;
+}
+/* 320px floors this at three across in the 1200px wrap. Three is deliberate:
+   the carpet styles number five, and 3+2 sits better than a row of four with
+   one stranded underneath. */
+.style-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+.style-tile {
+  display: flex; flex-direction: column; text-decoration: none; color: inherit;
+  border: 1px solid var(--line); background: var(--paper);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.style-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--blue); }
+.style-ph { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--off); }
+.style-ph img { width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform .5s ease; }
+.style-tile:hover .style-ph img { transform: scale(1.05); }
+
+/* a strip of the actual colours in the style, so the tile promises stock and
+   not just a mood */
+.style-swatches { position: absolute; left: 0; right: 0; bottom: 0; display: flex; height: 10px; }
+.style-swatches span { flex: 1; }
+
+.style-cap { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.style-cap h3 { font-family: var(--f-display); font-size: 19px; font-weight: 500; margin: 0; }
+.style-cap p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5; flex: 1; }
+.style-n {
+  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--blue-deep);
+}
+.styles-alt { margin: 18px 0 0; font-size: 14.5px; color: var(--muted); }
+
+/* ---- one style: its collections, each with its colours ---- */
+.style-range { margin: 0 0 44px; }
+.style-range-head {
+  display: flex; align-items: end; justify-content: space-between; gap: 18px;
+  flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px;
+}
+.style-range-head h3 { font-family: var(--f-display); font-size: 21px; font-weight: 500; margin: 0; }
+.style-range-head h3 a { color: inherit; text-decoration: none; }
+.style-range-head h3 a:hover { color: var(--blue); }
+.style-range-head .k {
+  margin: 5px 0 0; font-family: var(--f-display); font-size: 11.5px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+
+.style-more { border-top: 1px solid var(--line); padding-top: 22px; }
+.style-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* =========================================================================
    FILTER CHIPS — catalogue and visualiser share these
    ========================================================================= */
 .filters { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
@@ -481,6 +539,19 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 }
 .swatch .col img { width: 100%; height: 100%; object-fit: cover; display: block;
   transition: transform .35s ease; }
+
+/* Shades the supplier only ever photographed in a room. Framing the bottom of
+   the shot crops it to the floor, which is the one part of a roomset that is
+   the product — so the tile shows real grain and pile instead of a thumbnail
+   of a sofa. Better than falling back to the flat measured hex too: several of
+   these colours were read off a lit floor and carry the room's cast with them,
+   and the photograph at least never claims to be more exact than it is.
+
+   object-position alone cannot do this: cover has already fitted the image to
+   the tile, so there is no overflow left to slide. Scaling about a point low
+   in the frame is what actually crops it. */
+.swatch .col img.floor-crop { transform: scale(2.4); transform-origin: 50% 90%; }
+.swatch:hover .col img.floor-crop { transform: scale(2.55); }
 .swatch:hover .col img { transform: scale(1.06); }
 .swatch .pin {
   position: absolute; left: 7px; bottom: 7px; z-index: 2;

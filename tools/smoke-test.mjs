@@ -50,6 +50,11 @@ const ROUTES = [
   ["#/catalogue/lvt", "lvt"],
   ["#/catalogue/vinyl", "vinyl"],
   ["#/catalogue/rugs", "rugs"],
+  ["#/catalogue/carpets/easy-clean", "a carpet style"],
+  ["#/catalogue/carpets/loop", "another style"],
+  ["#/catalogue/wood/herringbone", "a wood style"],
+  ["#/catalogue/lvt/stone-effect", "an lvt style"],
+  ["#/catalogue/carpets/pattern", "an empty style 404s"],
   ["#/range/westex-elysian", "a range"],
   ["#/favourites", "favourites"],
   ["#/visualiser", "visualiser"],
@@ -107,6 +112,77 @@ for (const [hash, label] of ROUTES) {
 }
 check("nothing is left invisible after scrolling", invisible.length === 0,
   invisible.slice(0, 3).join(" | "));
+
+/* The catalogue is generated from supplier filenames, and every bug worth
+   having in it so far has been a parsing one — a range name kept as a colour,
+   the same range emitted twice, a photo filed as a swatch. These assert the
+   shape of the data rather than the look of the page. */
+console.log("\nCatalogue data is sane:");
+await page.goto(U("#/catalogue"), { waitUntil: "networkidle" });
+await page.waitForTimeout(500);
+const data = await page.evaluate(() => {
+  const ids = CATALOGUE.map((r) => r.id);
+  const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+  const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const junk = /^(landscape|outdoor|portraits?|render|above|below|main|detail|\d+([.-]\d+)?|.{1,2})$/i;
+  const bad = [], noColour = [], wrongAlt = [];
+  for (const r of CATALOGUE) {
+    if (!r.colours.length && !r.pending) noColour.push(r.id);
+    if (r.type !== "carpets" && /\bcarpet\b/i.test(r.alt || "")) wrongAlt.push(r.id);
+    for (const c of r.colours) if (junk.test(c.name.trim())) bad.push(r.id + ":" + c.name);
+  }
+  return { dupes, bad, noColour, wrongAlt, ranges: CATALOGUE.length,
+           shades: CATALOGUE.reduce((n, r) => n + r.colours.length, 0),
+           lvt: CATALOGUE.filter((r) => r.type === "lvt").reduce((n, r) => n + r.colours.length, 0) };
+});
+check("no duplicate range ids", data.dupes.length === 0, data.dupes.join(", "));
+check("no filename artefacts as shade names", data.bad.length === 0, data.bad.slice(0, 3).join(", "));
+check("every range has shades or says why not", data.noColour.length === 0, data.noColour.join(", "));
+check("non-carpet ranges aren't described as carpet", data.wrongAlt.length === 0, data.wrongAlt.slice(0, 2).join(", "));
+check("lvt catalogue is populated", data.lvt >= 30, `${data.lvt} lvt shades`);
+console.log(`       (${data.ranges} ranges, ${data.shades} shades)`);
+
+/* Every tile the catalogue points at must exist. A 404 here is invisible on
+   the page — the img is removed and the hex shows through — so only a direct
+   check catches it. */
+console.log("\nEvery referenced image exists:");
+const imgCheck = await page.evaluate(async () => {
+  const seen = new Set(), bad = [];
+  for (const sw of allSwatches()) {
+    if (!sw.shot) continue;
+    for (const url of [swatchImg(sw), ...(hasRoom(sw) ? [roomPhoto(sw)] : [])]) {
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const r = await fetch(url, { method: "HEAD" });
+      if (!r.ok) bad.push(r.status + " " + url);
+    }
+  }
+  return { checked: seen.size, bad };
+});
+check("no missing tiles", imgCheck.bad.length === 0,
+  `${imgCheck.checked} checked${imgCheck.bad.length ? " — " + imgCheck.bad.slice(0, 3).join(", ") : ""}`);
+
+console.log("\nBrowse-by-style works:");
+await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+await page.waitForTimeout(1200);
+const tiles = await page.locator(".style-tile").count();
+check("style tiles offered", tiles >= 4, `${tiles} styles`);
+check("style tile is visible", await visible(page, ".style-tile"));
+const styleShots = await page.evaluate(() =>
+  [...document.querySelectorAll(".style-ph img")].filter((i) => i.naturalWidth > 0).length);
+check("style photographs load", styleShots >= 4, `${styleShots} of ${tiles}`);
+/* every tile must promise stock, or the journey dead-ends */
+const emptyTiles = await page.evaluate(() =>
+  [...document.querySelectorAll(".style-tile")].filter((t) => /\b0 shades\b/.test(t.textContent)).length);
+check("no style promises 0 shades", emptyTiles === 0);
+
+await page.locator(".style-tile").first().click();
+await page.waitForTimeout(900);
+check("clicking a style opens it", /#\/catalogue\/carpets\/./.test(page.url()), page.url().split("#")[1]);
+check("style page shows shades", (await page.locator(".swatch").count()) > 5,
+  `${await page.locator(".swatch").count()} shades`);
+check("shades are grouped by collection", (await page.locator(".style-range").count()) >= 1);
+check("offers the other styles", (await page.locator(".style-chips a").count()) >= 2);
 
 console.log("\nCatalogue works:");
 await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });

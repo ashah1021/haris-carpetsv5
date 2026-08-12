@@ -149,6 +149,126 @@ const TYPES = [
 ];
 
 /* Four-up photo strip near the foot of the home page */
+/* =========================================================================
+   STYLES — how customers actually shop
+   -------------------------------------------------------------------------
+   Nobody walks in asking for Ultima or Apollo Elite. They ask for something
+   easy to clean, or a wool twist, or "that smooth velvety one". Collection
+   names are the mill's filing system, not the customer's, so these sit in
+   front of them: pick the sort of floor you want, then the collection, then
+   the colour. The existing brand and colour filters are untouched underneath
+   — this is a way in, not a replacement.
+
+   A range may belong to more than one style, and a range in no style at all
+   is not lost: it still appears under its collection and in every filter. So
+   a half-filled table degrades to today's behaviour rather than hiding stock.
+
+   ON THE ACCURACY OF THIS TABLE
+   The supplier dump carried colour and nothing else — no fibre, no pile
+   construction — so these assignments come from two places, marked per entry:
+     [name]  the range name says it outright (Bouclé is a loop; Wiske Velvet
+             is a velvet; Universal Herringbone is a herringbone)
+     [seen]  read off the swatch photography — loop, rib and smooth pile are
+             unmistakable at tile resolution
+     [ask]   neither: assigned from what these ranges usually are, and NOT
+             verified against a spec sheet. Fibre is the weak spot, and it is
+             exactly what "easy clean" turns on. Hari should confirm these
+             before the site is handed over; they are all in one place here.
+   ========================================================================= */
+const STYLES = {
+  carpets: [
+    { id: "easy-clean", name: "Easy clean",
+      blurb: "Stain-resistant synthetic piles that take a spill, a dog and a toddler without flinching.",
+      ranges: [
+        "cormar-carpets-apollo-elite",    /* [ask] polypropylene */
+        "cormar-carpets-apollo-plus",     /* [ask] polypropylene */
+        "cormar-carpets-primo-grande",    /* [ask] Primo is Cormar's synthetic family */
+        "cormar-carpets-primo-tweeds",    /* [ask] */
+        "cormar-carpets-primo-ultra",     /* [ask] */
+      ] },
+
+    { id: "wool-twist", name: "Wool twist pile",
+      blurb: "The classic British carpet. Springy, hard-wearing and it keeps its looks in a hallway.",
+      ranges: [
+        "westex-fine-westex-twist",       /* [name] */
+        "westex-ultima",                  /* [seen] cut twist pile */
+        "westex-westend",                 /* [seen] */
+        "cormar-carpets-hampstead",       /* [ask] */
+        "cormar-carpets-kingston",        /* [seen] smooth cut pile */
+        "cormar-carpets-linwood",         /* [ask] */
+        "cormar-carpets-pembroke",        /* [ask] */
+      ] },
+
+    { id: "velvet", name: "Velvet & saxony",
+      blurb: "A smooth, dense, flat pile with a sheen that shifts as you cross the room.",
+      ranges: [
+        "westex-fired-earth-wiske-velvet",/* [name] */
+        "westex-silken",                  /* [seen] smooth, no visible loop */
+        "westex-elysian",                 /* [seen] */
+        "westex-pure-luxury",             /* [seen] */
+        "cormar-carpets-trinity",         /* [seen] plain smooth cut pile */
+      ] },
+
+    { id: "loop", name: "Loop & textured",
+      blurb: "Uncut loops and fine ribs — a quieter, more textural floor that hides a footprint.",
+      ranges: [
+        "westex-boucle",                  /* [name] bouclé is a loop */
+        "westex-undyed-loop",             /* [name] */
+        "westex-fired-earth-loxley-loop", /* [name] */
+        "westex-cable",                   /* [seen] corded rib */
+        "westex-briar",                   /* [seen] loop */
+        "westex-barrington",              /* [seen] fine rib */
+      ] },
+
+    { id: "natural", name: "Natural looks",
+      blurb: "Sisal and seagrass effects in wool — the coastal look, without the scratch.",
+      ranges: [
+        "hugh-mackay-easisisal",          /* [name] */
+        "hugh-mackay-natural-impressions",/* [name] */
+        "cormar-carpets-malabar",         /* [seen] ribbed natural weave */
+      ] },
+
+    /* Deliberately empty until Hari says which ranges belong. The original
+       site had a stripes-and-patterns square, but nothing in the supplier
+       photography is unambiguously striped, and inventing one would put a
+       claim on the site that the swatch book does not back. An empty style
+       does not render. */
+    { id: "pattern", name: "Stripes & patterns",
+      blurb: "Stripes, borders and figured designs.",
+      ranges: [] },
+  ],
+
+  /* Wood and LVT need no guesswork — the format IS the range name. */
+  wood: [
+    { id: "plank", name: "Plank",
+      blurb: "Long, wide boards. The straightforward, room-lengthening choice.",
+      ranges: ["victoria-carpets-engineered-wood-14-3-plank",
+               "victoria-carpets-engineered-wood-18-4-plank"] },
+    { id: "herringbone", name: "Herringbone",
+      blurb: "Short blocks laid in a zig-zag. Period looks and a lot of character.",
+      ranges: ["victoria-carpets-engineered-wood-14-3-herringbone"] },
+  ],
+
+  lvt: [
+    { id: "wood-effect", name: "Wood effect",
+      blurb: "The look of a timber floor, in a tile that shrugs off water.",
+      ranges: ["victoria-carpets-universal-plank"] },
+    { id: "stone-effect", name: "Stone & tile effect",
+      blurb: "Stone and slate looks, warm underfoot in a way the real thing is not.",
+      ranges: ["victoria-carpets-universal-stone"] },
+    { id: "herringbone", name: "Herringbone & parquet",
+      blurb: "Herringbone, fishbone and parquet, in a format that suits a kitchen.",
+      ranges: ["victoria-carpets-universal-herringbone",
+               "victoria-carpets-universal-fishbone",
+               "victoria-carpets-universal-parquet"] },
+  ],
+
+  /* vinyl and rugs are still the two placeholder ranges awaiting supplier
+     data, so there is nothing to sort into styles yet. */
+  vinyl: [],
+  rugs: [],
+};
+
 const GALLERY = [
   { src: IMG.stairs,  alt: "Wool twist carpet fitted to a Victorian staircase and landing" },
   { src: IMG.bedroom, alt: "Plush oatmeal wool carpet in a bedroom" },
@@ -198,6 +318,159 @@ const SERVICES = [
 /* room: 1 marks a shade the supplier also photographed in a room. Set by
    tools/emit-catalogue.py; omitted for the majority that have no such shot. */
 const c = (name, code, hex, room) => (room ? { name, code, hex, room: 1 } : { name, code, hex });
+
+/* Victoria name their files range-first — universal-plank-cashew.jpg — so the
+   tile for a shade is not named after the shade and cannot be derived from it.
+   v() carries the file stem explicitly, plus a second stem when the same colour
+   also came with a room photograph.
+   Regenerate with: python3 tools/recover-victoria.py --write */
+const v = (name, code, hex, file, room) =>
+  (room ? { name, code, hex, file, roomFile: room } : { name, code, hex, file });
+
+/* Colours whose photograph is a room or a styled shot rather than a flat
+   colour chip — some suppliers sent no chips at all for a range. The hex was
+   measured off the floor in the photograph, so the colour is sound; it is the
+   picture that cannot serve as a swatch. The grid shows the measured colour
+   for these and files the photograph where it belongs, as a roomset.
+   Regenerate with: python3 tools/classify-tiles.py --write */
+/* BEGIN GENERATED room-only list — tools/classify-tiles.py */
+const ROOM_ONLY = new Set([
+  "hugh-mackay-aura:puddle-duck-nimbus-cloud-1",
+  "hugh-mackay-aura:puddle-duck-nimbus-cloud-2",
+  "hugh-mackay-aura:puddle-duck-nimbus-cloud-3",
+  "hugh-mackay-aura:puddle-duck-nimbus-cloud-4",
+  "hugh-mackay-aura:puddle-duck",
+  "hugh-mackay-aura:sand-dune-l",
+  "hugh-mackay-aura:sand-dune-p1",
+  "hugh-mackay-aura:sand-dune-p2",
+  "hugh-mackay-aura:sand-dune",
+  "hugh-mackay-easisisal:landscape-1",
+  "hugh-mackay-easisisal:landscape-2",
+  "hugh-mackay-easisisal:landscape",
+  "hugh-mackay-easisisal:outdoor-1",
+  "hugh-mackay-easisisal:outdoor-2",
+  "hugh-mackay-easisisal:outdoor",
+  "hugh-mackay-easisisal:portraits-1",
+  "hugh-mackay-easisisal:portraits-2",
+  "hugh-mackay-easisisal:portraits",
+  "hugh-mackay-first-impressions:humble-l",
+  "hugh-mackay-first-impressions:humble-p-cmyk",
+  "hugh-mackay-first-impressions:humble-p",
+  "hugh-mackay-first-impressions:humble",
+  "hugh-mackay-first-impressions:welldressed-c-cmyk-smaller",
+  "hugh-mackay-first-impressions:welldressed-c-cmyk",
+  "hugh-mackay-first-impressions:welldressed-l1",
+  "hugh-mackay-first-impressions:welldressed-l2-cmyk",
+  "hugh-mackay-first-impressions:welldressed-l2",
+  "hugh-mackay-first-impressions:welldressed-p",
+  "hugh-mackay-first-impressions:welldressed",
+  "hugh-mackay-freedom-freedom-xtra:doeskin-l",
+  "hugh-mackay-freedom-freedom-xtra:doeskin-p1",
+  "hugh-mackay-freedom-freedom-xtra:doeskin-p2",
+  "hugh-mackay-freedom-freedom-xtra:doeskin",
+  "hugh-mackay-freedom-freedom-xtra:skyline-l",
+  "hugh-mackay-freedom-freedom-xtra:skyline-p",
+  "hugh-mackay-freedom-freedom-xtra:skyline",
+  "hugh-mackay-grace:cherish-l",
+  "hugh-mackay-grace:cherish-p",
+  "hugh-mackay-grace:cherish-p2",
+  "hugh-mackay-grace:cherish",
+  "hugh-mackay-grace:shimmer-l",
+  "hugh-mackay-grace:shimmer-p",
+  "hugh-mackay-grace:shimmer",
+  "hugh-mackay-heartland:rubery-l",
+  "hugh-mackay-heartland:rubery-p",
+  "hugh-mackay-heartland:rubery",
+  "hugh-mackay-heartland-heathers:sahara-c1",
+  "hugh-mackay-heartland-heathers:sahara-c2",
+  "hugh-mackay-heartland-heathers:sahara-c3",
+  "hugh-mackay-heartland-heathers:sahara-l",
+  "hugh-mackay-heartland-heathers:sahara-l1",
+  "hugh-mackay-heartland-heathers:sahara-p",
+  "hugh-mackay-heartland-heathers:sahara",
+  "hugh-mackay-natural-impressions:golden-husk-1",
+  "hugh-mackay-natural-impressions:golden-husk",
+  "hugh-mackay-natural-impressions:victoria-natural-impressions-dew-drop-4",
+  "hugh-mackay-natural-impressions:victoria-natural-impressions-dew-drop-5",
+  "hugh-mackay-natural-impressions:victoria-natural-impressions-dew-drop",
+  "hugh-mackay-pioneer:charming-c1",
+  "hugh-mackay-pioneer:charming-l",
+  "hugh-mackay-pioneer:charming-p",
+  "hugh-mackay-pioneer:charming-p1",
+  "hugh-mackay-pioneer:charming",
+  "hugh-mackay-ultimate-expressions:antique-rose-l",
+  "hugh-mackay-ultimate-expressions:antique-rose-p",
+  "hugh-mackay-ultimate-expressions:antique-rose",
+  "hugh-mackay-ultimate-expressions:sage-c-cmyk",
+  "hugh-mackay-ultimate-expressions:sage-l1-cmyk",
+  "hugh-mackay-ultimate-expressions:sage-l1",
+  "hugh-mackay-ultimate-expressions:sage-l2",
+  "hugh-mackay-ultimate-expressions:sage",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-c-cmyk",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-l1-cmyk",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-l1",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-l2-rs200pc-cmyk",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-l2",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined-landscape-treehouse",
+  "hugh-mackay-ultimate-impressions:ultimate-impressions-refined",
+  "victoria-carpets-engineered-wood-14-3-herringbone:14-3-herringbone-calico-render",
+  "victoria-carpets-engineered-wood-14-3-herringbone:14-3",
+  "victoria-carpets-engineered-wood-14-3-herringbone:engineered-wood-14-3-herringbone-worn",
+  "victoria-carpets-engineered-wood-14-3-plank:14-3",
+  "victoria-carpets-engineered-wood-14-3-plank:engineered-wood-14-3-plank-calico",
+  "victoria-carpets-engineered-wood-14-3-plank:engineered-wood-14-3-plank-chi",
+  "victoria-carpets-engineered-wood-14-3-plank:engineered-wood-14-3-plank-ghost",
+  "victoria-carpets-engineered-wood-18-4-plank:18-4",
+  "victoria-carpets-engineered-wood-18-4-plank:engineered-wood-18-4-barn-oak",
+  "victoria-carpets-engineered-wood-18-4-plank:engineered-wood-18-4-brushed-and-oiled-oak",
+  "victoria-carpets-engineered-wood-18-4-plank:engineered-wood-18-4-buff-oak",
+  "victoria-carpets-universal-fishbone:universal-design-fishbone-alpine",
+  "victoria-carpets-universal-fishbone:universal-design-fishbone-fireside",
+  "victoria-carpets-universal-fishbone:universal-design-fishbone-hardwick",
+  "victoria-carpets-universal-fishbone:universal-design-fishbone-nordmann",
+  "victoria-carpets-universal-fishbone:universal-design",
+  "victoria-carpets-universal-herringbone:universal-herringbone-almond-buff",
+  "victoria-carpets-universal-herringbone:universal-herringbone-fawn",
+  "victoria-carpets-universal-herringbone:universal-herringbone-flint-grey",
+  "victoria-carpets-universal-herringbone:universal-herringbone-haybale",
+  "victoria-carpets-universal-herringbone:universal-herringbone-latte",
+  "victoria-carpets-universal-herringbone:universal-herringbone-nimbus-cloud",
+  "victoria-carpets-universal-herringbone:universal-herringbone-sesame",
+  "victoria-carpets-universal-herringbone:universal-herringbone-smoke",
+  "victoria-carpets-universal-herringbone:universal",
+  "victoria-carpets-universal-parquet:universal-design-parquet-alder",
+  "victoria-carpets-universal-parquet:universal-design-parquet-aspen",
+  "victoria-carpets-universal-parquet:universal-design-parquet-rowan",
+  "victoria-carpets-universal-parquet:universal-design",
+  "victoria-carpets-universal-plank:universal-design-plank-alpine",
+  "victoria-carpets-universal-plank:universal-design-plank-angora",
+  "victoria-carpets-universal-plank:universal-design-plank-chalet",
+  "victoria-carpets-universal-plank:universal-design-plank-fireside",
+  "victoria-carpets-universal-plank:universal-design-plank-grouse",
+  "victoria-carpets-universal-plank:universal-design-plank-hardwick",
+  "victoria-carpets-universal-plank:universal-design-plank-nordmann",
+  "victoria-carpets-universal-plank:universal-design-plank-saxon",
+  "victoria-carpets-universal-plank:universal-design",
+  "victoria-carpets-universal-plank:universal-plank-almond-buff",
+  "victoria-carpets-universal-plank:universal-plank-cashew",
+  "victoria-carpets-universal-plank:universal-plank-chateau-grey",
+  "victoria-carpets-universal-plank:universal-plank-fawn",
+  "victoria-carpets-universal-plank:universal-plank-flint-grey",
+  "victoria-carpets-universal-plank:universal-plank-haybale",
+  "victoria-carpets-universal-plank:universal-plank-latte",
+  "victoria-carpets-universal-plank:universal-plank-nimbus-cloud",
+  "victoria-carpets-universal-plank:universal-plank-puddle",
+  "victoria-carpets-universal-plank:universal-plank-sesame",
+  "victoria-carpets-universal-plank:universal-plank-smoke",
+  "victoria-carpets-universal-plank:universal-plank-wenge",
+  "victoria-carpets-universal-plank:universal",
+  "victoria-carpets-universal-stone:universal-tile-alabaster",
+  "victoria-carpets-universal-stone:universal-tile-fossil",
+  "victoria-carpets-universal-stone:universal-tile-raven",
+  "victoria-carpets-universal-stone:universal-tile-seashell",
+  "victoria-carpets-universal-stone:universal",
+]);
+/* END GENERATED room-only list */
 
 const CATALOGUE = [
   /* ------------------------------------------------- GENERATED FROM SUPPLIERS
@@ -407,13 +680,13 @@ const CATALOGUE = [
   {
     id: "hugh-mackay-easisisal", type: "carpets", brand: "Hugh Mackay",
     name: "EasiSisal", code: "HM-E", real: true,
-    photo: IMG.hero, alt: "EasiSisal carpet",
-    blurb: "3 shades, measured from the Hugh Mackay swatch photographs.",
-    colours: [
-      c("Landscape", "LAN01", "#979080"),
-      c("Outdoor", "OUT02", "#a19d8c"),
-      c("Portraits", "POR03", "#a09888"),
-    ],
+    photo: P("swatches/hugh-mackay-easisisal/landscape.jpg"), alt: "EasiSisal sisal-effect wool carpet",
+    blurb: "Hugh Mackay's sisal-effect wool range."
+      + " We have the photography but not the shade names — Hugh Mackay named every"
+      + " EasiSisal file after the shot rather than the colour, so ask in the showroom"
+      + " and we will go through the book with you.",
+    pending: true,
+    colours: [],
   },
   {
     id: "hugh-mackay-first-impressions", type: "carpets", brand: "Hugh Mackay",
@@ -523,84 +796,114 @@ const CATALOGUE = [
   {
     id: "victoria-carpets-engineered-wood-14-3-herringbone", type: "wood", brand: "Victoria Carpets",
     name: "Engineered Wood 14-3 Herringbone", code: "VC-1H", real: true,
-    photo: IMG.hero, alt: "Engineered Wood 14-3 Herringbone carpet",
+    photo: IMG.hero, alt: "Engineered Wood 14-3 Herringbone flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Chic", "CHI01", "#ae8152"),
+      v("Calico", "CAL01", "#b68d5a", "14-3-herringbone-calico-render"),
+      v("Chic", "CHI02", "#b48657", "chic"),
+      v("Worn", "WOR03", "#ac8f66", "engineered-wood-14-3-herringbone-worn"),
     ],
   },
   {
     id: "victoria-carpets-engineered-wood-14-3-plank", type: "wood", brand: "Victoria Carpets",
     name: "Engineered Wood 14-3 Plank", code: "VC-1P", real: true,
-    photo: IMG.bedroom, alt: "Engineered Wood 14-3 Plank carpet",
+    photo: IMG.bedroom, alt: "Engineered Wood 14-3 Plank flooring",
     blurb: "2 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Chic", "CHI01", "#997042"),
-      c("Ghost Handscaped", "GHO02", "#c6a686"),
+      v("Calico", "CAL01", "#c29963", "engineered-wood-14-3-plank-calico"),
+      v("Chic", "CHI02", "#9f7442", "chic", "engineered-wood-14-3-plank-chi"),
+      v("Ghost", "GHO03", "#cfaf8e", "ghost-handscaped", "engineered-wood-14-3-plank-ghost"),
     ],
   },
   {
     id: "victoria-carpets-engineered-wood-18-4-plank", type: "wood", brand: "Victoria Carpets",
     name: "Engineered Wood 18-4 Plank", code: "VC-1P", real: true,
-    photo: IMG.stairs, alt: "Engineered Wood 18-4 Plank carpet",
+    photo: IMG.stairs, alt: "Engineered Wood 18-4 Plank flooring",
     blurb: "2 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Barn Oak", "BAR01", "#624b39"),
-      c("Buff Oak", "BUF02", "#c5996f"),
+      v("Barn Oak", "BAR01", "#684f39", "barn-oak", "engineered-wood-18-4-barn-oak"),
+      v("Brushed Oiled Oak", "BRU02", "#d4b28e", "brushed-oiled-oak-plank", "engineered-wood-18-4-brushed-and-oiled-oak"),
+      v("Buff Oak", "BUF03", "#c3966d", "buff-oak", "engineered-wood-18-4-buff-oak"),
     ],
   },
   {
     id: "victoria-carpets-universal-fishbone", type: "lvt", brand: "Victoria Carpets",
     name: "Universal Fishbone", code: "VC-F", real: true,
-    photo: IMG.pile, alt: "Universal Fishbone carpet",
+    photo: IMG.pile, alt: "Universal Fishbone luxury vinyl tile flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Universal Design", "UNI01", "#b1936e"),
+      v("Alpine", "ALP01", "#b99a75", "universal-design-fishbone-alpine"),
+      v("Fireside", "FIR02", "#a19276", "universal-design-fishbone-fireside"),
+      v("Hardwick", "HAR03", "#bfa477", "universal-design-fishbone-hardwick"),
+      v("Nordmann", "NOR04", "#b8a07e", "universal-design-fishbone-nordmann"),
     ],
   },
   {
     id: "victoria-carpets-universal-parquet", type: "lvt", brand: "Victoria Carpets",
     name: "Universal Parquet", code: "VC-P", real: true,
-    photo: IMG.velvet, alt: "Universal Parquet carpet",
+    photo: IMG.velvet, alt: "Universal Parquet luxury vinyl tile flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Universal Design", "UNI01", "#90897a"),
+      v("Alder", "ALD01", "#90897a", "universal-design-parquet-alder"),
+      v("Aspen", "ASP02", "#b49669", "universal-design-parquet-aspen"),
+      v("Mountain Birch", "MOU03", "#9a9087", "universal-design-parquet-mountain-birch"),
+      v("Rowan", "ROW04", "#75644b", "universal-design-parquet-rowan"),
     ],
   },
   {
     id: "victoria-carpets-universal-plank", type: "lvt", brand: "Victoria Carpets",
     name: "Universal Plank", code: "VC-P", real: true,
-    photo: IMG.hero, alt: "Universal Plank carpet",
+    photo: IMG.hero, alt: "Universal Plank luxury vinyl tile flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Universal Design", "UNI01", "#98886d"),
+      v("Almond Buff", "ALM01", "#9f8e5c", "universal-plank-almond-buff"),
+      v("Alpine", "ALP02", "#a39279", "universal-design-plank-alpine"),
+      v("Angora", "ANG03", "#bdb49e", "universal-design-plank-angora"),
+      v("Cashew", "CAS04", "#ad9a7e", "universal-plank-cashew"),
+      v("Chalet", "CHA05", "#968c77", "universal-design-plank-chalet"),
+      v("Chateau Grey", "CHA06", "#a6a49f", "universal-plank-chateau-grey"),
+      v("Fawn", "FAW07", "#a7977e", "universal-plank-fawn"),
+      v("Fireside", "FIR08", "#ada6a3", "universal-design-plank-fireside"),
+      v("Flint Grey", "FLI09", "#98928b", "universal-plank-flint-grey"),
+      v("Grouse", "GRO10", "#907e64", "universal-design-plank-grouse"),
+      v("Hardwick", "HAR11", "#c2ab82", "universal-design-plank-hardwick"),
+      v("Haybale", "HAY12", "#a19177", "universal-plank-haybale"),
+      v("Latte", "LAT13", "#888a68", "universal-plank-latte"),
+      v("Nimbus Cloud", "NIM14", "#c1b8aa", "universal-plank-nimbus-cloud"),
+      v("Nordmann", "NOR15", "#d1b697", "universal-design-plank-nordmann"),
+      v("Puddle", "PUD16", "#928b80", "universal-plank-puddle"),
+      v("Saxon", "SAX17", "#958971", "universal-design-plank-saxon"),
+      v("Sesame", "SES18", "#a6a68b", "universal-plank-sesame"),
+      v("Smoke", "SMO19", "#a48d71", "universal-plank-smoke"),
+      v("Wenge", "WEN20", "#93836e", "universal-plank-wenge"),
     ],
   },
   {
     id: "victoria-carpets-universal-stone", type: "lvt", brand: "Victoria Carpets",
     name: "Universal Stone", code: "VC-S", real: true,
-    photo: IMG.bedroom, alt: "Universal Stone carpet",
+    photo: IMG.bedroom, alt: "Universal Stone luxury vinyl tile flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Universal", "UNI01", "#c9c3b3"),
+      v("Alabaster", "ALA01", "#cac4b4", "universal-tile-alabaster"),
+      v("Fossil", "FOS02", "#b2b2ac", "universal-tile-fossil"),
+      v("Raven", "RAV03", "#4b4c48", "universal-tile-raven"),
+      v("Seashell", "SEA04", "#c8c5c0", "universal-tile-seashell"),
     ],
   },
   {
     id: "victoria-carpets-universal-herringbone", type: "lvt", brand: "Victoria Carpets",
     name: "Universal Herringbone", code: "VC-H", real: true,
-    photo: IMG.stairs, alt: "Universal Herringbone carpet",
+    photo: IMG.stairs, alt: "Universal Herringbone luxury vinyl tile flooring",
     blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
     colours: [
-      c("Universal", "UNI01", "#b7936c"),
-    ],
-  },
-  {
-    id: "victoria-carpets-universal-plank", type: "lvt", brand: "Victoria Carpets",
-    name: "Universal Plank", code: "VC-P", real: true,
-    photo: IMG.pile, alt: "Universal Plank carpet",
-    blurb: "1 shades. Colours read from Victoria Carpets roomset photography, so treat them as a guide until the swatch book is in.",
-    colours: [
-      c("Universal", "UNI01", "#9f8e5c"),
+      v("Almond Buff", "ALM01", "#b8956e", "universal-herringbone-almond-buff"),
+      v("Fawn", "FAW02", "#c7c1b5", "universal-herringbone-fawn"),
+      v("Flint Grey", "FLI03", "#898179", "universal-herringbone-flint-grey"),
+      v("Haybale", "HAY04", "#bca68e", "universal-herringbone-haybale"),
+      v("Latte", "LAT05", "#826e5d", "universal-herringbone-latte"),
+      v("Nimbus Cloud", "NIM06", "#bbb4a7", "universal-herringbone-nimbus-cloud"),
+      v("Sesame", "SES07", "#9a7f62", "universal-herringbone-sesame"),
+      v("Smoke", "SMO08", "#b49f86", "universal-herringbone-smoke"),
     ],
   },
   {

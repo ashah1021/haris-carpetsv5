@@ -35,7 +35,9 @@
     const list = (type.rooms || []).map(roomById).filter((r) => r && !VIS.dead[r.id]);
     return ownBuf ? list.concat(OWN) : list;
   };
-  const rangesFor = (type) => CATALOGUE.filter((r) => r.type === type.id);
+  /* Ranges with no shades yet are left out — there is nothing to put on the
+     floor, so offering the collection only leads to an empty picker. */
+  const rangesFor = (type) => CATALOGUE.filter((r) => r.type === type.id && r.colours.length);
 
   /* shades on offer right now: one collection, or a name search across the type */
   function shades() {
@@ -260,7 +262,7 @@
       const on = VIS.colour && c.rangeId === VIS.colour.rangeId && c.code === VIS.colour.code;
       return `<button class="vz-swatch${on ? " on" : ""}" style="background:${c.hex}"
         data-vz-colour="${esc(c.rangeId + ":" + c.code)}" title="${esc(c.name)} · ${esc(c.range)}">
-        ${c.shot ? `<img src="${swatchImg({ rangeId: c.rangeId, name: c.name })}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+        ${c.shot ? `<img src="${swatchImg({ rangeId: c.rangeId, name: c.name, file: c.file })}" alt="" loading="lazy" onerror="this.remove()">` : ""}
       </button>`;
     }).join("");
   }

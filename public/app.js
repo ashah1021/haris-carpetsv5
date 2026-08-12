@@ -88,12 +88,20 @@ function allSwatches(typeId) {
            every shared link. */
         key: range.id + ":" + slugify(col.name),
         name: col.name, code: col.code, hex: col.hex,
+        /* the tile's file stem, which is only the colour name when the supplier
+           named it that way — see v() in data.js */
+        file: col.file || slugify(col.name), roomFile: col.roomFile,
         rangeId: range.id, range: range.name, brand: range.brand, type: range.type,
         family: colourFamily(col.hex), room: col.room,
         /* false on the two placeholder ranges, which have no photographed
            chips. Without this the tiles request swatch jpgs that were never
            taken — a dozen 404s per page load for an image that can't exist. */
         shot: range.real !== false,
+        /* Some suppliers photographed a room instead of a chip. The picture is
+           still worth showing, just not as a swatch, so the tile falls back to
+           the measured hex and the photograph moves to the roomset slot.
+           Keyed on the file, because that is what was measured. */
+        chip: !ROOM_ONLY.has(range.id + ":" + (col.file || slugify(col.name))),
       });
     }
   }
@@ -175,8 +183,18 @@ function photo(src, alt, ratio = "4-3", cls = "") {
 /* Must match slug() in tools/emit-catalogue.py — these build the paths that
    script uploaded to, so the two have to agree exactly. */
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const swatchImg = (sw) => P("swatches/" + sw.rangeId + "/" + slugify(sw.name) + ".jpg");
+const swatchImg = (sw) => P("swatches/" + sw.rangeId + "/" + (sw.file || slugify(sw.name)) + ".jpg");
 const roomImg = (sw) => P("roomsets/" + sw.rangeId + "/" + slugify(sw.name) + ".jpg");
+
+/* Where the room photograph lives, in the three ways a shade can have one:
+   a dedicated roomset file, a second supplier photograph alongside the chip,
+   or — when the supplier never shot a chip at all — the file that was standing
+   in as the swatch. */
+const hasRoom = (sw) => Boolean(sw.room || sw.roomFile) || sw.chip === false;
+const roomPhoto = (sw) =>
+  sw.roomFile ? P("swatches/" + sw.rangeId + "/" + sw.roomFile + ".jpg")
+  : sw.chip === false ? swatchImg(sw)
+  : roomImg(sw);
 
 const heart = (key) => `<button class="fav${isFav(key) ? " on" : ""}" data-fav="${esc(key)}"
   aria-pressed="${isFav(key)}" title="${isFav(key) ? "Saved — click to remove" : "Save this shade"}"
@@ -189,8 +207,9 @@ function swatchTile(sw, opts = {}) {
     ${heart(sw.key)}
     <button class="col" style="background:${sw.hex}" data-zoom="${esc(sw.key)}"
             aria-label="View ${esc(sw.name)} larger">
-      ${sw.shot ? `<img src="${swatchImg(sw)}" alt="${esc(sw.name)} — ${esc(sw.range)}" loading="lazy" onerror="this.remove()">` : ""}
-      ${sw.room ? `<span class="pin" title="Photographed in a room">Room</span>` : ""}
+      ${sw.shot ? `<img class="${sw.chip === false ? "floor-crop" : ""}" src="${swatchImg(sw)}"
+        alt="${esc(sw.name)} — ${esc(sw.range)}" loading="lazy" onerror="this.remove()">` : ""}
+      ${hasRoom(sw) ? `<span class="pin" title="Photographed in a room">Room</span>` : ""}
     </button>
     <span class="meta">
       <span class="cn">${esc(sw.name)}</span>
@@ -207,10 +226,10 @@ function openZoom(key) {
   $("#zoomBody").innerHTML = `
     <div class="zoom-media">
       <div class="zoom-main" style="background:${sw.hex}">
-        ${sw.shot ? `<img src="${swatchImg(sw)}" alt="${esc(sw.name)}" onerror="this.remove()">` : ""}
+        ${sw.shot && sw.chip !== false ? `<img src="${swatchImg(sw)}" alt="${esc(sw.name)}" onerror="this.remove()">` : ""}
       </div>
-      ${sw.room ? `<div class="zoom-room"><img src="${roomImg(sw)}" alt="${esc(sw.name)} in a room" onerror="this.closest('.zoom-room').remove()">
-        <span class="zoom-cap">${esc(sw.name)} photographed in a room</span></div>` : ""}
+      ${hasRoom(sw) ? `<div class="zoom-room"><img src="${roomPhoto(sw)}" alt="${esc(sw.name)} in a room" onerror="this.closest('.zoom-room').remove()">
+        <span class="zoom-cap">${esc(sw.name)} photographed in a room${sw.chip === false ? " — colour measured off the floor" : ""}</span></div>` : ""}
     </div>
     <div class="zoom-info">
       <p class="kicker">${esc(sw.brand)}</p>
@@ -372,9 +391,127 @@ function facetCounts(all, active) {
   return { brands, families };
 }
 
-function viewCatalogue(typeId) {
+/* =========================================================================
+   STYLES — the "what sort of floor are you after?" layer
+   Collection names mean nothing to somebody who has never bought a carpet.
+   These sit in front of them. See the STYLES table in data.js for how ranges
+   were assigned and which assignments still need Hari's confirmation.
+   ========================================================================= */
+
+/* Only styles that actually have stock behind them. An unpopulated style is
+   skipped rather than rendered as a dead end. */
+const stylesFor = (typeId) =>
+  (STYLES[typeId] || []).map((st) => ({ ...st, list: st.ranges.map(findRange).filter(Boolean) }))
+                        .filter((st) => st.list.length);
+
+const findStyle = (typeId, styleId) => stylesFor(typeId).find((s) => s.id === styleId);
+
+const styleCount = (st) => st.list.reduce((n, r) => n + r.colours.length, 0);
+
+/* Every picture a style could put on its tile, best first:
+     1. a supplier roomset of a floor in this style — real, and the one place
+        those orphaned room photographs are exactly what is wanted
+     2. a range photograph shot for this collection
+     3. the generic stock photo a range falls back to
+   Ranked rather than picked outright because several styles share a fallback,
+   and two tiles showing the same navy drawing room says nothing about how the
+   two differ. */
+function stylePhotoOptions(st) {
+  const rooms = [], own = [], stock = [];
+  for (const r of st.list) {
+    for (const col of r.colours) {
+      const stem = col.roomFile || (ROOM_ONLY.has(r.id + ":" + (col.file || slugify(col.name)))
+        ? (col.file || slugify(col.name)) : null);
+      if (stem) rooms.push(P("swatches/" + r.id + "/" + stem + ".jpg"));
+    }
+    (String(r.photo).includes("assets/ranges/") ? own : stock).push(r.photo);
+  }
+  return [...rooms, ...own, ...stock];
+}
+
+/* Hand out the tile pictures so no two styles in a type share one. Styles with
+   the fewest options choose first, otherwise a style spoilt for choice takes
+   the only picture a leaner one had. */
+function stylePhotos(styles) {
+  const taken = new Set(), out = {};
+  const opts = new Map(styles.map((st) => [st.id, stylePhotoOptions(st)]));
+  for (const st of [...styles].sort((a, b) => opts.get(a.id).length - opts.get(b.id).length)) {
+    const list = opts.get(st.id);
+    out[st.id] = list.find((p) => !taken.has(p)) || list[0];
+    taken.add(out[st.id]);
+  }
+  return out;
+}
+
+function styleTile(st, typeId, photos) {
+  const n = styleCount(st);
+  return `<a class="style-tile" href="#/catalogue/${esc(typeId)}/${esc(st.id)}">
+    <div class="style-ph">
+      <img src="${esc(photos[st.id])}" alt="${esc(st.name)}" loading="lazy" onerror="this.remove()">
+      <span class="style-swatches">${st.list.flatMap((r) => r.colours).slice(0, 6)
+        .map((x) => `<span style="background:${x.hex}"></span>`).join("")}</span>
+    </div>
+    <div class="style-cap">
+      <h3>${esc(st.name)}</h3>
+      <p>${esc(st.blurb)}</p>
+      <span class="style-n">${st.list.length} collection${st.list.length === 1 ? "" : "s"} · ${n} shade${n === 1 ? "" : "s"}</span>
+    </div>
+  </a>`;
+}
+
+/* One style: its collections, each with its own colours underneath, so the
+   journey ends where it should — on a colour, not on another menu. */
+function viewStyle(typeId, styleId) {
+  const type = findType(typeId);
+  const st = type && findStyle(typeId, styleId);
+  if (!st) return viewNotFound();
+  const others = stylesFor(typeId).filter((s) => s.id !== st.id);
+
+  return `
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> /
+    <a href="#/catalogue/${esc(typeId)}">${esc(type.name)}</a> / ${esc(st.name)}</p></div>
+  <section><div class="wrap">
+    <div class="section-head">
+      <div><span class="rule"></span><p class="kicker">${esc(type.name)}</p>
+        <h2>${esc(st.name)}</h2><p>${esc(st.blurb)}</p></div>
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
+    </div>
+
+    ${st.list.map((r) => {
+      const sw = allSwatches().filter((s) => s.rangeId === r.id);
+      /* a range whose shade names haven't arrived yet still belongs on the
+         page — it is stock we can sell — but as a card, not an empty grid */
+      if (!sw.length) return `<div class="style-range">
+        <div class="style-range-head">
+          <div><h3><a href="#/range/${esc(r.id)}">${esc(r.name)}</a></h3>
+            <p class="k">${esc(r.brand)} · shades in the showroom</p></div>
+          <a class="btn btn-ghost btn-sm" href="#/range/${esc(r.id)}">About this collection</a>
+        </div>
+        <p class="empty-note">${esc(r.blurb)}</p>
+      </div>`;
+      return `<div class="style-range">
+        <div class="style-range-head">
+          <div><h3><a href="#/range/${esc(r.id)}">${esc(r.name)}</a></h3>
+            <p class="k">${esc(r.brand)} · ${sw.length} shade${sw.length === 1 ? "" : "s"}</p></div>
+          <a class="btn btn-ghost btn-sm" href="#/range/${esc(r.id)}">About this collection</a>
+        </div>
+        <div class="swatch-grid">${sw.map((s) => swatchTile(s, { showRange: false })).join("")}</div>
+      </div>`;
+    }).join("")}
+
+    ${others.length ? `<div class="style-more">
+      <p class="kicker">Or try</p>
+      <div class="style-chips">${others.map((s) =>
+        `<a class="chip" href="#/catalogue/${esc(typeId)}/${esc(s.id)}">${esc(s.name)}<span class="n">${styleCount(s)}</span></a>`).join("")}
+        <a class="chip" href="#/catalogue/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
+    </div>` : ""}
+  </div></section>`;
+}
+
+function viewCatalogue(typeId, styleId) {
   const type = typeId ? findType(typeId) : null;
   if (typeId && !type) return viewNotFound();
+  if (type && styleId) return viewStyle(typeId, styleId);
 
   if (!type) {
     return `
@@ -398,6 +535,7 @@ function viewCatalogue(typeId) {
   if (CAT.family) shown = shown.filter((s) => s.family === CAT.family);
 
   const ranges = rangesOfType(type.id).filter((r) => !CAT.brand || r.brand === CAT.brand);
+  const styles = stylesFor(type.id);
 
   /* the active filters, spelled out and individually removable */
   const active = [];
@@ -423,7 +561,14 @@ function viewCatalogue(typeId) {
       ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
     </div>
 
-    <div class="filters">
+    ${styles.length ? `<div class="styles">
+      <h3 class="styles-head">What sort of ${esc(type.name.toLowerCase())} are you after?</h3>
+      <div class="style-grid">${((ph) => styles.map((s) => styleTile(s, type.id, ph)).join(""))(stylePhotos(styles))}</div>
+      <p class="styles-alt">Or <button class="linkish" data-jump="filters">browse all ${all.length} shades</button>
+         by brand and colour.</p>
+    </div>` : ""}
+
+    <div class="filters" id="filters">
       <div class="filter-row">
         <span class="filter-label">Brand</span>
         <div class="chips">${chip("All brands", all.length, !CAT.brand, "brand", "")}${
@@ -476,11 +621,10 @@ function viewRange(id) {
   const spec = r.spec ? [["Brand", r.brand], ["Range code", r.code], ["Fibre", r.spec.fibre],
                         ["Pile", r.spec.pile], ["Widths", r.spec.widths], ["Suitability", r.spec.use]]
                       : [["Brand", r.brand], ["Range code", r.code]];
-  const swatches = r.colours.map((col) => ({
-    key: r.id + ":" + slugify(col.name), name: col.name, code: col.code, hex: col.hex,
-    rangeId: r.id, range: r.name, brand: r.brand, type: r.type,
-    family: colourFamily(col.hex), room: col.room,
-  }));
+  /* From allSwatches rather than rebuilt here. The local copy this replaced had
+     drifted: it never learned about tile filenames or room-only shades, so the
+     range page asked for images by the wrong name and showed nothing. */
+  const swatches = allSwatches().filter((s) => s.rangeId === r.id);
 
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> /
@@ -497,9 +641,13 @@ function viewRange(id) {
   </div></section>
   <section class="sec-alt"><div class="wrap">
     <div class="colours-head"><div><span class="rule"></span>
-      <p class="kicker">${r.colours.length} shades</p><h2>Colours</h2></div>
-      <span class="hint">Tap a shade to see it close up. Tap ♥ to save it — kept on this device, nothing is sent.</span></div>
-    <div class="swatch-grid">${swatches.map((s) => swatchTile(s, { showRange: false })).join("")}</div>
+      <p class="kicker">${swatches.length ? `${swatches.length} shades` : "Shades"}</p><h2>Colours</h2></div>
+      ${swatches.length ? `<span class="hint">Tap a shade to see it close up. Tap ♥ to save it — kept on this device, nothing is sent.</span>` : ""}</div>
+    ${swatches.length
+      ? `<div class="swatch-grid">${swatches.map((s) => swatchTile(s, { showRange: false })).join("")}</div>`
+      : `<p class="empty-note">We haven't got the shade names for this range on the site yet —
+           ${esc(BUSINESS.name)} has the full book in the showroom.
+           <a class="arrow-link" href="#/contact">Ask us about it →</a></p>`}
   </div></section>`;
 }
 
@@ -624,7 +772,7 @@ function render() {
   let html, top = parts[0];
   switch (top) {
     case undefined:    html = viewHome(); break;
-    case "catalogue":  html = viewCatalogue(parts[1]); break;
+    case "catalogue":  html = viewCatalogue(parts[1], parts[2]); break;
     case "range":      html = viewRange(parts[1]); break;
     case "favourites": html = viewFavourites(parts[1]); break;
     case "visualiser": html = VISUALISER_ON ? window.Visualiser.view(parts[1]) : viewNotFound(); break;
@@ -705,6 +853,9 @@ document.addEventListener("click", (e) => {
 
   const clear = e.target.closest("[data-clear]");
   if (clear) { CAT.brand = ""; CAT.family = ""; return render(); }
+
+  const jump = e.target.closest("[data-jump]");
+  if (jump) { document.getElementById(jump.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
 
   const brand = e.target.closest("[data-brand]");
   if (brand) { CAT.brand = brand.dataset.brand; return render(); }
