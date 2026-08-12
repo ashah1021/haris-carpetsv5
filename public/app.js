@@ -90,6 +90,10 @@ function allSwatches(typeId) {
         name: col.name, code: col.code, hex: col.hex,
         rangeId: range.id, range: range.name, brand: range.brand, type: range.type,
         family: colourFamily(col.hex), room: col.room,
+        /* false on the two placeholder ranges, which have no photographed
+           chips. Without this the tiles request swatch jpgs that were never
+           taken — a dozen 404s per page load for an image that can't exist. */
+        shot: range.real !== false,
       });
     }
   }
@@ -185,7 +189,7 @@ function swatchTile(sw, opts = {}) {
     ${heart(sw.key)}
     <button class="col" style="background:${sw.hex}" data-zoom="${esc(sw.key)}"
             aria-label="View ${esc(sw.name)} larger">
-      <img src="${swatchImg(sw)}" alt="${esc(sw.name)} — ${esc(sw.range)}" loading="lazy" onerror="this.remove()">
+      ${sw.shot ? `<img src="${swatchImg(sw)}" alt="${esc(sw.name)} — ${esc(sw.range)}" loading="lazy" onerror="this.remove()">` : ""}
       ${sw.room ? `<span class="pin" title="Photographed in a room">Room</span>` : ""}
     </button>
     <span class="meta">
@@ -203,7 +207,7 @@ function openZoom(key) {
   $("#zoomBody").innerHTML = `
     <div class="zoom-media">
       <div class="zoom-main" style="background:${sw.hex}">
-        <img src="${swatchImg(sw)}" alt="${esc(sw.name)}" onerror="this.remove()">
+        ${sw.shot ? `<img src="${swatchImg(sw)}" alt="${esc(sw.name)}" onerror="this.remove()">` : ""}
       </div>
       ${sw.room ? `<div class="zoom-room"><img src="${roomImg(sw)}" alt="${esc(sw.name)} in a room" onerror="this.closest('.zoom-room').remove()">
         <span class="zoom-cap">${esc(sw.name)} photographed in a room</span></div>` : ""}
@@ -453,10 +457,16 @@ function viewCatalogue(typeId) {
   </div></section>`;
 }
 
-/* a representative hex for a family chip, taken from what's actually in stock */
+/* A representative hex for a family chip, taken from what's actually in stock.
+   The middle of the family by lightness, not the first one found: alphabetical
+   order put a near-black by Blue and a pale sage by Green, so the chips beside
+   the filter names contradicted them. Sorting by lightness and taking the
+   median gives the shade a visitor would picture on hearing the name. */
 function familySample(family, typeId) {
-  const s = allSwatches(typeId).find((x) => x.family === family);
-  return s ? s.hex : "#ccc";
+  const hits = allSwatches(typeId).filter((x) => x.family === family);
+  if (!hits.length) return "#ccc";
+  hits.sort((a, b) => hsl(a.hex).l - hsl(b.hex).l);
+  return hits[Math.floor(hits.length / 2)].hex;
 }
 
 function viewRange(id) {
@@ -666,12 +676,21 @@ function reveal() {
     targets.forEach((el) => el.classList.add("seen"));
     return;
   }
+  /* threshold must be 0. A percentage threshold cannot be met by an element
+     taller than the viewport — the catalogue section is 600+ swatches tall, so
+     4% of it never fits on screen, the observer never fired, and the section
+     stayed at opacity 0 with nothing on the page. */
   revealObserver ||= new IntersectionObserver((entries, obs) => {
     for (const en of entries) {
       if (en.isIntersecting) { en.target.classList.add("seen"); obs.unobserve(en.target); }
     }
-  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.04 });
+  }, { rootMargin: "0px 0px -6% 0px", threshold: 0 });
   targets.forEach((el) => { el.classList.add("will-reveal"); revealObserver.observe(el); });
+
+  /* Safety net: whatever happens with the observer, nothing stays invisible.
+     A missed animation is a blemish; a blank page is a broken site. */
+  clearTimeout(reveal.failsafe);
+  reveal.failsafe = setTimeout(() => targets.forEach((el) => el.classList.add("seen")), 1200);
 }
 
 /* ---------- global events ---------- */

@@ -43,10 +43,10 @@
     if (q) {
       return rangesFor(VIS.type).flatMap((r) =>
         r.colours.filter((c) => c.name.toLowerCase().includes(q))
-          .map((c) => ({ ...c, rangeId: r.id, range: r.name, brand: r.brand })));
+          .map((c) => ({ ...c, rangeId: r.id, range: r.name, brand: r.brand, shot: r.real !== false })));
     }
     const r = findRange(VIS.rangeId) || rangesFor(VIS.type)[0];
-    return r ? r.colours.map((c) => ({ ...c, rangeId: r.id, range: r.name, brand: r.brand })) : [];
+    return r ? r.colours.map((c) => ({ ...c, rangeId: r.id, range: r.name, brand: r.brand, shot: r.real !== false })) : [];
   }
 
   /* ---------------- image pipeline ---------------- */
@@ -260,7 +260,7 @@
       const on = VIS.colour && c.rangeId === VIS.colour.rangeId && c.code === VIS.colour.code;
       return `<button class="vz-swatch${on ? " on" : ""}" style="background:${c.hex}"
         data-vz-colour="${esc(c.rangeId + ":" + c.code)}" title="${esc(c.name)} · ${esc(c.range)}">
-        <img src="${swatchImg({ rangeId: c.rangeId, name: c.name })}" alt="" loading="lazy" onerror="this.remove()">
+        ${c.shot ? `<img src="${swatchImg({ rangeId: c.rangeId, name: c.name })}" alt="" loading="lazy" onerror="this.remove()">` : ""}
       </button>`;
     }).join("");
   }
