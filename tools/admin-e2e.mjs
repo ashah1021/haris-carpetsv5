@@ -39,29 +39,29 @@ console.log("The admin page loads and knows who is signed in:");
 await go(`${BASE}/admin/`);
 check("signed in", (await page.locator("#who").textContent()).includes("@"));
 check("no sign-in gate", await page.locator("#gate").isHidden());
-check("tabs offered", (await page.locator(".ad-tab").count()) === 4);
+check("tabs offered", (await page.locator(".mg-tab").count()) === 4);
 check("collections listed", (await page.locator("[data-tab='collections']").click(),
-  await page.waitForTimeout(400), (await page.locator(".ad-row").count()) > 40),
-  `${await page.locator(".ad-row").count()} collections`);
+  await page.waitForTimeout(400), (await page.locator(".mg-row").count()) > 40),
+  `${await page.locator(".mg-row").count()} collections`);
 
 console.log("\nSearching 48 collections:");
 {
-  const all = await page.locator(".ad-row").count();
+  const all = await page.locator(".mg-row").count();
   await page.locator("#search").fill("westex");
   await page.waitForTimeout(300);
-  const shown = await page.locator(".ad-row:visible").count();
+  const shown = await page.locator(".mg-row:visible").count();
   check("search narrows the list", shown > 0 && shown < all, `${all} → ${shown}`);
   await page.locator("#search").fill("");
   await page.waitForTimeout(250);
-  check("clearing it brings them all back", (await page.locator(".ad-row:visible").count()) === all);
+  check("clearing it brings them all back", (await page.locator(".mg-row:visible").count()) === all);
 }
 
 console.log("\nHiding a collection:");
-const firstName = (await page.locator(".ad-row-main b").first().textContent()).trim();
+const firstName = (await page.locator(".mg-row-main b").first().textContent()).trim();
 const rangeId = await page.evaluate(() => CATALOGUE[0].id);
 await page.locator(`[data-hide="${rangeId}"]`).click();
 await page.waitForTimeout(300);
-check("row shows as hidden", (await page.locator(".ad-row").first().getAttribute("class")).includes("off"));
+check("row shows as hidden", (await page.locator(".mg-row").first().getAttribute("class")).includes("off"));
 check("save button wakes up", !(await page.locator("#save").isDisabled()));
 await page.locator("#save").click();
 await page.waitForTimeout(700);
@@ -100,14 +100,14 @@ await page.locator("[data-tab='collections']").click();
 await page.waitForTimeout(400);
 await page.locator(`[data-shades="${rangeId}"]`).click();
 await page.waitForTimeout(400);
-check("shade editor opens", (await page.locator(".ad-sw").count()) > 1);
+check("shade editor opens", (await page.locator(".mg-sw").count()) > 1);
 /* Ultima runs to 119 shades; without a filter, hiding one means scrolling */
 {
-  const all = await page.locator(".ad-sw").count();
+  const all = await page.locator(".mg-sw").count();
   await page.locator("#shadeSearch").fill(
     (await page.locator("[data-rename]").first().inputValue()).slice(0, 4));
   await page.waitForTimeout(300);
-  const shown = await page.locator(".ad-sw:visible").count();
+  const shown = await page.locator(".mg-sw:visible").count();
   check("shade search narrows the list", shown > 0 && shown < all, `${all} → ${shown}`);
   await page.locator("#shadeSearch").fill("");
   await page.waitForTimeout(200);
@@ -179,7 +179,7 @@ console.log("\nAdding a collection and a shade from a photograph:");
 
   await page.locator("#addShade").click();
   await page.waitForTimeout(900);
-  check("the shade is listed", (await page.locator(".ad-sw").count()) === 1);
+  check("the shade is listed", (await page.locator(".mg-sw").count()) === 1);
 
   /* the same name twice would collide on the tile path and the saved key */
   await page.locator("#newShadeName").fill("Shop Oatmeal");
@@ -227,7 +227,7 @@ console.log("\nSomeone not signed in gets a door, not a form:");
   check("the gate is shown", await p3.locator("#gate").isVisible());
   check("and it explains what to do",
     (await p3.locator("#gateBody").textContent()).length > 20);
-  check("no editing controls are usable", (await p3.locator(".ad-row").count()) === 0);
+  check("no editing controls are usable", (await p3.locator(".mg-row").count()) === 0);
   await p3.close();
 }
 
@@ -253,7 +253,7 @@ console.log("\nSigning in with the site password:");
   await p4.locator("#pwGo").click();
   await p4.waitForTimeout(1400);
   check("the right password gets in", await p4.locator("#gate").isHidden());
-  check("and the admin is usable", (await p4.locator(".ad-tab").count()) === 4);
+  check("and the admin is usable", (await p4.locator(".mg-tab").count()) === 4);
 
   /* the password must not linger anywhere the next person could read it */
   const leaked = await p4.evaluate(() => {
@@ -328,6 +328,46 @@ console.log("\nThe gate names the actual problem:");
   check("and names the secret to set", body.includes("ADMIN_PASSWORD"));
   check("without sending you to Zero Trust", !body.includes("Zero Trust"));
   await wd.close();
+}
+
+console.log("\nNothing here is named like an advert:");
+{
+  /* The admin's classes were all prefixed "ad-", short for admin. Ad blockers
+     carry cosmetic rules for exactly those names, so the header, the tabs and
+     every form field were hidden in a normal browser while passing every test
+     here, because headless Chromium runs no extensions. The prefix is "mg-"
+     now, and this keeps it that way. */
+  const p6 = await (await browser.newContext()).newPage();
+  await p6.goto(`${BASE}/admin/`, { waitUntil: "networkidle" });
+  await p6.waitForTimeout(900);
+  const adish = await p6.evaluate(() => {
+    /* the shapes filter lists actually carry — "admin" is a word, not a slot */
+    const looksLikeAnAd = (s) => /^(ads?|advert\w*)$|^ads?[-_]|^advert[-_]/i.test(s);
+    const bad = new Set();
+    for (const el of document.querySelectorAll("*")) {
+      for (const c of el.classList) if (looksLikeAnAd(c)) bad.add("." + c);
+      if (looksLikeAnAd(el.id || "")) bad.add("#" + el.id);
+    }
+    return [...bad];
+  });
+  check("no class or id looks like an ad slot", adish.length === 0, adish.join(", "));
+
+  /* and prove the page survives a blocker that hides the usual suspects */
+  const blocker = await (await browser.newContext()).newPage();
+  await blocker.route("**/admin.css", async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, body: (await res.text())
+      + '\n[class^="ad-"],[class*=" ad-"],[id^="ad-"],.ad,.ads,.advert{display:none!important}' });
+  });
+  await blocker.goto(`${BASE}/admin/`, { waitUntil: "networkidle" });
+  await blocker.waitForTimeout(900);
+  check("the header survives an ad blocker", await blocker.locator(".mg-top").isVisible());
+  check("the tabs survive", (await blocker.locator(".mg-tab:visible").count()) === 4);
+  check("the shop-details fields survive",
+    (await blocker.locator(".mg-field:visible").count()) >= 5,
+    `${await blocker.locator(".mg-field:visible").count()} fields`);
+  await blocker.close();
+  await p6.close();
 }
 
 console.log("\nNo JS errors in the admin:");

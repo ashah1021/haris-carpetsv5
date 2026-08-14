@@ -10,44 +10,44 @@
 </head>
 <body class="admin">
 
-<header class="ad-top">
+<header class="mg-top">
   <div class="wrap">
-    <a class="ad-logo" href="../">HARI'S CARPETS</a>
-    <span class="ad-tag">Manage the site</span>
-    <span class="ad-who" id="who"></span>
-    <span class="ad-state" id="state"></span>
+    <a class="mg-logo" href="../">HARI'S CARPETS</a>
+    <span class="mg-tag">Manage the site</span>
+    <span class="mg-who" id="who"></span>
+    <span class="mg-state" id="state"></span>
     <button class="btn btn-solid btn-sm" id="save" disabled>Save changes</button>
   </div>
 </header>
 
-<nav class="ad-tabs"><div class="wrap" id="tabs"></div></nav>
+<nav class="mg-tabs"><div class="wrap" id="tabs"></div></nav>
 
 <main class="wrap" id="panel">
-  <p class="ad-loading">Loading…</p>
+  <p class="mg-loading">Loading…</p>
 </main>
 
 <!-- Nothing here is secret; the API is what's protected. But there is no point
      showing the forms to somebody who cannot save, so the page checks first. -->
-<div class="ad-gate" id="gate" hidden>
-  <div class="ad-gate-card">
+<div class="mg-gate" id="gate" hidden>
+  <div class="mg-gate-card">
     <h1 id="gateTitle">Sign in to manage the site</h1>
     <p id="gateBody"></p>
 
     <!-- A real form with a named field, rather than a bare input: password
          managers fill it properly, and generic ids like "pw" are the sort of
          thing content blockers carry cosmetic rules for. -->
-    <form class="ad-login" id="login" method="post" action="#" hidden>
-      <label class="ad-field" for="adminPassword">
+    <form class="mg-login" id="login" method="post" action="#" hidden>
+      <label class="mg-field" for="adminPassword">
         <span>Site password</span>
       </label>
-      <input class="ad-pw" type="password" id="adminPassword" name="password"
+      <input class="mg-pw" type="password" id="adminPassword" name="password"
              autocomplete="current-password" autocapitalize="off"
              spellcheck="false" required>
       <button class="btn btn-solid" type="submit" id="pwGo">Sign in</button>
-      <p class="ad-err" id="pwErr"></p>
+      <p class="mg-err" id="pwErr"></p>
     </form>
 
-    <p class="ad-gate-acts">
+    <p class="mg-gate-acts">
       <!-- pointless once there is a password box on screen; the form is the
            way back in, and a reload only empties it -->
       <a class="btn btn-ghost" href="./" id="retry">Try again</a>

@@ -55,7 +55,7 @@
     dirty = true;
     $("#save").disabled = false;
     $("#state").textContent = "Unsaved changes";
-    $("#state").className = "ad-state warn";
+    $("#state").className = "mg-state warn";
   }
 
   /** Every collection the site knows about: generated, plus any added here. */
@@ -132,10 +132,10 @@
   function viewShop() {
     return `
     <h2>Shop details</h2>
-    <p class="ad-lede">These show on the website. Leave a box empty to keep what's already there.</p>
-    <div class="ad-fields">
+    <p class="mg-lede">These show on the website. Leave a box empty to keep what's already there.</p>
+    <div class="mg-fields">
       ${FIELDS.map(([k, label, hint]) => `
-        <label class="ad-field">
+        <label class="mg-field">
           <span>${esc(label)}</span>
           ${k === "about"
             ? `<textarea rows="5" data-content="${k}" placeholder="${esc(hint)}">${esc(DOC.content[k] || "")}</textarea>`
@@ -149,37 +149,37 @@
     const list = allRanges();
     return `
     <h2>Collections</h2>
-    <p class="ad-lede">Hiding a collection takes it off the website. Nothing is deleted, so
+    <p class="mg-lede">Hiding a collection takes it off the website. Nothing is deleted, so
       anything a customer has saved keeps working, and you can put it back at any time.</p>
     <button class="btn btn-solid btn-sm" id="addRange">Add a collection</button>
-    <input class="ad-search" id="search" type="search" placeholder="Search collections…">
+    <input class="mg-search" id="search" type="search" placeholder="Search collections…">
 
-    <div class="ad-newrange" id="newRange" hidden>
+    <div class="mg-newrange" id="newRange" hidden>
       <h3>New collection</h3>
-      <div class="ad-addrow">
-        <label class="ad-field"><span>Collection name</span>
+      <div class="mg-addrow">
+        <label class="mg-field"><span>Collection name</span>
           <input type="text" id="nrName" placeholder="e.g. Highland Twist"></label>
-        <label class="ad-field"><span>Brand</span>
+        <label class="mg-field"><span>Brand</span>
           <input type="text" id="nrBrand" placeholder="e.g. Cormar Carpets"></label>
-        <label class="ad-field"><span>Type of flooring</span>
+        <label class="mg-field"><span>Type of flooring</span>
           <select id="nrType">${TYPES.map((t) =>
             `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join("")}</select></label>
         <button class="btn btn-solid btn-sm" id="createRange">Create</button>
         <button class="btn btn-ghost btn-sm" id="cancelRange">Cancel</button>
       </div>
-      <p class="ad-err" id="nrErr"></p>
+      <p class="mg-err" id="nrErr"></p>
     </div>
-    <div class="ad-rows" id="rows">
+    <div class="mg-rows" id="rows">
       ${list.map((r) => {
         const hidden = isHidden(r.id);
         const n = shadesOf(r).filter((c) => !isHidden(r.id + ":" + slugify(c.name))).length;
-        return `<div class="ad-row${hidden ? " off" : ""}" data-search="${esc((r.name + " " + r.brand).toLowerCase())}">
-          <div class="ad-row-main">
+        return `<div class="mg-row${hidden ? " off" : ""}" data-search="${esc((r.name + " " + r.brand).toLowerCase())}">
+          <div class="mg-row-main">
             <b>${esc(DOC.overrides[r.id]?.name || r.name)}</b>
-            <span class="ad-meta">${esc(r.brand)} · ${esc(r.type)} · ${n} shade${n === 1 ? "" : "s"}${
-              r.added ? ' · <span class="ad-badge">added here</span>' : ""}</span>
+            <span class="mg-meta">${esc(r.brand)} · ${esc(r.type)} · ${n} shade${n === 1 ? "" : "s"}${
+              r.added ? ' · <span class="mg-badge">added here</span>' : ""}</span>
           </div>
-          <div class="ad-row-acts">
+          <div class="mg-row-acts">
             <button class="btn btn-ghost btn-sm" data-shades="${esc(r.id)}">Shades</button>
             <button class="btn btn-ghost btn-sm" data-hide="${esc(r.id)}">${hidden ? "Show" : "Hide"}</button>
           </div>
@@ -193,42 +193,42 @@
     if (!r) { openRange = null; return viewCollections(); }
     const shades = shadesOf(r);
     return `
-    <p class="ad-back"><button class="linkish" id="back">← All collections</button></p>
+    <p class="mg-back"><button class="linkish" id="back">← All collections</button></p>
     <h2>${esc(DOC.overrides[r.id]?.name || r.name)}</h2>
-    <p class="ad-lede">${esc(r.brand)} · ${shades.length} shade${shades.length === 1 ? "" : "s"}.
+    <p class="mg-lede">${esc(r.brand)} · ${shades.length} shade${shades.length === 1 ? "" : "s"}.
       Hide a shade that's out of stock; it stays saved for anyone who shortlisted it.</p>
 
-    <div class="ad-addshade">
+    <div class="mg-addshade">
       <h3>Add a shade</h3>
       <p>Photograph the swatch flat, filling the frame, in daylight. The colour is
          measured from your photo — you don't need to know a colour code.</p>
-      <div class="ad-addrow">
-        <label class="ad-field"><span>Shade name</span>
+      <div class="mg-addrow">
+        <label class="mg-field"><span>Shade name</span>
           <input type="text" id="newShadeName" placeholder="e.g. Oatmeal"></label>
-        <label class="ad-field"><span>Photograph of the swatch</span>
+        <label class="mg-field"><span>Photograph of the swatch</span>
           <input type="file" id="newShadeFile" accept="image/*"></label>
-        <div class="ad-measured" id="measured"></div>
+        <div class="mg-measured" id="measured"></div>
         <button class="btn btn-solid btn-sm" id="addShade" disabled>Add shade</button>
       </div>
-      <p class="ad-err" id="shadeErr"></p>
+      <p class="mg-err" id="shadeErr"></p>
     </div>
 
     ${shades.length > 12
-      ? `<input class="ad-search" id="shadeSearch" type="search" placeholder="Find a shade…">`
+      ? `<input class="mg-search" id="shadeSearch" type="search" placeholder="Find a shade…">`
       : ""}
 
-    <div class="ad-swatches" id="shadeList">
+    <div class="mg-swatches" id="shadeList">
       ${shades.map((c) => {
         const key = r.id + ":" + slugify(c.name);
         const hidden = isHidden(key);
         const shown = DOC.overrides[key]?.name || c.name;
-        return `<div class="ad-sw${hidden ? " off" : ""}" data-search="${esc(shown.toLowerCase())}">
-          <span class="ad-chip" style="background:${esc(c.hex)}"></span>
+        return `<div class="mg-sw${hidden ? " off" : ""}" data-search="${esc(shown.toLowerCase())}">
+          <span class="mg-chip" style="background:${esc(c.hex)}"></span>
           <input type="text" value="${esc(shown)}" data-rename="${esc(key)}"
                  data-original="${esc(c.name)}" aria-label="Shade name">
           <button class="btn btn-ghost btn-sm" data-hide="${esc(key)}">${hidden ? "Show" : "Hide"}</button>
         </div>`;
-      }).join("") || `<p class="ad-lede">No shades yet.</p>`}
+      }).join("") || `<p class="mg-lede">No shades yet.</p>`}
     </div>`;
   }
 
@@ -236,20 +236,20 @@
     const types = Object.keys(STYLES).filter((t) => STYLES[t].length);
     return `
     <h2>Styles</h2>
-    <p class="ad-lede">This is what customers see first — "what sort of carpet are you after?".
+    <p class="mg-lede">This is what customers see first — "what sort of carpet are you after?".
       Tick the collections that belong under each. A collection in no style still
       appears everywhere else on the site, so it's safe to untick one you're unsure of.</p>
     ${types.map((type) => `
-      <section class="ad-styleblock">
+      <section class="mg-styleblock">
         <h3>${esc((TYPES.find((t) => t.id === type) || {}).name || type)}</h3>
         ${STYLES[type].map((st) => {
           const chosen = DOC.styles?.[type]?.[st.id] || st.ranges;
           const options = allRanges().filter((r) => r.type === type);
-          return `<div class="ad-style">
-            <div class="ad-style-head"><b>${esc(st.name)}</b>
-              <span class="ad-meta">${esc(st.blurb)}</span></div>
-            <div class="ad-ticks">
-              ${options.map((r) => `<label class="ad-tick">
+          return `<div class="mg-style">
+            <div class="mg-style-head"><b>${esc(st.name)}</b>
+              <span class="mg-meta">${esc(st.blurb)}</span></div>
+            <div class="mg-ticks">
+              ${options.map((r) => `<label class="mg-tick">
                 <input type="checkbox" data-style="${esc(type)}|${esc(st.id)}" value="${esc(r.id)}"
                   ${chosen.includes(r.id) ? "checked" : ""}>
                 <span>${esc(DOC.overrides[r.id]?.name || r.name)}
@@ -264,9 +264,9 @@
     const chosen = DOC.featured || FEATURED;
     return `
     <h2>Home page</h2>
-    <p class="ad-lede">Pick the collections to show on the front page. Three fits the layout best.</p>
-    <div class="ad-ticks wide">
-      ${allRanges().filter((r) => !isHidden(r.id)).map((r) => `<label class="ad-tick">
+    <p class="mg-lede">Pick the collections to show on the front page. Three fits the layout best.</p>
+    <div class="mg-ticks wide">
+      ${allRanges().filter((r) => !isHidden(r.id)).map((r) => `<label class="mg-tick">
         <input type="checkbox" data-featured value="${esc(r.id)}" ${chosen.includes(r.id) ? "checked" : ""}>
         <span>${esc(DOC.overrides[r.id]?.name || r.name)}<i>${esc(r.brand)}</i></span></label>`).join("")}
     </div>`;
@@ -276,7 +276,7 @@
 
   function render() {
     $("#tabs").innerHTML = TABS.map(([id, label]) =>
-      `<button class="ad-tab${tab === id ? " on" : ""}" data-tab="${id}">${esc(label)}</button>`).join("");
+      `<button class="mg-tab${tab === id ? " on" : ""}" data-tab="${id}">${esc(label)}</button>`).join("");
     $("#panel").innerHTML =
       tab === "shop" ? viewShop()
       : tab === "collections" ? viewCollections()
@@ -290,7 +290,7 @@
     const btn = $("#save");
     btn.disabled = true;
     $("#state").textContent = "Saving…";
-    $("#state").className = "ad-state";
+    $("#state").className = "mg-state";
     try {
       const res = await fetch("../api/admin/site", {
         method: "PUT",
@@ -300,7 +300,7 @@
       const body = await res.json().catch(() => ({}));
       if (res.status === 409) {
         $("#state").textContent = "Someone else saved first — reload before editing";
-        $("#state").className = "ad-state warn";
+        $("#state").className = "mg-state warn";
         btn.disabled = false;
         return;
       }
@@ -308,10 +308,10 @@
       DOC.version = body.version;
       dirty = false;
       $("#state").textContent = "Saved — live on the site within a minute";
-      $("#state").className = "ad-state ok";
+      $("#state").className = "mg-state ok";
     } catch (err) {
       $("#state").textContent = err.message;
-      $("#state").className = "ad-state warn";
+      $("#state").className = "mg-state warn";
       btn.disabled = false;
     }
   }
@@ -324,7 +324,7 @@
     if (t.dataset.rename !== undefined) { setName(t.dataset.rename, t.value.trim(), t.dataset.original); }
     if (t.id === "search" || t.id === "shadeSearch") {
       const q = t.value.trim().toLowerCase();
-      const sel = t.id === "search" ? "#rows .ad-row" : "#shadeList .ad-sw";
+      const sel = t.id === "search" ? "#rows .mg-row" : "#shadeList .mg-sw";
       document.querySelectorAll(sel).forEach((row) => {
         row.hidden = Boolean(q) && !row.dataset.search.includes(q);
       });
@@ -370,8 +370,8 @@
       pending = await readSwatch(file);
       $("#measured").innerHTML =
         `<img src="${pending.preview}" alt="">
-         <span class="ad-chip big" style="background:${pending.hex}"></span>
-         <span class="ad-meta">Measured ${pending.hex}</span>`;
+         <span class="mg-chip big" style="background:${pending.hex}"></span>
+         <span class="mg-meta">Measured ${pending.hex}</span>`;
     } catch (err) {
       $("#shadeErr").textContent = err.message;
     }
