@@ -45,9 +45,14 @@
   const TABS = [
     ["shop", "Shop details"],
     ["collections", "Collections"],
+    ["photos", "Photos"],
     ["styles", "Styles"],
     ["home", "Home page"],
   ];
+
+  /* How wide an uploaded photograph is kept. A swatch only ever shows as a
+     small tile, but a home page banner runs the width of the screen. */
+  const WIDE = 1800, TILE = 900;
 
   /* ---------------------------------------------------------------- state */
 
@@ -88,7 +93,7 @@
    * a 6MB phone photo, and re-encoding through a canvas drops the EXIF — which
    * on a phone includes where the picture was taken.
    */
-  function readSwatch(file) {
+  function readSwatch(file, maxWidth = TILE) {
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
       fr.onerror = () => reject(new Error("could not read that file"));
@@ -96,7 +101,7 @@
         const im = new Image();
         im.onerror = () => reject(new Error("that file is not an image"));
         im.onload = () => {
-          const w = Math.min(900, im.naturalWidth);
+          const w = Math.min(maxWidth, im.naturalWidth);
           const h = Math.round((im.naturalHeight / im.naturalWidth) * w);
           const cv = document.createElement("canvas");
           cv.width = w; cv.height = h;
@@ -232,6 +237,57 @@
     </div>`;
   }
 
+  /* ------------------------------------------------------------------ photos */
+
+  /* Where a slot's picture is coming from right now: what the shop uploaded,
+     or what the site was built with. */
+  function currentImage(slot, fallback) {
+    const own = DOC.images?.[slot];
+    return { src: own ? "../assets/" + own : fallback, replaced: Boolean(own) };
+  }
+
+  function photoCard(slot, title, note, fallback) {
+    const { src, replaced } = currentImage(slot, fallback);
+    return `<div class="mg-photo">
+      <div class="mg-photo-img"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()"></div>
+      <div class="mg-photo-body">
+        <b>${esc(title)}</b>
+        <span class="mg-meta">${esc(note)}</span>
+        <label class="mg-replace">
+          <input type="file" accept="image/*" data-slot="${esc(slot)}">
+          <span class="btn btn-ghost btn-sm">Replace</span>
+        </label>
+        ${replaced ? `<button class="linkish" data-revert="${esc(slot)}">Use the original</button>` : ""}
+        <span class="mg-photo-state" data-state="${esc(slot)}"></span>
+      </div>
+    </div>`;
+  }
+
+  function viewPhotos() {
+    const ranges = allRanges().filter((r) => !isHidden(r.id));
+    return `
+    <h2>Photos</h2>
+    <p class="mg-lede">Your own pictures of real jobs beat stock photography every time.
+      Landscape works best. Big files are fine — they're shrunk here before uploading.</p>
+
+    <h3 class="mg-photo-head">Around the site</h3>
+    <div class="mg-photos">
+      ${IMG_SLOTS.map(([slot, title, note]) =>
+        photoCard(slot, title, note, "../" + IMG[slot])).join("")}
+    </div>
+
+    <h3 class="mg-photo-head">Collections</h3>
+    <p class="mg-lede">Most collections show a stand-in photograph because the mill didn't
+      send one. A picture of that carpet fitted in a real room is worth far more.</p>
+    <input class="mg-search" id="photoSearch" type="search" placeholder="Find a collection…">
+    <div class="mg-photos" id="photoRows">
+      ${ranges.map((r) => `<div data-search="${esc((r.name + " " + r.brand).toLowerCase())}">
+        ${photoCard("range:" + r.id, DOC.overrides[r.id]?.name || r.name,
+                    r.brand, "../" + r.photo)}
+      </div>`).join("")}
+    </div>`;
+  }
+
   function viewStyles() {
     const types = Object.keys(STYLES).filter((t) => STYLES[t].length);
     return `
@@ -280,6 +336,7 @@
     $("#panel").innerHTML =
       tab === "shop" ? viewShop()
       : tab === "collections" ? viewCollections()
+      : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()
       : viewHome();
   }
@@ -322,9 +379,11 @@
     const t = e.target;
     if (t.dataset.content !== undefined) { DOC.content[t.dataset.content] = t.value; mark(); }
     if (t.dataset.rename !== undefined) { setName(t.dataset.rename, t.value.trim(), t.dataset.original); }
-    if (t.id === "search" || t.id === "shadeSearch") {
+    if (t.id === "search" || t.id === "shadeSearch" || t.id === "photoSearch") {
       const q = t.value.trim().toLowerCase();
-      const sel = t.id === "search" ? "#rows .mg-row" : "#shadeList .mg-sw";
+      const sel = t.id === "search" ? "#rows .mg-row"
+        : t.id === "photoSearch" ? "#photoRows > div"
+        : "#shadeList .mg-sw";
       document.querySelectorAll(sel).forEach((row) => {
         row.hidden = Boolean(q) && !row.dataset.search.includes(q);
       });
@@ -351,7 +410,38 @@
       mark();
     }
     if (t.id === "newShadeFile") pickSwatch(t.files[0]);
+    if (t.dataset.slot !== undefined) replacePhoto(t.dataset.slot, t.files[0]);
   });
+
+  /* Replacing a photograph uploads it straight away rather than waiting for
+     Save, because the picture has to exist before the page can show it. The
+     document still needs saving afterwards — that is what points the slot at
+     the new file — and the button says so. */
+  async function replacePhoto(slot, file) {
+    if (!file) return;
+    const state = document.querySelector(`[data-state="${CSS.escape(slot)}"]`);
+    const say = (msg, bad) => { if (state) { state.textContent = msg; state.className = "mg-photo-state" + (bad ? " warn" : ""); } };
+    say("Preparing…");
+    try {
+      const { blob, preview } = await readSwatch(file, WIDE);
+      say("Uploading…");
+      const res = await fetch(`../api/admin/upload?slot=${encodeURIComponent(slot)}`,
+        { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "upload failed");
+
+      DOC.images = DOC.images || {};
+      DOC.images[slot] = body.path;
+      mark();
+      /* show it immediately from the local copy — the uploaded file is behind a
+         year-long cache and this avoids a round trip just to see your own photo */
+      const card = state?.closest(".mg-photo")?.querySelector(".mg-photo-img");
+      if (card) card.innerHTML = `<img src="${preview}" alt="">`;
+      say("Uploaded — press Save changes");
+    } catch (err) {
+      say(err.message, true);
+    }
+  }
 
   let pending = null;   // the measured, resized swatch waiting to be added
 
@@ -441,6 +531,9 @@
     const shades = t.closest("[data-shades]");
     if (shades) { openRange = shades.dataset.shades; return render(); }
     if (t.id === "back") { openRange = null; return render(); }
+
+    const revert = t.closest("[data-revert]");
+    if (revert) { delete DOC.images[revert.dataset.revert]; mark(); return render(); }
 
     const hide = t.closest("[data-hide]");
     if (hide) { setHidden(hide.dataset.hide, !isHidden(hide.dataset.hide)); return render(); }

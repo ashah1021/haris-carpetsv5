@@ -49,7 +49,15 @@ const JWKS_TTL = 3600;
 /* ranges = whole new collections. extra = shades added to a collection that
    came from the pipeline, kept apart so regenerating never collides with them. */
 const EMPTY = { version: 0, updated: null, content: {}, featured: null,
-                styles: {}, overrides: {}, ranges: [], extra: {} };
+                styles: {}, overrides: {}, ranges: [], extra: {}, images: {} };
+
+/* Uploaded photographs get a random suffix and are never overwritten.
+   /assets/ is served with a year's immutable cache — that is most of why the
+   site is quick — so replacing a picture at the same path would keep showing
+   the old one for a year, on the shop's screen and everyone else's. A new
+   name every time sidesteps the cache entirely. */
+const UPLOAD_DIR = "assets/uploads/";
+const UPLOAD_PATH = /^uploads\/[a-z0-9][a-z0-9-]{0,79}\.jpg$/;
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -308,6 +316,17 @@ function clean(input) {
     }
   }
 
+  /* Which photograph is showing in which slot. Keys are "hero", or
+     "range:<id>", or "shade:<range>:<colour>"; values are always a path this
+     admin uploaded, never an arbitrary URL. */
+  if (input.images && typeof input.images === "object") {
+    for (const [slot, path] of Object.entries(input.images)) {
+      const parts = slot.split(":");
+      if (parts.length > 3 || !parts.every(isSlug)) continue;
+      if (typeof path === "string" && UPLOAD_PATH.test(path)) out.images[slot] = path;
+    }
+  }
+
   if (input.extra && typeof input.extra === "object") {
     for (const [id, list] of Object.entries(input.extra)) {
       if (!isSlug(id) || !Array.isArray(list)) continue;
@@ -397,6 +416,42 @@ function handleLogout(request) {
   });
 }
 
+/** Read an upload, check it really is a JPEG, and return the bytes. */
+async function readJpeg(request) {
+  if (Number(request.headers.get("content-length") || 0) > MAX_PHOTO) return null;
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.length > MAX_PHOTO) return null;
+  // trust the bytes, not the content-type header
+  return (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) ? bytes : false;
+}
+
+/**
+ * A photograph for anywhere on the site — the home page, a collection, or a
+ * shade whose picture is being replaced. Always stored under a fresh name; the
+ * caller records which name is current in the site document.
+ */
+async function handleUpload(request, env) {
+  if (!sameOrigin(request)) return json({ error: "cross-site request refused" }, 403);
+
+  const slot = new URL(request.url).searchParams.get("slot") || "photo";
+  if (!slot.split(":").every(isSlug) || slot.split(":").length > 3) {
+    return json({ error: "bad slot" }, 400);
+  }
+
+  const bytes = await readJpeg(request);
+  if (bytes === null) return json({ error: "photo too large" }, 413);
+  if (bytes === false) return json({ error: "not a JPEG" }, 415);
+
+  const stem = slot.replace(/:/g, "-").slice(0, 60);
+  const suffix = [...crypto.getRandomValues(new Uint8Array(5))]
+    .map((n) => n.toString(16).padStart(2, "0")).join("");
+  const path = `uploads/${stem}-${suffix}.jpg`;
+
+  await env.PHOTOS.put(UPLOAD_DIR + `${stem}-${suffix}.jpg`, bytes,
+    { httpMetadata: { contentType: "image/jpeg" } });
+  return json({ ok: true, path, url: "/assets/" + path });
+}
+
 async function handlePhoto(request, env) {
   if (!sameOrigin(request)) return json({ error: "cross-site request refused" }, 403);
 
@@ -460,6 +515,9 @@ export async function adminRoutes(request, env, ctx) {
   }
   if (pathname === "/api/admin/photo" && request.method === "POST") {
     return handlePhoto(request, env);
+  }
+  if (pathname === "/api/admin/upload" && request.method === "POST") {
+    return handleUpload(request, env);
   }
   return json({ error: "not found" }, 404);
 }

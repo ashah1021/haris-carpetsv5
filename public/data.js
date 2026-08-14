@@ -87,6 +87,28 @@ const IMG = {
   rug:         P("rug-living-room.jpg"),
 };
 
+/* =========================================================================
+   PHOTOGRAPHS THE SHOP CAN REPLACE
+   Each slot has a picture shipped with the site and, once the shop uploads one
+   from /admin, an override recorded in the site document. Everything that can
+   be replaced goes through here, so a slot nobody has touched keeps the
+   original and a slot with no override never breaks.
+   ========================================================================= */
+const IMG_SLOTS = [
+  ["hero",     "Home page banner",       "The big photograph at the top of the home page"],
+  ["showroom", "The showroom",           "On the home page and About"],
+  ["fitting",  "Fitting",                "Beside the fitting service"],
+  ["stairs",   "Stairs and landings",    "Beside the stairs service"],
+  ["samples",  "Samples on the counter", "Small inset on the home page"],
+  ["velvet",   "Carpets",                "The Carpets tile in the catalogue"],
+  ["wood",     "Wood & laminate",        "The Wood tile in the catalogue"],
+  ["lvt",      "LVT",                    "The LVT tile in the catalogue"],
+  ["vinyl",    "Vinyl",                  "The Vinyl tile in the catalogue"],
+  ["rug",      "Rugs",                   "The Rugs tile in the catalogue"],
+  ["pile",     "Pile close-up",          "Stands in for collections with no photograph"],
+  ["bedroom",  "Bedroom",                "Stands in for collections with no photograph"],
+];
+
 /* ----------------------------------------------------------------------------
    VISUALISER ROOMS
    Each needs a photo and a greyscale floor mask. Masks come from

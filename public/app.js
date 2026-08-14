@@ -226,6 +226,20 @@ function favFromKeys(str) {
 /* =========================================================================
    SHARED BITS
    ========================================================================= */
+
+/* The picture for a slot: the shop's if they have uploaded one, otherwise
+   whatever the site shipped with. */
+const siteImage = (slot, fallback) =>
+  (SITE.images && SITE.images[slot]) ? P(SITE.images[slot]) : fallback;
+
+const rangePhoto = (r) => siteImage("range:" + r.id, r.photo);
+
+/* A flooring type shows one of the site photographs above, so replacing that
+   photograph changes the tile too — which is what somebody who has just
+   swapped "Carpets" expects to happen. */
+const TYPE_SLOT = { carpets: "velvet", wood: "wood", lvt: "lvt", vinyl: "vinyl", rugs: "rug" };
+const typePhoto = (t) => siteImage(TYPE_SLOT[t.id] || t.id, t.photo);
+
 function photo(src, alt, ratio = "4-3", cls = "") {
   const label = esc(alt || "Photograph");
   return `<div class="ph r-${ratio} ${cls}" data-ph="${label}">
@@ -236,7 +250,8 @@ function photo(src, alt, ratio = "4-3", cls = "") {
 /* Must match slug() in tools/emit-catalogue.py — these build the paths that
    script uploaded to, so the two have to agree exactly. */
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const swatchImg = (sw) => P("swatches/" + sw.rangeId + "/" + (sw.file || slugify(sw.name)) + ".jpg");
+const swatchImg = (sw) => siteImage("shade:" + sw.rangeId + ":" + slugify(sw.name),
+  P("swatches/" + sw.rangeId + "/" + (sw.file || slugify(sw.name)) + ".jpg"));
 const roomImg = (sw) => P("roomsets/" + sw.rangeId + "/" + slugify(sw.name) + ".jpg");
 
 /* Where the room photograph lives, in the three ways a shade can have one:
@@ -305,7 +320,7 @@ function closeZoom() {
 
 function rangeCard(r) {
   return `<a class="card" href="#/range/${esc(r.id)}">
-    ${photo(r.photo, r.alt || `${r.name} flooring`, "4-3")}
+    ${photo(rangePhoto(r), r.alt || `${r.name} flooring`, "4-3")}
     <div class="card-swatches">${r.colours.slice(0, 8).map((x) => `<span style="background:${x.hex}"></span>`).join("")}</div>
     <div class="card-body">
       <span class="k">${esc(r.brand)} · ${esc(r.code)}</span>
@@ -319,7 +334,7 @@ function rangeCard(r) {
 function typeTile(t, i) {
   const lead = i < 2;
   return `<a class="cat-tile${lead ? " lead" : ""}" href="${t.route}">
-    ${photo(t.photo, t.alt || t.name, lead ? "16-9" : "4-3")}
+    ${photo(typePhoto(t), t.alt || t.name, lead ? "16-9" : "4-3")}
     <div class="cat-cap"><h3>${esc(t.name)}</h3><p>${esc(t.blurb)}</p>
       <span class="go">View ${esc(t.name)}</span></div></a>`;
 }
@@ -334,7 +349,7 @@ function viewHome() {
   const featured = (SITE.featured || FEATURED).map(findRange).filter(Boolean).map(rangeCard).join("");
   return `
   <section class="hero">
-    ${photo(IMG.hero, "Wool carpet in a family living room", "16-9")}
+    ${photo(siteImage("hero", IMG.hero), "Wool carpet in a family living room", "16-9")}
     <div class="hero-scrim"></div>
     <div class="wrap">
       <p class="kicker">${esc(BUSINESS.since)}</p>
@@ -368,8 +383,8 @@ function viewHome() {
   <section class="sec-alt"><div class="wrap">
     <div class="split">
       <div class="split-media stack">
-        ${photo(IMG.showroom, "Inside the Hari's Carpets showroom in Hounslow", "3-2")}
-        <div class="inset">${photo(IMG.samples, "Carpet sample swatches on the showroom counter", "1-1")}</div>
+        ${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom in Hounslow", "3-2")}
+        <div class="inset">${photo(siteImage("samples", IMG.samples), "Carpet sample swatches on the showroom counter", "1-1")}</div>
       </div>
       <div class="split-copy">
         <span class="rule"></span>
@@ -395,7 +410,7 @@ function viewHome() {
 
   <section class="band"><div class="wrap">
     <div class="split flip">
-      <div class="split-media">${photo(IMG.fitting, "A carpet fitter finishing an edge with a knee kicker", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("fitting", IMG.fitting), "A carpet fitter finishing an edge with a knee kicker", "3-2")}</div>
       <div class="split-copy">
         <span class="rule on-dark"></span>
         <p class="kicker">How we work</p>
@@ -422,7 +437,7 @@ function viewHome() {
         <p class="lede" style="margin-top:14px">${esc(ABOUT.body[0])}</p>
         <p style="margin-top:22px"><a class="btn btn-ghost" href="#/about">More about us</a></p>
       </div>
-      <div class="split-media">${photo(IMG.stairs, "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
     </div>
   </div></section>`;
 }
@@ -690,7 +705,7 @@ function viewRange(id) {
     <a href="${type ? type.route : "#/catalogue"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
   <section><div class="wrap">
     <div class="range-hero">
-      ${photo(r.photo, r.alt || `${r.name} flooring`, "4-3")}
+      ${photo(rangePhoto(r), r.alt || `${r.name} flooring`, "4-3")}
       <div><span class="rule"></span><h1>${esc(r.name)}</h1><p class="lede">${esc(r.blurb)}</p>
         <ul class="spec">${spec.map(([k, v]) => `<li><div><span class="sl">${esc(k)}</span>${esc(v)}</div></li>`).join("")}</ul>
         <p style="margin-top:26px">${VISUALISER_ON
@@ -761,7 +776,7 @@ function viewAbout() {
       <div class="split-copy"><span class="rule"></span>
         <p class="kicker">Family run · Hounslow · ${esc(BUSINESS.since)}</p>
         <h2>${esc(ABOUT.lead)}</h2></div>
-      <div class="split-media">${photo(IMG.showroom, "Inside the Hari's Carpets showroom", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
     </div>
     <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${ABOUT.body.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
   </div></section>
@@ -789,7 +804,7 @@ function viewContact() {
           <div class="info-row"><span class="il">Hours</span><span>${esc(CONTACT.hours)}</span></div>
           <div class="info-row"><span class="il">Follow</span><span class="socials">${socials}</span></div>
         </div>
-        <div style="margin-top:28px">${photo(IMG.showroom, "Inside the Hari's Carpets showroom", "3-2")}</div>
+        <div style="margin-top:28px">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
       </div>
       <div><div class="form-card">
         <h3 style="margin-bottom:10px">Send an enquiry</h3>

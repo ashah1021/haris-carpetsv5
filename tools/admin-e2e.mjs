@@ -17,6 +17,9 @@ const BASE = process.argv[2] || "http://127.0.0.1:8890";
 const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing API
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
+/* Shop details, Collections, Photos, Styles, Home page */
+const TABS = 5;
+
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
   console.log(`  ${ok ? "ok  " : "FAIL"} ${name}${detail ? "  — " + detail : ""}`);
@@ -39,7 +42,7 @@ console.log("The admin page loads and knows who is signed in:");
 await go(`${BASE}/admin/`);
 check("signed in", (await page.locator("#who").textContent()).includes("@"));
 check("no sign-in gate", await page.locator("#gate").isHidden());
-check("tabs offered", (await page.locator(".mg-tab").count()) === 4);
+check("tabs offered", (await page.locator(".mg-tab").count()) === TABS);
 check("collections listed", (await page.locator("[data-tab='collections']").click(),
   await page.waitForTimeout(400), (await page.locator(".mg-row").count()) > 40),
   `${await page.locator(".mg-row").count()} collections`);
@@ -253,7 +256,7 @@ console.log("\nSigning in with the site password:");
   await p4.locator("#pwGo").click();
   await p4.waitForTimeout(1400);
   check("the right password gets in", await p4.locator("#gate").isHidden());
-  check("and the admin is usable", (await p4.locator(".mg-tab").count()) === 4);
+  check("and the admin is usable", (await p4.locator(".mg-tab").count()) === TABS);
 
   /* the password must not linger anywhere the next person could read it */
   const leaked = await p4.evaluate(() => {
@@ -263,6 +266,56 @@ console.log("\nSigning in with the site password:");
   });
   check("the password is not left in the page, storage or a readable cookie", !leaked);
   await p4.close();
+}
+
+console.log("\nReplacing a photograph:");
+{
+  const shot = new URL("../public/assets/showroom.jpg", import.meta.url).pathname;
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='photos']").click();
+  await page.waitForTimeout(700);
+  const cards = await page.locator(".mg-photo").count();
+  check("every replaceable photo is listed", cards > 50, `${cards} photographs`);
+  check("each shows what is there now",
+    (await page.locator(".mg-photo-img img").count()) > 50);
+
+  await page.locator('[data-slot="hero"]').setInputFiles(shot);
+  await page.waitForTimeout(1500);
+  check("the upload reports back",
+    (await page.locator('[data-state="hero"]').textContent()).includes("Save"),
+    await page.locator('[data-state="hero"]').textContent());
+
+  /* a collection too, since those are the 43 stand-ins worth replacing */
+  await page.locator('[data-slot="range:westex-ultima"]').setInputFiles(shot);
+  await page.waitForTimeout(1500);
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  check("saved", (await page.locator("#state").textContent()).toLowerCase().includes("saved"));
+
+  await go(`${BASE}/index.html#/`, 1600);
+  const heroSrc = await page.evaluate(() =>
+    document.querySelector(".hero img")?.getAttribute("src") || "");
+  check("the home page banner is the new photo", heroSrc.includes("assets/uploads/hero-"), heroSrc);
+
+  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  const rangeSrc = await page.evaluate(() =>
+    document.querySelector(".range-hero img")?.getAttribute("src") || "");
+  check("the collection photo followed too",
+    rangeSrc.includes("assets/uploads/range-westex-ultima-"), rangeSrc);
+
+  /* and putting it back must restore the original, not blank it */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='photos']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-revert="hero"]').click();
+  await page.waitForTimeout(400);
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/`, 1600);
+  const back = await page.evaluate(() =>
+    document.querySelector(".hero img")?.getAttribute("src") || "");
+  check("'use the original' restores the shipped photo",
+    back.includes("hero-living-room.jpg"), back);
 }
 
 console.log("\nWith Access and a password both configured — the live shape:");
@@ -362,7 +415,7 @@ console.log("\nNothing here is named like an advert:");
   await blocker.goto(`${BASE}/admin/`, { waitUntil: "networkidle" });
   await blocker.waitForTimeout(900);
   check("the header survives an ad blocker", await blocker.locator(".mg-top").isVisible());
-  check("the tabs survive", (await blocker.locator(".mg-tab:visible").count()) === 4);
+  check("the tabs survive", (await blocker.locator(".mg-tab:visible").count()) === TABS);
   check("the shop-details fields survive",
     (await blocker.locator(".mg-field:visible").count()) >= 5,
     `${await blocker.locator(".mg-field:visible").count()} fields`);

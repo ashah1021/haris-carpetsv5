@@ -19,7 +19,12 @@ const PASSWORD = "correct-horse-battery-staple";
 let session = null;
 
 let DOC = { version: 0, content: {}, featured: null, styles: {},
-            overrides: {}, ranges: [], extra: {} };
+            overrides: {}, ranges: [], extra: {}, images: {} };
+
+/* Uploads are kept in memory and served back from /assets/, because a stub
+   that accepts a photograph and then 404s it is not testing the thing that
+   matters: the site has to end up showing the picture. */
+const UPLOADS = new Map();
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
                 ".jpg": "image/jpeg", ".png": "image/png", ".json": "application/json",
@@ -75,7 +80,18 @@ createServer(async (req, res) => {
       for await (const _ of req) { /* drain the upload */ }
       return send(res, 200, JSON.stringify({ ok: true, file: url.searchParams.get("name") }));
     }
+    if (p === "/api/admin/upload") {
+      const chunks = []; for await (const c of req) chunks.push(c);
+      const slot = (url.searchParams.get("slot") || "photo").replace(/:/g, "-");
+      const path = `uploads/${slot}-${Math.random().toString(16).slice(2, 12)}.jpg`;
+      UPLOADS.set("/assets/" + path, Buffer.concat(chunks));
+      return send(res, 200, JSON.stringify({ ok: true, path, url: "/assets/" + path }));
+    }
     return send(res, 404, "{}");
+  }
+
+  if (UPLOADS.has(p)) {
+    return res.writeHead(200, { "content-type": "image/jpeg" }).end(UPLOADS.get(p));
   }
 
   const file = join(ROOT, normalize(p.endsWith("/") ? p + "index.html" : p));

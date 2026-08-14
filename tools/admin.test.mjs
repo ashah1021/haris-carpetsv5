@@ -386,6 +386,75 @@ console.log("\nPhoto upload:");
   check("an unauthenticated upload is refused", res.status === 401);
 }
 
+console.log("\nReplacing a photograph:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const upload = (slot, body = jpeg, h = headers) => adminRoutes(
+    req(`/api/admin/upload?slot=${encodeURIComponent(slot)}`, { method: "POST", headers: h, body }),
+    env, ctx);
+
+  let res = await upload("hero");
+  check("a site photograph uploads", res.status === 200);
+  const first = (await res.json()).path;
+  check("stored under uploads/", /^uploads\/hero-[0-9a-f]{10}\.jpg$/.test(first), first);
+
+  /* /assets/ is cached immutably for a year, so the same path twice would show
+     the old picture until 2027 */
+  res = await upload("hero");
+  const second = (await res.json()).path;
+  check("uploading again never reuses the path", first !== second, `${first} vs ${second}`);
+  check("both files are kept", env.PHOTOS._store.has("assets/" + first)
+    && env.PHOTOS._store.has("assets/" + second));
+
+  res = await upload("range:westex-ultima");
+  check("a collection photograph uploads", res.status === 200);
+  check("its colon is not in the filename", !(await res.json()).path.includes(":"));
+
+  res = await upload("../../etc/passwd");
+  check("a traversal attempt in the slot is refused", res.status === 400);
+  res = await upload("a:b:c:d");
+  check("an over-deep slot is refused", res.status === 400);
+  res = await upload("hero", new Uint8Array([0x3c, 0x73, 0x76, 0x67]));
+  check("a non-JPEG is refused", res.status === 415);
+  res = await upload("hero", jpeg, { origin: ORIGIN });
+  check("an unauthenticated upload is refused", res.status === 401);
+  res = await upload("hero", jpeg, { ...(await signedIn()), origin: "https://evil.example" });
+  check("a cross-site upload is refused", res.status === 403);
+}
+
+console.log("\nOnly paths this admin wrote can be pointed at:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0,
+    images: {
+      hero: "uploads/hero-abc1234567.jpg",
+      "range:westex-ultima": "uploads/range-westex-ultima-0011223344.jpg",
+      "shade:westex-ultima:alabaster": "uploads/shade-x-1122334455.jpg",
+      "bad slot": "uploads/x-1122334455.jpg",
+      "a:b:c:d": "uploads/x-1122334455.jpg",
+      offsite: "https://evil.example/tracker.gif",
+      escape: "uploads/../../../etc/passwd",
+      notjpg: "uploads/x-1122334455.svg",
+      elsewhere: "assets/swatches/westex-ultima/alabaster.jpg",
+    },
+  }) }), env, ctx);
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+  check("a site slot is kept", doc.images.hero === "uploads/hero-abc1234567.jpg");
+  check("a collection slot is kept", Boolean(doc.images["range:westex-ultima"]));
+  check("a shade slot is kept", Boolean(doc.images["shade:westex-ultima:alabaster"]));
+  check("a malformed slot is dropped", doc.images["bad slot"] === undefined);
+  check("an over-deep slot is dropped", doc.images["a:b:c:d"] === undefined);
+  check("an off-site URL is refused", doc.images.offsite === undefined);
+  check("a traversal path is refused", doc.images.escape === undefined);
+  check("a non-jpg path is refused", doc.images.notjpg === undefined);
+  check("a path outside uploads/ is refused", doc.images.elsewhere === undefined);
+}
+
 console.log("\nThe public read is public, and read-only:");
 {
   const env = makeEnv();

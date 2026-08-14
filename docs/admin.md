@@ -40,6 +40,28 @@ Photograph the swatch flat, filling the frame, in daylight. The browser shrinks
 the image before uploading, so a phone photo is fine — and re-encoding it also
 strips the EXIF, which on a phone includes where the picture was taken.
 
+## Photographs
+
+The **Photos** tab replaces any picture on the site: the home page banner, the
+showroom, the flooring-type tiles, and every collection. Only 11 of 48
+collections came with photography from the mill; the rest show a stand-in, and
+a picture of that carpet fitted in a real room is worth more than any of them.
+
+Big files are fine. The browser shrinks a photograph before uploading — 1800px
+for a site picture, 900px for a swatch — which also re-encodes it, and that
+drops the EXIF a phone attaches, including where the picture was taken.
+
+**Every upload gets a new filename and the old file is left alone.** That is
+not tidiness, it is the only thing that works: `/assets/` is served with a
+year's immutable cache, which is a large part of why the site is quick, so
+writing a new picture over an old path would keep showing the old one for a
+year — on the shop's screen as well as everyone else's. The site document
+records which file each slot points at, so "Use the original" is simply
+forgetting the override, and the shipped photograph comes back.
+
+The visualiser rooms are the exception and cannot be swapped here: each needs a
+floor mask cut to match it, which is a job for the tools in `tools/`.
+
 ## Trying it before any of the Cloudflare setup
 
     node tools/stub-api.mjs 8890
@@ -157,6 +179,7 @@ look for rather than an exact set of clicks.
 | `GET /api/admin/whoami` | signed in. Used by the page to decide whether to show the forms. |
 | `PUT /api/admin/site` | signed in, same-origin. Saves the whole document. |
 | `POST /api/admin/photo` | signed in, same-origin. Stores one swatch photograph. |
+| `POST /api/admin/upload` | signed in, same-origin. Stores a photograph under a fresh name in `uploads/`. |
 
 Writes also require the `Origin` header to match the site. Access authenticates
 with a cookie, and a cookie rides along on a cross-site request too, so without
