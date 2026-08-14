@@ -14,7 +14,7 @@ import { extname, join, normalize } from "node:path";
 
 const ROOT = new URL("../public/", import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8890);
-const MODE = process.argv[3] || "signed-in";
+const MODE = process.argv[3] || "signed-in";  // …| stale = a Worker older than the page
 const PASSWORD = "correct-horse-battery-staple";
 let session = null;
 
@@ -56,7 +56,10 @@ createServer(async (req, res) => {
       }
     }
 
-    if (MODE === "anon") return send(res, 401, '{"error":"not signed in","methods":{"access":true,"password":false}}');
+    /* a deploy that predates password sign-in: no methods field at all */
+    if (MODE === "stale") return send(res, 401, '{"error":"not signed in","reason":"no token"}');
+    /* Access configured but the host is workers.dev, where it can never apply */
+    if (MODE === "anon") return send(res, 401, '{"error":"not signed in","reason":"no token","methods":{"access":true,"password":false}}');
     if (p === "/api/admin/whoami") return send(res, 200, '{"email":"hari@haris-carpets.co.uk"}');
     if (p === "/api/admin/site" && req.method === "PUT") {
       let body = ""; for await (const c of req) body += c;

@@ -265,6 +265,32 @@ console.log("\nSigning in with the site password:");
   await p4.close();
 }
 
+console.log("\nThe gate names the actual problem:");
+{
+  /* Both of these produced the same unhelpful "check your Zero Trust path"
+     message, which sent you after a setting that could never have worked. */
+  const stale = await (await browser.newContext()).newPage();
+  await stale.goto("http://127.0.0.1:8895/admin/", { waitUntil: "networkidle" });
+  await stale.waitForTimeout(600);
+  check("a Worker older than the page says to redeploy",
+    (await stale.locator("#gateTitle").textContent()).includes("redeploy"),
+    await stale.locator("#gateTitle").textContent());
+  await stale.close();
+
+  /* a browser that genuinely believes it is on workers.dev */
+  const wd = await chromium.launch({
+    args: ["--host-resolver-rules=MAP fake-haris.workers.dev 127.0.0.1"] });
+  const p = await (await wd.newContext()).newPage();
+  await p.goto("http://fake-haris.workers.dev:8896/admin/", { waitUntil: "networkidle" });
+  await p.waitForTimeout(600);
+  const body = await p.locator("#gateBody").textContent();
+  check("on workers.dev it says Access cannot work there",
+    body.includes("can't protect a workers.dev address"));
+  check("and names the secret to set", body.includes("ADMIN_PASSWORD"));
+  check("without sending you to Zero Trust", !body.includes("Zero Trust"));
+  await wd.close();
+}
+
 console.log("\nNo JS errors in the admin:");
 check("clean run", errors.length === 0, errors.slice(0, 2).join(" | "));
 

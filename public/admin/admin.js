@@ -532,18 +532,44 @@
          identical from the outside, and the second is a ten-minute hunt if the
          page won't say which it is. */
       const body = await who.json().catch(() => ({}));
-      const canPassword = body.methods?.password;
-      gate("Sign in to manage the site",
-        canPassword && !body.methods?.access
-          ? "Enter the site password to make changes."
-          : EXPLAIN[body.reason] || "You'll be asked for your email address and sent a code."
-            + " If you've just signed in, reload the page.");
+
+      /* Older builds of the Worker answered without a methods field at all.
+         Saying so beats every other message here, because none of the advice
+         below applies until the deploy has caught up. */
+      if (!body.methods) {
+        return gate("The site needs redeploying",
+          "This copy of the Worker is older than the admin page and doesn't know"
+          + " about password sign-in yet. Check the latest build finished in"
+          + " Workers & Pages, then reload.");
+      }
+
+      const canPassword = body.methods.password;
       if (canPassword) {
+        gate("Sign in to manage the site",
+          body.methods.access
+            ? "Enter the site password, or use the email sign-in if this address is behind Cloudflare Access."
+            : "Enter the site password to make changes.");
         $("#login").hidden = false;
         $("#retry").hidden = true;
         $("#pw").focus();
+        return;
       }
-      return;
+
+      /* Access cannot guard a workers.dev address — it only covers hostnames in
+         your own zones. Telling somebody to check their Zero Trust path here
+         sends them after a setting that can never work. */
+      if (/\.workers\.dev$/i.test(location.hostname)) {
+        return gate("Set a site password to sign in here",
+          "Cloudflare Access can't protect a workers.dev address — it only covers"
+          + " hostnames in your own zones, preview URLs included. Add a secret"
+          + " called ADMIN_PASSWORD in Workers & Pages → Settings → Variables and"
+          + " Secrets (at least 12 characters), then reload. Access will start"
+          + " working on its own once the shop's domain points at this Worker.");
+      }
+
+      return gate("Sign in to manage the site",
+        EXPLAIN[body.reason] || "You'll be asked for your email address and sent a code."
+          + " If you've just signed in, reload the page.");
     }
     if (!who.ok) return gate("Something went wrong", "Status " + who.status);
 

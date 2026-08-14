@@ -160,6 +160,20 @@ dropped, ids must be slugs, colours must be hex, text is truncated, and a file
 stem containing a path is discarded. Only a signed-in admin can write, but a
 mistake in the admin should not be able to produce a page nobody can undo.
 
+## When the sign-in page won't let you in
+
+Open `/api/admin/whoami` on the site directly. The reply says which of the three
+it is:
+
+| What you see | What it means |
+|---|---|
+| no `methods` field at all | the deployed Worker is older than the admin page — the build hasn't caught up |
+| `"methods":{"access":true,"password":false}` | `ADMIN_PASSWORD` isn't set |
+| `503` and a message about 12 characters | the password is set but too short |
+
+The page checks the same thing and says so in words, so you should not normally
+need this — but it is the quickest way to be certain.
+
 ## Tests
 
     node tools/admin.test.mjs      # the API, including real signature checks
@@ -167,6 +181,8 @@ mistake in the admin should not be able to produce a page nobody can undo.
     node tools/stub-api.mjs 8891 down &
     node tools/stub-api.mjs 8892 anon &
     node tools/stub-api.mjs 8894 password &
+    node tools/stub-api.mjs 8895 stale &
+    node tools/stub-api.mjs 8896 anon &
     node tools/admin-e2e.mjs       # the page, and the shop when the API is down
 
 `admin.test.mjs` generates a real RSA key pair and signs real tokens, so the
