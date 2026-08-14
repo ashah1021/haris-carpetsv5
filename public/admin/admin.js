@@ -563,8 +563,11 @@
           "Cloudflare Access can't protect a workers.dev address — it only covers"
           + " hostnames in your own zones, preview URLs included. Add a secret"
           + " called ADMIN_PASSWORD in Workers & Pages → Settings → Variables and"
-          + " Secrets (at least 12 characters), then reload. Access will start"
-          + " working on its own once the shop's domain points at this Worker.");
+          + " Secrets (at least 12 characters). If you have already added it and"
+          + " still see this, the running version was built before the secret"
+          + " existed and cannot see it: redeploy from the Deployments tab, then"
+          + " reload. Access will start working on its own once the shop's domain"
+          + " points at this Worker.");
       }
 
       return gate("Sign in to manage the site",

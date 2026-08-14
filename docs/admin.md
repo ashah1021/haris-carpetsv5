@@ -90,6 +90,13 @@ It is a Cloudflare **secret**, never a var and never in the repo:
 Secrets are write-only once saved — nobody can read it back out of the
 dashboard, so keep a copy where the shop keeps its other passwords.
 
+**Redeploy after adding it.** A running version carries the bindings it was
+deployed with, so one built before the secret existed cannot see it: the
+dashboard shows `ADMIN_PASSWORD` sitting there encrypted while
+`/api/admin/whoami` still reports `"password": false`. Workers & Pages →
+Deployments → redeploy the latest, or push any commit. The sign-in page says
+this too, because the two states are indistinguishable from the outside.
+
 Use a long one. Four or five unrelated words is ideal: easy to read down the
 phone to a fitter, and hopeless to guess. **Under 12 characters the Worker
 refuses to enable password sign-in at all** and says so, rather than pretending
@@ -168,7 +175,7 @@ it is:
 | What you see | What it means |
 |---|---|
 | no `methods` field at all | the deployed Worker is older than the admin page — the build hasn't caught up |
-| `"methods":{"access":true,"password":false}` | `ADMIN_PASSWORD` isn't set |
+| `"methods":{"access":true,"password":false}` | `ADMIN_PASSWORD` isn't set — **or is set but the running version predates it, so redeploy** |
 | `503` and a message about 12 characters | the password is set but too short |
 
 The page checks the same thing and says so in words, so you should not normally
