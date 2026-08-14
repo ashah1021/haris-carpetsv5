@@ -232,6 +232,50 @@ function favFromKeys(str) {
 const siteImage = (slot, fallback) =>
   (SITE.images && SITE.images[slot]) ? P(SITE.images[slot]) : fallback;
 
+/* =========================================================================
+   WORDS THE SHOP CAN CHANGE
+   Opening hours, the phone number, the About text. Same idea as siteImage:
+   what /admin has saved, or what the site shipped with. Every use of these
+   values goes through say() — a value read straight off CONTACT or ABOUT is a
+   value the shop cannot change, which is how the whole Shop details tab came
+   to save happily and alter nothing.
+   ========================================================================= */
+const say = (key, fallback) => {
+  const v = SITE.content && SITE.content[key];
+  return (typeof v === "string" && v.trim()) ? v.trim() : fallback;
+};
+
+/* Paragraphs, split on blank lines so the shop writes in a plain box. */
+const sayLines = (key, fallback) => {
+  const v = say(key, null);
+  return v ? v.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean) : fallback;
+};
+
+/* A phone number typed by a human — "020 8570 6502", or with spaces missing —
+   has to become a dialable href. Strip everything but digits and a leading +,
+   and assume a UK number when it starts 0. */
+function telHref(number) {
+  const raw = String(number).replace(/[^\d+]/g, "");
+  if (raw.startsWith("+")) return "tel:" + raw;
+  if (raw.startsWith("0")) return "tel:+44" + raw.slice(1);
+  return "tel:" + raw;
+}
+
+/* The header and footer are in index.html rather than rendered, so they are
+   patched in place once the overlay arrives. */
+function applyContentToChrome() {
+  const phone = say("phone", CONTACT.phone);
+  document.querySelectorAll('a[href^="tel:"]').forEach((a) => {
+    a.href = telHref(phone);
+    if (a.textContent.trim().replace(/\s+/g, " ") !== phone) a.textContent = phone;
+  });
+  const email = say("email", CONTACT.email);
+  document.querySelectorAll('a[href^="mailto:"]').forEach((a) => {
+    a.href = "mailto:" + email;
+    a.textContent = email;
+  });
+}
+
 const rangePhoto = (r) => siteImage("range:" + r.id, r.photo);
 
 /* A flooring type shows one of the site photographs above, so replacing that
@@ -347,12 +391,17 @@ const servicesGrid = () =>
    ========================================================================= */
 function viewHome() {
   const featured = (SITE.featured || FEATURED).map(findRange).filter(Boolean).map(rangeCard).join("");
+  /* An optional line the shop can put across the top — a bank holiday, a
+     delivery delay, a sale. Empty means no strip at all rather than an empty
+     one, so leaving it blank is the normal state. */
+  const notice = say("notice", "");
   return `
+  ${notice ? `<div class="notice"><div class="wrap">${esc(notice)}</div></div>` : ""}
   <section class="hero">
     ${photo(siteImage("hero", IMG.hero), "Wool carpet in a family living room", "16-9")}
     <div class="hero-scrim"></div>
     <div class="wrap">
-      <p class="kicker">${esc(BUSINESS.since)}</p>
+      <p class="kicker">${esc(say("since", BUSINESS.since))}</p>
       <h1>The flooring shop on Hanworth Road.</h1>
       <p>Family-run since the nineties. Carpets, wood, LVT, vinyl and rugs — supplied
          and fitted by our own team, right across London and the Home Counties.</p>
@@ -433,8 +482,8 @@ function viewHome() {
     <div class="split">
       <div class="split-copy">
         <span class="rule"></span><p class="kicker">Family run, Hounslow</p>
-        <h2>${esc(ABOUT.lead)}</h2>
-        <p class="lede" style="margin-top:14px">${esc(ABOUT.body[0])}</p>
+        <h2>${esc(say("aboutLead", ABOUT.lead))}</h2>
+        <p class="lede" style="margin-top:14px">${esc(sayLines("aboutBody", ABOUT.body)[0])}</p>
         <p style="margin-top:22px"><a class="btn btn-ghost" href="#/about">More about us</a></p>
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
@@ -774,11 +823,11 @@ function viewAbout() {
   <section><div class="wrap">
     <div class="split">
       <div class="split-copy"><span class="rule"></span>
-        <p class="kicker">Family run · Hounslow · ${esc(BUSINESS.since)}</p>
-        <h2>${esc(ABOUT.lead)}</h2></div>
+        <p class="kicker">Family run · Hounslow · ${esc(say("since", BUSINESS.since))}</p>
+        <h2>${esc(say("aboutLead", ABOUT.lead))}</h2></div>
       <div class="split-media">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
     </div>
-    <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${ABOUT.body.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+    <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${sayLines("aboutBody", ABOUT.body).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
   </div></section>
   <section class="band"><div class="wrap">
     <div class="section-head"><div><span class="rule on-dark"></span><p class="kicker">Our service</p><h2>What you get</h2></div></div>
@@ -796,12 +845,12 @@ function viewContact() {
       <div>
         <span class="rule"></span>
         <p class="kicker">Come in, or we'll come to you</p><h2>Visit the showroom</h2>
-        <p class="lede" style="margin-top:14px">Pop into the Hounslow showroom, or book a free home measure and we'll come to you across ${esc(CONTACT.area)}.</p>
+        <p class="lede" style="margin-top:14px">Pop into the Hounslow showroom, or book a free home measure and we'll come to you across ${esc(say("area", CONTACT.area))}.</p>
         <div style="margin-top:24px">
-          <div class="info-row"><span class="il">Showroom</span><span><a href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">${esc(CONTACT.address)}</a></span></div>
-          <div class="info-row"><span class="il">Phone</span><span><a href="${CONTACT.phoneHref}">${esc(CONTACT.phone)}</a></span></div>
-          <div class="info-row"><span class="il">Email</span><span><a href="mailto:${CONTACT.email}">${esc(CONTACT.email)}</a></span></div>
-          <div class="info-row"><span class="il">Hours</span><span>${esc(CONTACT.hours)}</span></div>
+          <div class="info-row"><span class="il">Showroom</span><span><a href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">${esc(say("address", CONTACT.address))}</a></span></div>
+          <div class="info-row"><span class="il">Phone</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
+          <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
+          <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
           <div class="info-row"><span class="il">Follow</span><span class="socials">${socials}</span></div>
         </div>
         <div style="margin-top:28px">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
@@ -855,6 +904,7 @@ function render() {
     default:           html = viewNotFound();
   }
   app().innerHTML = html;
+  applyContentToChrome();
 
   const hash = location.hash || "#/";
   document.querySelectorAll(".nav a").forEach((a) => {

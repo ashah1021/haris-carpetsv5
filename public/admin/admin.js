@@ -33,17 +33,27 @@
   let tab = "shop";
   let openRange = null;   // which collection's shades are being edited
 
-  const FIELDS = [
-    ["hours", "Opening hours", "Mon–Sat 9am–5.30pm, Sunday closed"],
-    ["phone", "Phone number", "020 8570 6502"],
-    ["email", "Email address", "hello@haris-carpets.co.uk"],
-    ["address", "Address", "267 Hanworth Road, Hounslow"],
-    ["notice", "Notice on the home page", "Leave empty for none"],
-    ["about", "About us", "Shown on the About page"],
+  /* [key, label, help, big?] — the placeholder is what the site shows while the
+     box is empty, so it doubles as "what is on there now". */
+  const SHOP_FIELDS = [
+    ["hours",   "Opening hours",  () => CONTACT.hours],
+    ["phone",   "Phone number",   () => CONTACT.phone],
+    ["email",   "Email address",  () => CONTACT.email],
+    ["address", "Address",        () => CONTACT.address],
+    ["area",    "Areas you cover", () => CONTACT.area],
+    ["since",   "Line under the logo", () => BUSINESS.since],
+    ["notice",  "Notice across the top of the home page",
+     () => "Leave empty for none — a bank holiday, a delivery delay"],
+  ];
+
+  const ABOUT_FIELDS = [
+    ["aboutLead", "Opening line", () => ABOUT.lead],
+    ["aboutBody", "About us", () => ABOUT.body.join("\n\n"), true],
   ];
 
   const TABS = [
     ["shop", "Shop details"],
+    ["about", "About us"],
     ["collections", "Collections"],
     ["photos", "Photos"],
     ["styles", "Styles"],
@@ -134,19 +144,33 @@
 
   /* ------------------------------------------------------------------ views */
 
+  function fields(list) {
+    return `<div class="mg-fields">
+      ${list.map(([k, label, current, big]) => `
+        <label class="mg-field">
+          <span>${esc(label)}</span>
+          ${big
+            ? `<textarea rows="10" data-content="${k}" placeholder="${esc(current())}">${esc(DOC.content[k] || "")}</textarea>`
+            : `<input type="text" data-content="${k}" value="${esc(DOC.content[k] || "")}" placeholder="${esc(current())}">`}
+        </label>`).join("")}
+    </div>`;
+  }
+
   function viewShop() {
     return `
     <h2>Shop details</h2>
-    <p class="mg-lede">These show on the website. Leave a box empty to keep what's already there.</p>
-    <div class="mg-fields">
-      ${FIELDS.map(([k, label, hint]) => `
-        <label class="mg-field">
-          <span>${esc(label)}</span>
-          ${k === "about"
-            ? `<textarea rows="5" data-content="${k}" placeholder="${esc(hint)}">${esc(DOC.content[k] || "")}</textarea>`
-            : `<input type="text" data-content="${k}" value="${esc(DOC.content[k] || "")}" placeholder="${esc(hint)}">`}
-        </label>`).join("")}
-    </div>`;
+    <p class="mg-lede">These show all over the website. The faint text in a box is what's
+      on there at the moment — type over it to change it, or clear the box to put it back.</p>
+    ${fields(SHOP_FIELDS)}`;
+  }
+
+  function viewAbout() {
+    return `
+    <h2>About us</h2>
+    <p class="mg-lede">This is the About page, and the opening line is on the home page too.
+      Leave a blank line between paragraphs and they'll be laid out as paragraphs.
+      The photographs on this page are under Photos.</p>
+    ${fields(ABOUT_FIELDS)}`;
   }
 
   function viewCollections() {
@@ -335,6 +359,7 @@
       `<button class="mg-tab${tab === id ? " on" : ""}" data-tab="${id}">${esc(label)}</button>`).join("");
     $("#panel").innerHTML =
       tab === "shop" ? viewShop()
+      : tab === "about" ? viewAbout()
       : tab === "collections" ? viewCollections()
       : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()

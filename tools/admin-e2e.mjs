@@ -17,14 +17,20 @@ const BASE = process.argv[2] || "http://127.0.0.1:8890";
 const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing API
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
-/* Shop details, Collections, Photos, Styles, Home page */
-const TABS = 5;
+/* Shop details, About us, Collections, Photos, Styles, Home page */
+const TABS = 6;
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
   console.log(`  ${ok ? "ok  " : "FAIL"} ${name}${detail ? "  — " + detail : ""}`);
   ok ? pass++ : fail++;
 };
+
+/* what the site ships with, read from data.js rather than copied here so the
+   test cannot drift from it */
+const CONTACT_HOURS = (await import("node:fs")).readFileSync(
+  new URL("../public/data.js", import.meta.url), "utf8")
+  .match(/hours: "([^"]+)"/)[1];
 
 const browser = await chromium.launch();
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -46,6 +52,82 @@ check("tabs offered", (await page.locator(".mg-tab").count()) === TABS);
 check("collections listed", (await page.locator("[data-tab='collections']").click(),
   await page.waitForTimeout(400), (await page.locator(".mg-row").count()) > 40),
   `${await page.locator(".mg-row").count()} collections`);
+
+console.log("\nShop details reach the site:");
+{
+  /* Every one of these saved happily and changed nothing on the site, because
+     the pages read CONTACT and ABOUT directly and never looked at what the
+     admin had stored. Each assertion below is a page, not a saved value. */
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(400);
+  const typed = {
+    hours: "Mon-Sat 9 to 5.30, Sunday closed",
+    phone: "020 1111 2222",
+    email: "hello@haris-test.co.uk",
+    address: "1 Test Street, Hounslow",
+    notice: "Closed Monday for the bank holiday",
+  };
+  for (const [k, v] of Object.entries(typed)) {
+    await page.locator(`[data-content="${k}"]`).fill(v);
+  }
+  await page.locator("[data-tab='about']").click();
+  await page.waitForTimeout(300);
+  await page.locator('[data-content="aboutLead"]').fill("A test opening line.");
+  await page.locator('[data-content="aboutBody"]').fill("First paragraph.\n\nSecond paragraph.");
+  await page.locator("#save").click();
+  await page.waitForTimeout(800);
+
+  await go(`${BASE}/index.html#/contact`, 1600);
+  const contact = await page.evaluate(() => document.querySelector("#app").textContent);
+  check("opening hours show", contact.includes(typed.hours), typed.hours);
+  check("the address shows", contact.includes(typed.address));
+  check("the phone number shows", contact.includes(typed.phone));
+  check("the email shows", contact.includes(typed.email));
+  const tel = await page.evaluate(() =>
+    document.querySelector('#app a[href^="tel:"]')?.getAttribute("href"));
+  check("and the phone link dials the new number", tel === "tel:+442011112222", tel);
+
+  const headerTel = await page.evaluate(() =>
+    document.querySelector('.site-header a[href^="tel:"]')?.textContent.trim());
+  check("the header button changes too", headerTel === typed.phone, headerTel);
+  const footMail = await page.evaluate(() =>
+    document.querySelector('footer a[href^="mailto:"]')?.textContent.trim());
+  check("so does the footer email", footMail === typed.email, footMail);
+
+  await go(`${BASE}/index.html#/`, 1500);
+  check("the notice shows on the home page",
+    (await page.locator(".notice").textContent()).includes(typed.notice));
+
+  await go(`${BASE}/index.html#/about`, 1500);
+  const about = await page.evaluate(() => document.querySelector("#app").textContent);
+  check("the About opening line shows", about.includes("A test opening line."));
+  check("both About paragraphs show",
+    about.includes("First paragraph.") && about.includes("Second paragraph."));
+  check("a blank line became two paragraphs",
+    (await page.locator("#app .prose p").count()) === 2,
+    `${await page.locator("#app .prose p").count()} paragraphs`);
+
+  /* clearing a box must restore the shipped wording, not blank the page */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-content="notice"]').fill("");
+  await page.locator('[data-content="hours"]').fill("");
+  await page.locator("#save").click();
+  await page.waitForTimeout(800);
+  await go(`${BASE}/index.html#/`, 1500);
+  check("clearing the notice removes the strip", (await page.locator(".notice").count()) === 0);
+  await go(`${BASE}/index.html#/contact`, 1500);
+  check("clearing a box restores the original wording",
+    (await page.evaluate(() => document.querySelector("#app").textContent)).includes(CONTACT_HOURS),
+    CONTACT_HOURS);
+
+  /* hand the next section the admin with Collections open, which is where it
+     was before this block was slotted in */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='collections']").click();
+  await page.waitForTimeout(400);
+}
 
 console.log("\nSearching 48 collections:");
 {

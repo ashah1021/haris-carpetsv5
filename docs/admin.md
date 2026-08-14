@@ -40,6 +40,26 @@ Photograph the swatch flat, filling the frame, in daylight. The browser shrinks
 the image before uploading, so a phone photo is fine — and re-encoding it also
 strips the EXIF, which on a phone includes where the picture was taken.
 
+## Shop details and About us
+
+Two tabs of plain boxes: opening hours, phone, email, address, areas covered,
+the line under the logo, and an optional notice across the top of the home
+page. About us is separate because it is prose rather than settings — an
+opening line, then the body, with a blank line between paragraphs.
+
+The faint grey text in an empty box is what the site is showing right now, so
+the form doubles as a view of the current wording. **Clearing a box restores
+that original rather than blanking the page** — there is no way to end up with
+an empty About page by deleting everything.
+
+Changing the phone number changes the header button, the footer and the
+contact page together, and the dial link is rebuilt from whatever was typed:
+`020 8570 6502` becomes `tel:+442085706502`.
+
+Everything the shop can change goes through `say()` in app.js. Reading
+`CONTACT.hours` directly anywhere is a value the shop cannot change, and is how
+this tab came to save happily and alter nothing at all.
+
 ## Photographs
 
 The **Photos** tab replaces any picture on the site: the home page banner, the

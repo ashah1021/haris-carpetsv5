@@ -639,3 +639,10 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
   .will-reveal, .will-reveal.seen { opacity: 1 !important; transform: none !important; }
   .zoom-panel, .zoom { animation: none !important; }
 }
+
+/* A line the shop can put across the top of the home page from /admin — a bank
+   holiday, a delivery delay. Absent unless they have written one. */
+.notice {
+  background: var(--blue); color: #fff; font-size: 14.5px;
+  padding: 11px 0; text-align: center;
+}
