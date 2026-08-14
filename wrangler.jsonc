@@ -29,5 +29,20 @@
       "binding": "PHOTOS",
       "bucket_name": "haris-carpets"
     }
-  ]
+  ],
+
+  // Who is allowed into /admin. Both come from the Cloudflare Access
+  // application that sits in front of it — see docs/admin.md for where to find
+  // them. They are identifiers, not secrets: the team domain is public and the
+  // AUD tag only names the application. What actually keeps people out is the
+  // signature check in worker-admin.js, which verifies every token against
+  // Cloudflare's own public keys.
+  //
+  // Leave these empty and the admin API answers 503 with an explanation. That
+  // is deliberate — an unconfigured admin must refuse everyone, never admit
+  // everyone.
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  }
 }

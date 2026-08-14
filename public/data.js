@@ -1589,4 +1589,8 @@ const CATALOGUE = [
 ];
 
 /* Featured ranges on the home page */
-const FEATURED = ["elysian-velvet", "pure-luxury", "fine-westex-twist"];
+/* Featured ranges on the home page. These ids are checked by the smoke test:
+   they were left behind when the catalogue was regenerated with brand-prefixed
+   ids, and three dead ids meant the home page quietly showed no featured
+   ranges at all. Editable from /admin. */
+const FEATURED = ["westex-elysian", "westex-pure-luxury", "westex-fine-westex-twist"];

@@ -69,7 +69,15 @@ const page = await ctx.newPage();
 
 const errors = [], badResponses = [];
 page.on("pageerror", (e) => errors.push(e.message));
-page.on("response", (r) => { if (r.status() >= 400) badResponses.push(`${r.status()} ${r.url()}`); });
+page.on("response", (r) => {
+  /* /api/site is the admin overlay, served by the Worker. This file runs
+     against a plain static server, so its absence here is the point rather
+     than a fault: the shop has to be complete without it. There is an explicit
+     assertion for that below. */
+  if (r.status() >= 400 && !r.url().includes("/api/site")) {
+    badResponses.push(`${r.status()} ${r.url()}`);
+  }
+});
 
 /* Walk the page the way a visitor does. Sections reveal on scroll, so measuring
    without scrolling would report whatever happened to be above the fold — and
@@ -140,6 +148,20 @@ check("no filename artefacts as shade names", data.bad.length === 0, data.bad.sl
 check("every range has shades or says why not", data.noColour.length === 0, data.noColour.join(", "));
 check("non-carpet ranges aren't described as carpet", data.wrongAlt.length === 0, data.wrongAlt.slice(0, 2).join(", "));
 check("lvt catalogue is populated", data.lvt >= 30, `${data.lvt} lvt shades`);
+
+/* Three dead ids here meant the home page showed no featured ranges at all,
+   and nothing said so — the list is filtered by findRange, so a stale id is
+   indistinguishable from an empty section. */
+const feat = await page.evaluate(() =>
+  FEATURED.map((id) => ({ id, ok: CATALOGUE.some((r) => r.id === id) })));
+check("featured ranges all exist", feat.every((f) => f.ok),
+  feat.filter((f) => !f.ok).map((f) => f.id).join(", ") || `${feat.length} on the home page`);
+
+/* The overlay is optional by design. This file is served without one, so the
+   fact that everything above passed is the proof — but assert it, because a
+   future change could make the catalogue wait on a request that never lands. */
+const noOverlay = await page.evaluate(() => RANGES === CATALOGUE || RANGES.length >= CATALOGUE.length);
+check("the shop is complete with no admin overlay", noOverlay);
 console.log(`       (${data.ranges} ranges, ${data.shades} shades)`);
 
 /* Every tile the catalogue points at must exist. A 404 here is invisible on

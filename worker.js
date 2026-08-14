@@ -17,6 +17,8 @@
  * photographs on it.
  */
 
+import { adminRoutes } from "./worker-admin.js";
+
 const PHOTO_DIR = "/assets/";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 
@@ -60,6 +62,20 @@ async function servePhoto(request, env, ctx, key) {
 
 export default {
   async fetch(request, env, ctx) {
+    /* The admin API and the shop's own settings. Answered before the photo
+       route because /api/ is not a photograph, and before static assets
+       because there is no file there to serve. */
+    if (env.PHOTOS) {
+      try {
+        const res = await adminRoutes(request, env, ctx);
+        if (res) return res;
+      } catch (err) {
+        console.error("admin route failed:", err && err.message);
+        return new Response(JSON.stringify({ error: "admin unavailable" }),
+          { status: 500, headers: { "content-type": "application/json" } });
+      }
+    }
+
     try {
       if (request.method === "GET" || request.method === "HEAD") {
         const key = photoKey(new URL(request.url).pathname);

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Manage the site — Hari's Carpets</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+
+<header class="ad-top">
+  <div class="wrap">
+    <a class="ad-logo" href="../">HARI'S CARPETS</a>
+    <span class="ad-tag">Manage the site</span>
+    <span class="ad-who" id="who"></span>
+    <span class="ad-state" id="state"></span>
+    <button class="btn btn-solid btn-sm" id="save" disabled>Save changes</button>
+  </div>
+</header>
+
+<nav class="ad-tabs"><div class="wrap" id="tabs"></div></nav>
+
+<main class="wrap" id="panel">
+  <p class="ad-loading">Loading…</p>
+</main>
+
+<!-- Nothing here is secret; the API is what's protected. But there is no point
+     showing the forms to somebody who cannot save, so the page checks first. -->
+<div class="ad-gate" id="gate" hidden>
+  <div class="ad-gate-card">
+    <h1 id="gateTitle">Sign in to manage the site</h1>
+    <p id="gateBody"></p>
+    <a class="btn btn-solid" href="./">Try again</a>
+    <a class="btn btn-ghost" href="../">Back to the website</a>
+  </div>
+</div>
+
+<script src="../data.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

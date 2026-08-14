@@ -37,7 +37,7 @@
   };
   /* Ranges with no shades yet are left out — there is nothing to put on the
      floor, so offering the collection only leads to an empty picker. */
-  const rangesFor = (type) => CATALOGUE.filter((r) => r.type === type.id && r.colours.length);
+  const rangesFor = (type) => RANGES.filter((r) => r.type === type.id && r.colours.length);
 
   /* shades on offer right now: one collection, or a name search across the type */
   function shades() {

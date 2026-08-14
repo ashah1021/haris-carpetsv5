@@ -8,15 +8,12 @@
  * the site down, and that only bare .jpg files directly inside /assets/ are
  * ever pulled from R2.
  *
- * worker.js is loaded through a data: URL because the repo has no package.json
- * declaring "type": "module", so Node would otherwise read the .js as CommonJS.
+ * Loading is handled by load-worker.mjs — see the note there on why the Worker
+ * cannot simply be imported by path.
  */
-import { readFileSync } from "node:fs";
+import { loadWorker } from "./load-worker.mjs";
 
-const source = readFileSync(new URL("../worker.js", import.meta.url), "utf8");
-const worker = (await import(
-  "data:text/javascript;base64," + Buffer.from(source).toString("base64")
-)).default;
+const worker = (await loadWorker()).default;
 
 const ETAG = '"abc123"';
 let cacheStore = new Map();

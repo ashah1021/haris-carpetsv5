@@ -16,9 +16,62 @@
 const $ = (sel, el = document) => el.querySelector(sel);
 const app = () => $("#app");
 
-const findRange = (id) => CATALOGUE.find((r) => r.id === id);
+/* =========================================================================
+   THE LIVE CATALOGUE
+   CATALOGUE in data.js is generated from supplier photography and is never
+   edited. What the shop changes from /admin — discontinued ranges, new
+   collections, shades that are out of stock, which range sits under which
+   style — arrives separately from /api/site and is merged over the top here.
+
+   RANGES is that merge, and everything on the site reads it rather than
+   CATALOGUE. Until the overlay loads, or if it never does, RANGES *is*
+   CATALOGUE: a shop with no admin changes and a shop whose API is down look
+   identical, which is the point. Nothing on this page waits for the network.
+   ========================================================================= */
+let RANGES = CATALOGUE;
+let SITE = { version: 0, content: {}, featured: null, styles: {}, overrides: {}, ranges: [] };
+
+const findRange = (id) => RANGES.find((r) => r.id === id);
 const findType = (id) => TYPES.find((t) => t.id === id);
-const rangesOfType = (type) => CATALOGUE.filter((r) => r.type === type);
+const rangesOfType = (type) => RANGES.filter((r) => r.type === type);
+
+/* A hidden range or shade is dropped from the catalogue but its images and its
+   key survive, so a saved shortlist or a shared link still resolves. Deleting
+   would quietly empty somebody's list; hiding does not. */
+function applyOverlay(site) {
+  SITE = { ...SITE, ...site };
+  const over = SITE.overrides || {};
+  const extra = SITE.extra || {};
+  const added = (SITE.ranges || []).map((r) => ({ ...r, real: true, added: true }));
+
+  RANGES = [...CATALOGUE, ...added]
+    .filter((r) => !over[r.id]?.hidden)
+    .map((r) => {
+      const o = over[r.id] || {};
+      /* shades added from /admin sit after the ones the pipeline measured */
+      const colours = [...r.colours, ...(extra[r.id] || [])]
+        .filter((c) => !over[`${r.id}:${slugify(c.name)}`]?.hidden)
+        .map((c) => {
+          const co = over[`${r.id}:${slugify(c.name)}`];
+          return co?.name ? { ...c, name: co.name } : c;
+        });
+      return { ...r, name: o.name || r.name, note: o.note, colours };
+    });
+}
+
+/* The overlay is fetched, never bundled, so a change is live in seconds
+   without a deploy. A failure here is silent on purpose — the generated
+   catalogue is a complete, working site on its own. */
+async function loadOverlay() {
+  try {
+    const res = await fetch("api/site", { headers: { accept: "application/json" } });
+    if (!res.ok) return false;
+    const site = await res.json();
+    if (!site || typeof site !== "object") return false;
+    applyOverlay(site);
+    return true;
+  } catch { return false; }
+}
 const esc = (s) => String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
 
 const SAMPLES_ON = typeof FEATURES !== "undefined" && FEATURES.samples;
@@ -79,7 +132,7 @@ function colourFamily(hex) {
 /* every colour in the catalogue, flattened, each knowing its parent range */
 function allSwatches(typeId) {
   const out = [];
-  for (const range of CATALOGUE) {
+  for (const range of RANGES) {
     if (typeId && range.type !== typeId) continue;
     for (const col of range.colours) {
       out.push({
@@ -278,7 +331,7 @@ const servicesGrid = () =>
    VIEWS
    ========================================================================= */
 function viewHome() {
-  const featured = FEATURED.map(findRange).filter(Boolean).map(rangeCard).join("");
+  const featured = (SITE.featured || FEATURED).map(findRange).filter(Boolean).map(rangeCard).join("");
   return `
   <section class="hero">
     ${photo(IMG.hero, "Wool carpet in a family living room", "16-9")}
@@ -401,8 +454,14 @@ function facetCounts(all, active) {
 /* Only styles that actually have stock behind them. An unpopulated style is
    skipped rather than rendered as a dead end. */
 const stylesFor = (typeId) =>
-  (STYLES[typeId] || []).map((st) => ({ ...st, list: st.ranges.map(findRange).filter(Boolean) }))
-                        .filter((st) => st.list.length);
+  (STYLES[typeId] || []).map((st) => {
+    /* The shop can re-file a range from /admin — that is how the eight
+       unverified fibre assignments get corrected without a deploy. An admin
+       list replaces the built-in one for that style; no entry means the
+       built-in stands. */
+    const ids = SITE.styles?.[typeId]?.[st.id] || st.ranges;
+    return { ...st, list: ids.map(findRange).filter(Boolean) };
+  }).filter((st) => st.list.length);
 
 const findStyle = (typeId, styleId) => stylesFor(typeId).find((s) => s.id === styleId);
 
@@ -897,4 +956,10 @@ window.addEventListener("DOMContentLoaded", () => {
   render();
   favSyncCount();
   $("#navToggle").addEventListener("click", () => $(".nav").classList.toggle("show"));
+
+  /* Render first, merge second. The generated catalogue is already in the page,
+     so the shop is readable before this request is even sent; when it lands,
+     anything the admin changed redraws. Deliberately not awaited — a slow or
+     missing API must cost the visitor nothing. */
+  loadOverlay().then((changed) => { if (changed) { favSyncCount(); render(); } });
 });

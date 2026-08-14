@@ -1,0 +1,146 @@
+/* =========================================================================
+   ADMIN — the shop's own control panel.
+   Reuses the site's variables and buttons so it looks like part of the same
+   thing, but deliberately plainer: this is a workbench, not a shop window.
+   ========================================================================= */
+
+body.admin { background: var(--off); }
+
+/* Everything here that gets hidden — the sign-in gate, filtered rows, the new
+   collection form — is a flex or grid box, and any display rule of our own
+   beats the browser's own [hidden] { display: none }. Without this the element
+   stays laid out and only looks empty: the gate covered the page and swallowed
+   clicks, and both search boxes filtered nothing. */
+[hidden] { display: none !important; }
+
+.ad-top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--paper); border-bottom: 1px solid var(--line);
+}
+.ad-top .wrap { display: flex; align-items: center; gap: 16px; padding: 14px 0; flex-wrap: wrap; }
+.ad-logo {
+  font-family: var(--f-display); font-size: 19px; letter-spacing: .04em;
+  color: var(--blue); text-decoration: none; border-bottom: 2px solid var(--yellow);
+}
+.ad-tag {
+  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--muted);
+}
+.ad-who { font-size: 13px; color: var(--muted); margin-left: auto; }
+.ad-state { font-size: 13px; color: var(--muted); min-width: 0; }
+.ad-state.ok { color: #15803d; }
+.ad-state.warn { color: #9a3412; }
+
+.ad-tabs { background: var(--paper); border-bottom: 1px solid var(--line); }
+.ad-tabs .wrap { display: flex; gap: 4px; flex-wrap: wrap; }
+.ad-tab {
+  background: none; border: 0; border-bottom: 3px solid transparent;
+  font-family: var(--f-display); font-size: 14px; letter-spacing: .04em;
+  padding: 13px 16px; color: var(--ink-soft); cursor: pointer;
+}
+.ad-tab:hover { color: var(--blue); }
+.ad-tab.on { color: var(--blue); border-bottom-color: var(--yellow); }
+
+#panel { padding: 34px 0 90px; }
+#panel h2 { font-family: var(--f-display); font-size: 26px; font-weight: 500; margin: 0 0 8px; }
+#panel h3 { font-family: var(--f-display); font-size: 18px; font-weight: 500; margin: 0 0 10px; }
+.ad-lede { color: var(--muted); max-width: 74ch; margin: 0 0 22px; line-height: 1.6; }
+.ad-loading { color: var(--muted); padding: 40px 0; }
+.ad-back { margin: 0 0 14px; }
+.ad-err { color: #9a3412; font-size: 13.5px; margin: 10px 0 0; min-height: 1em; }
+
+/* ---- fields ---- */
+.ad-fields { display: grid; gap: 18px; max-width: 620px; }
+.ad-field { display: flex; flex-direction: column; gap: 6px; }
+.ad-field > span {
+  font-family: var(--f-display); font-size: 11.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.ad-field input[type="text"], .ad-field textarea, .ad-search {
+  padding: 11px 13px; border: 1px solid var(--line); border-radius: 2px;
+  background: var(--paper); font: inherit; font-size: 15px; color: var(--ink); width: 100%;
+}
+.ad-field input:focus, .ad-field textarea:focus, .ad-search:focus {
+  outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent;
+}
+.ad-search { max-width: 340px; margin: 14px 0 0; display: inline-block; }
+
+/* ---- rows of collections ---- */
+.ad-rows { margin-top: 18px; border-top: 1px solid var(--line); }
+.ad-row {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 13px 4px; border-bottom: 1px solid var(--line); background: var(--paper);
+}
+.ad-row.off { opacity: .5; }
+.ad-row.off .ad-row-main b { text-decoration: line-through; }
+.ad-row-main { flex: 1; min-width: 220px; }
+.ad-row-main b { font-family: var(--f-display); font-size: 16px; font-weight: 500; display: block; }
+.ad-meta { font-size: 13px; color: var(--muted); }
+.ad-badge {
+  background: var(--blue-tint); color: var(--blue-deep); border-radius: 2px;
+  padding: 1px 7px; font-size: 11.5px;
+}
+.ad-row-acts { display: flex; gap: 8px; }
+
+/* ---- shades ---- */
+.ad-swatches { display: grid; gap: 8px; margin-top: 24px; }
+.ad-sw {
+  display: flex; align-items: center; gap: 12px; background: var(--paper);
+  border: 1px solid var(--line); padding: 8px 10px;
+}
+.ad-sw.off { opacity: .5; }
+.ad-chip { width: 34px; height: 34px; flex: none; border: 1px solid var(--line); }
+.ad-chip.big { width: 54px; height: 54px; }
+.ad-sw input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid transparent;
+  background: transparent; font: inherit; font-size: 15px; border-radius: 2px; }
+.ad-sw input:hover { border-color: var(--line); background: var(--paper); }
+.ad-sw input:focus { outline: 2px solid var(--blue); outline-offset: 1px; background: var(--paper); }
+
+.ad-newrange {
+  background: var(--paper); border: 1px solid var(--line);
+  padding: 18px 20px; margin: 16px 0 0;
+}
+.ad-newrange select {
+  padding: 11px 13px; border: 1px solid var(--line); border-radius: 2px;
+  background: var(--paper); font: inherit; font-size: 15px; color: var(--ink); width: 100%;
+}
+
+.ad-addshade {
+  background: var(--blue-tint); border-left: 4px solid var(--yellow);
+  padding: 18px 20px; margin: 0 0 10px;
+}
+.ad-addshade p { margin: 0 0 14px; font-size: 14px; color: var(--blue-ink); max-width: 70ch; }
+.ad-addrow { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; }
+.ad-addrow .ad-field { min-width: 220px; }
+.ad-measured { display: flex; align-items: center; gap: 10px; min-height: 54px; }
+.ad-measured img { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--line); }
+
+/* ---- tick lists ---- */
+.ad-styleblock { margin: 0 0 34px; }
+.ad-style { background: var(--paper); border: 1px solid var(--line); padding: 16px 18px; margin: 0 0 12px; }
+.ad-style-head { margin-bottom: 12px; }
+.ad-style-head b { font-family: var(--f-display); font-size: 16px; font-weight: 500; margin-right: 10px; }
+.ad-ticks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 18px; }
+.ad-ticks.wide { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 18px; }
+.ad-tick { display: flex; align-items: start; gap: 9px; font-size: 14.5px; padding: 4px 0; cursor: pointer; }
+.ad-tick input { margin-top: 3px; accent-color: var(--blue); flex: none; }
+.ad-tick i { display: block; font-style: normal; font-size: 12.5px; color: var(--muted); }
+
+/* ---- the sign-in gate ---- */
+.ad-gate {
+  position: fixed; inset: 0; z-index: 50; background: var(--off);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+/* see the [hidden] rule at the top of this file for why that matters here */
+.ad-gate-card {
+  background: var(--paper); border: 1px solid var(--line); padding: 40px;
+  max-width: 480px; text-align: center;
+}
+.ad-gate-card h1 { font-family: var(--f-display); font-size: 24px; font-weight: 500; margin: 0 0 12px; }
+.ad-gate-card p { color: var(--muted); line-height: 1.6; margin: 0 0 24px; }
+.ad-gate-card .btn { margin: 0 4px; }
+
+@media (max-width: 700px) {
+  .ad-who { margin-left: 0; width: 100%; }
+  .ad-row-acts { width: 100%; }
+}
