@@ -42,7 +42,7 @@
   // is deliberate — an unconfigured admin must refuse everyone, never admit
   // everyone.
   "vars": {
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
+    "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c"
   }
 }
