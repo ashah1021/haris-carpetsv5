@@ -464,13 +464,13 @@
       const res = await fetch("../api/admin/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password: $("#pw").value }),
+        body: JSON.stringify({ password: $("#adminPassword").value }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         $("#pwErr").textContent = body.error || "Could not sign in.";
         btn.disabled = false;
-        $("#pw").select();
+        $("#adminPassword").select();
         return;
       }
       location.reload();
@@ -551,7 +551,20 @@
             : "Enter the site password to make changes.");
         $("#login").hidden = false;
         $("#retry").hidden = true;
-        $("#pw").focus();
+        $("#adminPassword").focus();
+        /* A password box that never painted looks exactly like a feature we
+           forgot to build, and "there's nowhere to enter the password" is not
+           a thing anyone can act on. Content blockers and some password
+           managers do remove fields; if that happens, say so. */
+        requestAnimationFrame(() => {
+          const box = $("#adminPassword");
+          if (box && box.offsetHeight === 0) {
+            $("#gateBody").textContent =
+              "The password box is on this page but something in the browser is"
+              + " hiding it — usually an ad or privacy extension. Try a private"
+              + " window, or turn extensions off for this site.";
+          }
+        });
         return;
       }
 

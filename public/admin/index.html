@@ -33,11 +33,16 @@
     <h1 id="gateTitle">Sign in to manage the site</h1>
     <p id="gateBody"></p>
 
-    <form class="ad-login" id="login" hidden>
-      <label class="ad-field">
+    <!-- A real form with a named field, rather than a bare input: password
+         managers fill it properly, and generic ids like "pw" are the sort of
+         thing content blockers carry cosmetic rules for. -->
+    <form class="ad-login" id="login" method="post" action="#" hidden>
+      <label class="ad-field" for="adminPassword">
         <span>Site password</span>
-        <input type="password" id="pw" autocomplete="current-password" required>
       </label>
+      <input class="ad-pw" type="password" id="adminPassword" name="password"
+             autocomplete="current-password" autocapitalize="off"
+             spellcheck="false" required>
       <button class="btn btn-solid" type="submit" id="pwGo">Sign in</button>
       <p class="ad-err" id="pwErr"></p>
     </form>

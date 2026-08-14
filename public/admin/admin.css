@@ -143,12 +143,13 @@ body.admin { background: var(--off); }
 }
 
 .ad-login { text-align: left; margin: 0 0 26px; }
-.ad-login .ad-field { margin-bottom: 14px; }
-.ad-login input[type="password"] {
+.ad-login .ad-field { margin-bottom: 6px; }
+.ad-pw {
   padding: 11px 13px; border: 1px solid var(--line); border-radius: 2px;
-  background: var(--paper); font: inherit; font-size: 16px; color: var(--ink); width: 100%;
+  background: var(--paper); font: inherit; font-size: 16px; color: var(--ink);
+  width: 100%; margin-bottom: 14px;
 }
-.ad-login input:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
+.ad-pw:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
 .ad-login .btn { width: 100%; justify-content: center; margin: 0; }
 .ad-login .ad-err { text-align: center; }
 

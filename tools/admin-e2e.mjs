@@ -241,7 +241,7 @@ console.log("\nSigning in with the site password:");
   check("and it says what to do",
     (await p4.locator("#gateBody").textContent()).toLowerCase().includes("password"));
 
-  await p4.locator("#pw").fill("wrong one");
+  await p4.locator("#adminPassword").fill("wrong one");
   await p4.locator("#pwGo").click();
   await p4.waitForTimeout(600);
   check("a wrong password is rejected in the page",
@@ -249,7 +249,7 @@ console.log("\nSigning in with the site password:");
     await p4.locator("#pwErr").textContent());
   check("and the gate is still up", await p4.locator("#gate").isVisible());
 
-  await p4.locator("#pw").fill("correct-horse-battery-staple");
+  await p4.locator("#adminPassword").fill("correct-horse-battery-staple");
   await p4.locator("#pwGo").click();
   await p4.waitForTimeout(1400);
   check("the right password gets in", await p4.locator("#gate").isHidden());
@@ -263,6 +263,45 @@ console.log("\nSigning in with the site password:");
   });
   check("the password is not left in the page, storage or a readable cookie", !leaked);
   await p4.close();
+}
+
+console.log("\nWith Access and a password both configured — the live shape:");
+{
+  /* This combination was never tested. Each was covered on its own, and the
+     one that actually shipped was the pair. */
+  const p5 = await (await browser.newContext()).newPage();
+  await p5.goto("http://127.0.0.1:8897/admin/", { waitUntil: "networkidle" });
+  await p5.waitForTimeout(700);
+  check("the form is shown", await p5.locator("#login").isVisible());
+  check("the password box is shown", await p5.locator("#adminPassword").isVisible());
+  const box = await p5.locator("#adminPassword").boundingBox();
+  check("and it has been painted, not just present",
+    box && box.height > 20 && box.width > 100,
+    box ? `${Math.round(box.width)}x${Math.round(box.height)}` : "no box");
+  check("its label is shown too",
+    await p5.locator('label[for="adminPassword"]').isVisible());
+  check("the box is focused ready to type",
+    await p5.evaluate(() => document.activeElement?.id) === "adminPassword");
+
+  await p5.close();
+
+  /* What a content blocker actually does — a cosmetic rule in the stylesheet,
+     in place before any script runs. Injecting it afterwards would land after
+     the page had already checked, and prove nothing. */
+  const blocked = await (await browser.newContext()).newPage();
+  await blocked.route("**/admin.css", async (route) => {
+    const res = await route.fetch();
+    await route.fulfill({
+      response: res,
+      body: (await res.text()) + "\n#adminPassword { display: none !important }",
+    });
+  });
+  await blocked.goto("http://127.0.0.1:8897/admin/", { waitUntil: "networkidle" });
+  await blocked.waitForTimeout(900);
+  check("a field hidden by the browser is reported, not left blank",
+    (await blocked.locator("#gateBody").textContent()).includes("hiding it"),
+    await blocked.locator("#gateBody").textContent());
+  await blocked.close();
 }
 
 console.log("\nThe gate names the actual problem:");

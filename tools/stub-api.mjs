@@ -37,8 +37,10 @@ createServer(async (req, res) => {
     if (p === "/api/site") return send(res, 200, JSON.stringify(DOC));
     if (MODE === "unconfigured") return send(res, 503, '{"error":"Sign-in is not set up yet."}');
 
-    /* password mode: the gate offers a box, and the right password gets in */
-    if (MODE === "password") {
+    /* password mode: the gate offers a box, and the right password gets in.
+       "both" is the live shape — Access configured AND a password set — which
+       is the combination that shipped a sign-in form with no input in it. */
+    if (MODE === "password" || MODE === "both") {
       const signedIn = (req.headers.cookie || "").includes("haris_admin=" + session);
       if (p === "/api/admin/login" && req.method === "POST") {
         let body = ""; for await (const c of req) body += c;
@@ -51,8 +53,8 @@ createServer(async (req, res) => {
           .end('{"ok":true}');
       }
       if (!signedIn || !session) {
-        return send(res, 401, '{"error":"not signed in","reason":"no password session",'
-          + '"methods":{"access":false,"password":true}}');
+        return send(res, 401, '{"error":"not signed in","reason":"no token",'
+          + `"methods":{"access":${MODE === "both"},"password":true}}`);
       }
     }
 
