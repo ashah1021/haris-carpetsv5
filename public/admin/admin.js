@@ -452,6 +452,34 @@
     if (t.id === "save") return save();
   });
 
+  /* Signing in with the password. The password goes to the Worker once and is
+     exchanged for a short-lived signed cookie — it is never kept in the page. */
+  document.addEventListener("submit", async (e) => {
+    if (e.target.id !== "login") return;
+    e.preventDefault();
+    const btn = $("#pwGo");
+    btn.disabled = true;
+    $("#pwErr").textContent = "";
+    try {
+      const res = await fetch("../api/admin/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: $("#pw").value }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        $("#pwErr").textContent = body.error || "Could not sign in.";
+        btn.disabled = false;
+        $("#pw").select();
+        return;
+      }
+      location.reload();
+    } catch {
+      $("#pwErr").textContent = "Could not reach the site. Check the connection.";
+      btn.disabled = false;
+    }
+  });
+
   /* a half-finished change is easy to walk away from in a busy shop */
   window.addEventListener("beforeunload", (e) => {
     if (dirty) { e.preventDefault(); e.returnValue = ""; }
@@ -504,9 +532,18 @@
          identical from the outside, and the second is a ten-minute hunt if the
          page won't say which it is. */
       const body = await who.json().catch(() => ({}));
-      return gate("Sign in to manage the site",
-        EXPLAIN[body.reason] || "You'll be asked for your email address and sent a code."
-          + " If you've just signed in, reload the page.");
+      const canPassword = body.methods?.password;
+      gate("Sign in to manage the site",
+        canPassword && !body.methods?.access
+          ? "Enter the site password to make changes."
+          : EXPLAIN[body.reason] || "You'll be asked for your email address and sent a code."
+            + " If you've just signed in, reload the page.");
+      if (canPassword) {
+        $("#login").hidden = false;
+        $("#retry").hidden = true;
+        $("#pw").focus();
+      }
+      return;
     }
     if (!who.ok) return gate("Something went wrong", "Status " + who.status);
 

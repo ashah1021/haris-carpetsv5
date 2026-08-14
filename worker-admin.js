@@ -21,11 +21,24 @@
  * shade stops appearing in the catalogue but the link still resolves.
  *
  * AUTH
- * Cloudflare Access sits in front and Hari signs in with a code sent to his
- * email — no password for the shop to keep or for us to reset. Access puts a
- * signed JWT on every request; this verifies it rather than trusting the header,
- * because a request that reaches the Worker without going through Access (over
- * workers.dev, say) would otherwise be admitted on a header anyone can set.
+ * Two ways in, and they are alternatives rather than a fallback chain — if
+ * neither is configured nobody gets in at all. An admin that opens up when its
+ * configuration is missing is worse than one that never opens.
+ *
+ *   Cloudflare Access   Hari signs in with a code sent to his email; no
+ *                       password for the shop to keep or for us to reset. The
+ *                       JWT it puts on each request is verified here against
+ *                       Cloudflare's published keys rather than trusted,
+ *                       because a request that reaches the Worker without
+ *                       passing through Access would otherwise be admitted on
+ *                       a header anyone can set.
+ *
+ *   A password          Access can only guard hostnames in your own zones, and
+ *                       workers.dev is Cloudflare's. Until the shop's domain
+ *                       points here, Access cannot protect this site at all —
+ *                       so a password, which works on any hostname, is the
+ *                       only thing that can. It signs a short-lived cookie;
+ *                       the password itself is never stored in the browser.
  */
 
 const DOC_KEY = "admin/site.json";
@@ -76,14 +89,86 @@ async function jwks(team) {
   return keys;
 }
 
+/* ------------------------------------------------------- password sign-in */
+
+/* Short enough to type on a phone in a shop, long enough that guessing it over
+   the network is hopeless. Below this the Worker refuses to enable password
+   sign-in at all rather than pretend a four-letter password is a door. */
+const MIN_PASSWORD = 12;
+const SESSION_COOKIE = "haris_admin";
+const SESSION_HOURS = 12;
+
+const enc = new TextEncoder();
+
+const sha256 = async (s) =>
+  new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)));
+
+/** Compare by digest so neither the contents nor the length leak through timing. */
+async function sameSecret(a, b) {
+  const [x, y] = await Promise.all([sha256(a), sha256(b)]);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
+/* The cookie is signed with a key derived from the password, so setting the
+   password is the only configuration step — and changing it invalidates every
+   session that was issued under the old one, which is what you want from a
+   password change. */
+async function sessionKey(password) {
+  return crypto.subtle.importKey(
+    "raw", await sha256("haris-admin-session:" + password),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+}
+
+const b64 = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
+  .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+async function mintSession(password) {
+  const exp = Date.now() + SESSION_HOURS * 3600 * 1000;
+  const sig = await crypto.subtle.sign("HMAC", await sessionKey(password), enc.encode(String(exp)));
+  return `${exp}.${b64(sig)}`;
+}
+
+async function checkSession(token, password) {
+  if (typeof token !== "string" || !token.includes(".")) return false;
+  const [exp, sig] = token.split(".");
+  if (!/^\d+$/.test(exp) || Number(exp) < Date.now()) return false;
+  return crypto.subtle.verify("HMAC", await sessionKey(password),
+    b64urlToBytes(sig), enc.encode(exp));
+}
+
+const cookie = (request, name) =>
+  (request.headers.get("cookie") || "")
+    .match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1];
+
 /**
- * Verify the Access assertion and return the signed-in email.
- * Returns null when the token is missing, malformed, expired or not ours.
+ * Who is making this request — by Access token or by password session.
+ * Returns { email } when signed in, otherwise { error } naming what was wrong,
+ * which is what makes a misconfiguration diagnosable from the page.
  */
 async function identify(request, env) {
+  const password = env.ADMIN_PASSWORD;
+  const configured = { access: Boolean(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD),
+                       password: Boolean(password && password.length >= MIN_PASSWORD) };
+
+  if (password && password.length < MIN_PASSWORD) {
+    return { error: "password too short", configured };
+  }
+  if (!configured.access && !configured.password) return { error: "unconfigured", configured };
+
+  if (configured.password && await checkSession(cookie(request, SESSION_COOKIE), password)) {
+    return { email: "signed in with the site password", configured };
+  }
+  if (!configured.access) return { error: "no password session", configured };
+
+  const who = await identifyAccess(request, env);
+  return { ...who, configured };
+}
+
+async function identifyAccess(request, env) {
   const team = env.ACCESS_TEAM_DOMAIN;   // e.g. hariscarpets.cloudflareaccess.com
   const aud = env.ACCESS_AUD;            // the Access application's Audience tag
-  if (!team || !aud) return { error: "unconfigured" };
 
   const token = request.headers.get("cf-access-jwt-assertion")
     || (request.headers.get("cookie") || "").match(/(?:^|;\s*)CF_Authorization=([^;]+)/)?.[1];
@@ -279,6 +364,39 @@ async function handlePutSite(request, env, ctx) {
   return json({ ok: true, version: doc.version });
 }
 
+async function handleLogin(request, env) {
+  if (!sameOrigin(request)) return json({ error: "cross-site request refused" }, 403);
+  const password = env.ADMIN_PASSWORD;
+  if (!password || password.length < MIN_PASSWORD) {
+    return json({ error: "Password sign-in is not set up." }, 503);
+  }
+
+  let given = "";
+  try { given = (await request.json()).password; } catch { /* handled below */ }
+
+  /* Every attempt costs the same half second whether the password was right,
+     wrong or missing. There is no shared counter to rate-limit on across
+     Cloudflare's edge, so this plus a long password is the defence: at two
+     attempts a second a 12-character password is not being guessed. */
+  const [ok] = await Promise.all([
+    typeof given === "string" && given ? sameSecret(given, password) : false,
+    new Promise((r) => setTimeout(r, 500)),
+  ]);
+  if (!ok) return json({ error: "That password is not right." }, 401);
+
+  const token = await mintSession(password);
+  return json({ ok: true }, 200, {
+    "set-cookie": `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; `
+      + `Max-Age=${SESSION_HOURS * 3600}`,
+  });
+}
+
+function handleLogout(request) {
+  return json({ ok: true }, 200, {
+    "set-cookie": `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+  });
+}
+
 async function handlePhoto(request, env) {
   if (!sameOrigin(request)) return json({ error: "cross-site request refused" }, 403);
 
@@ -315,11 +433,26 @@ export async function adminRoutes(request, env, ctx) {
   }
   if (!pathname.startsWith("/api/admin/")) return json({ error: "not found" }, 404);
 
+  /* before the identity check: this is how you get one */
+  if (pathname === "/api/admin/login" && request.method === "POST") {
+    return handleLogin(request, env);
+  }
+  if (pathname === "/api/admin/logout" && request.method === "POST") {
+    return handleLogout(request);
+  }
+
   const who = await identify(request, env);
   if (who.error === "unconfigured") {
     return json({ error: "Sign-in is not set up yet. See docs/admin.md." }, 503);
   }
-  if (!who.email) return json({ error: "not signed in", reason: who.error }, 401);
+  if (who.error === "password too short") {
+    return json({ error: `The site password must be at least ${MIN_PASSWORD} characters.` }, 503);
+  }
+  if (!who.email) {
+    /* which sign-in methods exist is not a secret — the page needs it to know
+       whether to offer a password box */
+    return json({ error: "not signed in", reason: who.error, methods: who.configured }, 401);
+  }
 
   if (pathname === "/api/admin/whoami") return json({ email: who.email });
   if (pathname === "/api/admin/site" && request.method === "PUT") {

@@ -59,7 +59,51 @@ To see the other states:
     node tools/stub-api.mjs 8890 unconfigured   # before Access is set up
     node tools/stub-api.mjs 8890 down           # the shop with the API broken
 
-## Setting up sign-in
+## Two ways to sign in, and which one you need
+
+There are two, and they are alternatives rather than a chain. If neither is
+configured, nobody gets in — an admin that opens up when its settings are
+missing would be worse than one that never opens at all.
+
+**A password** works on any hostname. That is the point of it: Cloudflare Access
+can only guard hostnames in your own zones, and `workers.dev` is Cloudflare's,
+not yours. While the site lives at `haris-carpetsv5.<account>.workers.dev` —
+before the shop's domain is pointed here — a password is the only thing that can
+protect the admin at all. Preview URLs are `workers.dev` too, so the same applies
+to those.
+
+**Cloudflare Access** is better once the real domain is in front of the Worker:
+Hari signs in with a code sent to his email, there is no shared password, and
+access can be granted or revoked per person.
+
+Set the password now and add Access at go-live. Both can be on together, and
+turning one off later is a config change, not a rebuild.
+
+## Setting the site password
+
+It is a Cloudflare **secret**, never a var and never in the repo:
+
+- Dashboard: **Workers & Pages → haris-carpetsv5 → Settings → Variables and
+  Secrets → Add → Secret**, named `ADMIN_PASSWORD`.
+- Or from a terminal: `npx wrangler secret put ADMIN_PASSWORD`
+
+Secrets are write-only once saved — nobody can read it back out of the
+dashboard, so keep a copy where the shop keeps its other passwords.
+
+Use a long one. Four or five unrelated words is ideal: easy to read down the
+phone to a fitter, and hopeless to guess. **Under 12 characters the Worker
+refuses to enable password sign-in at all** and says so, rather than pretending
+a short password is a door.
+
+There is no shared counter to rate-limit on across Cloudflare's edge, so every
+attempt — right, wrong or empty — costs the same deliberate half second. At two
+guesses a second a five-word password is not being brute-forced.
+
+Signing in exchanges the password for a cookie signed by the Worker and good for
+12 hours. The password is never stored in the browser, and changing it signs
+everybody out, because the signing key is derived from it.
+
+## Setting up Access (once the domain points here)
 
 Sign-in is Cloudflare Access: Hari enters his email and Cloudflare sends him a
 code. There is no password for the shop to keep or for anyone to reset.
@@ -102,6 +146,7 @@ look for rather than an exact set of clicks.
 | | |
 |---|---|
 | `GET /api/site` | public. The overlay the shop has saved — the same data the site shows anyone. |
+| `POST /api/admin/login` | public by necessity, same-origin. Exchanges the password for a 12-hour signed cookie. |
 | `GET /api/admin/whoami` | signed in. Used by the page to decide whether to show the forms. |
 | `PUT /api/admin/site` | signed in, same-origin. Saves the whole document. |
 | `POST /api/admin/photo` | signed in, same-origin. Stores one swatch photograph. |
@@ -121,6 +166,7 @@ mistake in the admin should not be able to produce a page nobody can undo.
     node tools/stub-api.mjs 8890 signed-in &
     node tools/stub-api.mjs 8891 down &
     node tools/stub-api.mjs 8892 anon &
+    node tools/stub-api.mjs 8894 password &
     node tools/admin-e2e.mjs       # the page, and the shop when the API is down
 
 `admin.test.mjs` generates a real RSA key pair and signs real tokens, so the

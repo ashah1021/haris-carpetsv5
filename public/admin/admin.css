@@ -138,7 +138,19 @@ body.admin { background: var(--off); }
 }
 .ad-gate-card h1 { font-family: var(--f-display); font-size: 24px; font-weight: 500; margin: 0 0 12px; }
 .ad-gate-card p { color: var(--muted); line-height: 1.6; margin: 0 0 24px; }
-.ad-gate-card .btn { margin: 0 4px; }
+.ad-gate-acts {
+  margin: 0 !important; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+
+.ad-login { text-align: left; margin: 0 0 26px; }
+.ad-login .ad-field { margin-bottom: 14px; }
+.ad-login input[type="password"] {
+  padding: 11px 13px; border: 1px solid var(--line); border-radius: 2px;
+  background: var(--paper); font: inherit; font-size: 16px; color: var(--ink); width: 100%;
+}
+.ad-login input:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: transparent; }
+.ad-login .btn { width: 100%; justify-content: center; margin: 0; }
+.ad-login .ad-err { text-align: center; }
 
 @media (max-width: 700px) {
   .ad-who { margin-left: 0; width: 100%; }

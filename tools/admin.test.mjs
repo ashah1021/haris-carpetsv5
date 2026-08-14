@@ -83,6 +83,7 @@ function makeEnv(opts = {}) {
   return {
     ACCESS_TEAM_DOMAIN: opts.team === undefined ? TEAM : opts.team,
     ACCESS_AUD: opts.aud === undefined ? AUD : opts.aud,
+    ADMIN_PASSWORD: opts.password,
     PHOTOS: {
       async get(key) {
         if (!store.has(key)) return null;
@@ -175,7 +176,100 @@ console.log("\nUnconfigured is refused, not waved through:");
 {
   const env = makeEnv({ team: "", aud: "" });
   const res = await adminRoutes(req("/api/admin/site", { method: "PUT" }), env, ctx);
-  check("no Access config means no admin", res.status === 503);
+  check("no sign-in configured at all means no admin", res.status === 503);
+}
+
+console.log("\nPassword sign-in — the only thing that works off a real domain:");
+{
+  const PW = "correct-horse-battery-staple";
+  const env = makeEnv({ team: "", aud: "", password: PW });
+  const login = (password, origin = ORIGIN) => adminRoutes(req("/api/admin/login", {
+    method: "POST", headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify({ password }),
+  }), env, ctx);
+
+  check("the admin says a password box is available", await (async () => {
+    const r = await adminRoutes(req("/api/admin/whoami"), env, ctx);
+    return r.status === 401 && (await r.json()).methods.password === true;
+  })());
+
+  let res = await login("not the password");
+  check("a wrong password is refused", res.status === 401);
+  check("and sets no cookie", !res.headers.get("set-cookie"));
+
+  res = await login("");
+  check("an empty password is refused", res.status === 401);
+
+  res = await login(PW, "https://evil.example");
+  check("a cross-site login attempt is refused", res.status === 403);
+
+  res = await login(PW);
+  check("the right password is accepted", res.status === 200);
+  const setCookie = res.headers.get("set-cookie") || "";
+  check("the session cookie is HttpOnly", /HttpOnly/i.test(setCookie));
+  check("…Secure", /Secure/i.test(setCookie));
+  check("…and SameSite=Strict", /SameSite=Strict/i.test(setCookie));
+  check("the password itself is never in the cookie", !setCookie.includes(PW));
+
+  const token = setCookie.match(/haris_admin=([^;]+)/)[1];
+  const withCookie = (extra = {}) => ({ cookie: `haris_admin=${token}`, ...extra });
+
+  res = await adminRoutes(req("/api/admin/whoami", { headers: withCookie() }), env, ctx);
+  check("the session gets you in", res.status === 200);
+
+  /* the signature is the whole protection — a made-up cookie must not work */
+  const forged = `${Date.now() + 9e6}.${"A".repeat(43)}`;
+  res = await adminRoutes(req("/api/admin/whoami",
+    { headers: { cookie: `haris_admin=${forged}` } }), env, ctx);
+  check("a forged session cookie is refused", res.status === 401);
+
+  /* tamper with the expiry but keep the old signature */
+  const [, sig] = token.split(".");
+  res = await adminRoutes(req("/api/admin/whoami",
+    { headers: { cookie: `haris_admin=${Date.now() + 9e9}.${sig}` } }), env, ctx);
+  check("extending your own session is refused", res.status === 401);
+
+  const stale = await (async () => {
+    const old = `${Date.now() - 1000}.${sig}`;
+    const r = await adminRoutes(req("/api/admin/whoami", { headers: { cookie: `haris_admin=${old}` } }), env, ctx);
+    return r.status;
+  })();
+  check("an expired session is refused", stale === 401);
+
+  /* changing the password must end every session issued under the old one */
+  const env2 = makeEnv({ team: "", aud: "", password: "a-completely-different-one" });
+  res = await adminRoutes(req("/api/admin/whoami", { headers: withCookie() }), env2, ctx);
+  check("changing the password logs everyone out", res.status === 401);
+
+  res = await adminRoutes(req("/api/admin/site", {
+    method: "PUT", headers: withCookie({ origin: ORIGIN }), body: JSON.stringify({ baseVersion: 0 }),
+  }), env, ctx);
+  check("a password session can save", res.status === 200);
+
+  res = await adminRoutes(req("/api/admin/logout", { method: "POST", headers: withCookie() }), env, ctx);
+  check("logout clears the cookie", /haris_admin=;/.test(res.headers.get("set-cookie") || ""));
+}
+
+console.log("\nA weak password is refused rather than accepted quietly:");
+{
+  const env = makeEnv({ team: "", aud: "", password: "letmein" });
+  let res = await adminRoutes(req("/api/admin/whoami"), env, ctx);
+  check("a short password disables the admin", res.status === 503);
+  res = await adminRoutes(req("/api/admin/login", {
+    method: "POST", headers: { origin: ORIGIN, "content-type": "application/json" },
+    body: JSON.stringify({ password: "letmein" }),
+  }), env, ctx);
+  check("and cannot be used to sign in", res.status === 503);
+}
+
+console.log("\nBoth methods can be on at once:");
+{
+  const env = makeEnv({ password: "correct-horse-battery-staple" });
+  const res = await adminRoutes(req("/api/admin/whoami", { headers: await signedIn() }), env, ctx);
+  check("an Access token still works when a password is set", res.status === 200);
+  const anon = await adminRoutes(req("/api/admin/whoami"), env, ctx);
+  const methods = (await anon.json()).methods;
+  check("and the page is told about both", methods.access === true && methods.password === true);
 }
 
 console.log("\nWrites need to come from our own page:");

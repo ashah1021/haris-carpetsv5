@@ -15,6 +15,8 @@ import { extname, join, normalize } from "node:path";
 const ROOT = new URL("../public/", import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8890);
 const MODE = process.argv[3] || "signed-in";
+const PASSWORD = "correct-horse-battery-staple";
+let session = null;
 
 let DOC = { version: 0, content: {}, featured: null, styles: {},
             overrides: {}, ranges: [], extra: {} };
@@ -34,7 +36,27 @@ createServer(async (req, res) => {
     if (MODE === "down") return send(res, 500, '{"error":"boom"}');
     if (p === "/api/site") return send(res, 200, JSON.stringify(DOC));
     if (MODE === "unconfigured") return send(res, 503, '{"error":"Sign-in is not set up yet."}');
-    if (MODE === "anon") return send(res, 401, '{"error":"not signed in"}');
+
+    /* password mode: the gate offers a box, and the right password gets in */
+    if (MODE === "password") {
+      const signedIn = (req.headers.cookie || "").includes("haris_admin=" + session);
+      if (p === "/api/admin/login" && req.method === "POST") {
+        let body = ""; for await (const c of req) body += c;
+        if (JSON.parse(body).password !== PASSWORD) {
+          return send(res, 401, '{"error":"That password is not right."}');
+        }
+        session = "stub-session";
+        return res.writeHead(200, { "content-type": "application/json",
+          "set-cookie": `haris_admin=${session}; Path=/; HttpOnly; SameSite=Strict` })
+          .end('{"ok":true}');
+      }
+      if (!signedIn || !session) {
+        return send(res, 401, '{"error":"not signed in","reason":"no password session",'
+          + '"methods":{"access":false,"password":true}}');
+      }
+    }
+
+    if (MODE === "anon") return send(res, 401, '{"error":"not signed in","methods":{"access":true,"password":false}}');
     if (p === "/api/admin/whoami") return send(res, 200, '{"email":"hari@haris-carpets.co.uk"}');
     if (p === "/api/admin/site" && req.method === "PUT") {
       let body = ""; for await (const c of req) body += c;

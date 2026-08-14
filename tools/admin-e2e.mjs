@@ -231,6 +231,40 @@ console.log("\nSomeone not signed in gets a door, not a form:");
   await p3.close();
 }
 
+console.log("\nSigning in with the site password:");
+{
+  const PW = process.argv[6] || "http://127.0.0.1:8894";
+  const p4 = await (await browser.newContext()).newPage();
+  await p4.goto(`${PW}/admin/`, { waitUntil: "networkidle" });
+  await p4.waitForTimeout(700);
+  check("a password box is offered", await p4.locator("#login").isVisible());
+  check("and it says what to do",
+    (await p4.locator("#gateBody").textContent()).toLowerCase().includes("password"));
+
+  await p4.locator("#pw").fill("wrong one");
+  await p4.locator("#pwGo").click();
+  await p4.waitForTimeout(600);
+  check("a wrong password is rejected in the page",
+    (await p4.locator("#pwErr").textContent()).length > 3,
+    await p4.locator("#pwErr").textContent());
+  check("and the gate is still up", await p4.locator("#gate").isVisible());
+
+  await p4.locator("#pw").fill("correct-horse-battery-staple");
+  await p4.locator("#pwGo").click();
+  await p4.waitForTimeout(1400);
+  check("the right password gets in", await p4.locator("#gate").isHidden());
+  check("and the admin is usable", (await p4.locator(".ad-tab").count()) === 4);
+
+  /* the password must not linger anywhere the next person could read it */
+  const leaked = await p4.evaluate(() => {
+    const hay = [document.body.innerHTML, JSON.stringify(localStorage),
+                 JSON.stringify(sessionStorage), document.cookie].join(" ");
+    return hay.includes("correct-horse-battery-staple");
+  });
+  check("the password is not left in the page, storage or a readable cookie", !leaked);
+  await p4.close();
+}
+
 console.log("\nNo JS errors in the admin:");
 check("clean run", errors.length === 0, errors.slice(0, 2).join(" | "));
 

@@ -32,8 +32,22 @@
   <div class="ad-gate-card">
     <h1 id="gateTitle">Sign in to manage the site</h1>
     <p id="gateBody"></p>
-    <a class="btn btn-solid" href="./">Try again</a>
-    <a class="btn btn-ghost" href="../">Back to the website</a>
+
+    <form class="ad-login" id="login" hidden>
+      <label class="ad-field">
+        <span>Site password</span>
+        <input type="password" id="pw" autocomplete="current-password" required>
+      </label>
+      <button class="btn btn-solid" type="submit" id="pwGo">Sign in</button>
+      <p class="ad-err" id="pwErr"></p>
+    </form>
+
+    <p class="ad-gate-acts">
+      <!-- pointless once there is a password box on screen; the form is the
+           way back in, and a reload only empties it -->
+      <a class="btn btn-ghost" href="./" id="retry">Try again</a>
+      <a class="btn btn-ghost" href="../">Back to the website</a>
+    </p>
   </div>
 </div>
 
