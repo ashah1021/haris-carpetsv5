@@ -15,9 +15,9 @@ Parked deliberately, not forgotten.
     - `[seen]` read off the swatch photograph — loop, rib and smooth pile are
       unmistakable at tile resolution — safe
     - `[ask]` **assigned from what these ranges usually are and not checked
-      against a spec sheet.** All eleven are Cormar. Fibre is the weak spot and
-      it is exactly what "Easy clean" turns on, so a wrong one is a claim about
-      stain resistance that the swatch book does not back.
+      against a spec sheet.** There are eight, all Cormar. Fibre is the weak
+      spot and it is exactly what "Easy clean" turns on, so a wrong one is a
+      claim about stain resistance that the swatch book does not back.
   A range in no style is not lost — it still appears under its collection and
   in every filter — so it is safe to remove an assignment you are unsure of.
 - **Stripes & patterns is deliberately empty.** The old site had that square,
