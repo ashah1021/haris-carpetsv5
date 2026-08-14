@@ -100,7 +100,13 @@ async function identify(request, env) {
 
   if (header.alg !== "RS256") return { error: "unexpected algorithm" };
 
-  const key = (await jwks(team)).find((k) => k.kid === header.kid);
+  /* A wrong team domain fails here rather than anywhere obvious. Catching it
+     turns an opaque 500 into a message naming the setting to fix. */
+  let keys;
+  try { keys = await jwks(team); }
+  catch { return { error: "no certificates" }; }
+
+  const key = keys.find((k) => k.kid === header.kid);
   if (!key) return { error: "unknown signing key" };
 
   const pub = await crypto.subtle.importKey(

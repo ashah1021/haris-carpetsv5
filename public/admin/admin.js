@@ -459,6 +459,28 @@
 
   /* -------------------------------------------------------------------- boot */
 
+  /* What the Worker's refusal actually means, in words that point at the thing
+     to change. Only the first is a normal day; the rest are setup faults. */
+  const EXPLAIN = {
+    "no token": "You'll be asked for your email address and sent a code."
+      + " If you've just signed in and still see this, Cloudflare Access isn't"
+      + " covering /admin yet — check the application's path in Zero Trust.",
+    "wrong audience": "Sign-in worked, but the AUD tag deployed in wrangler.jsonc"
+      + " doesn't match the Access application. Copy it again from the"
+      + " application's overview page.",
+    "wrong issuer": "Sign-in worked, but ACCESS_TEAM_DOMAIN doesn't match the"
+      + " team that issued the token. It should look like"
+      + " yourteam.cloudflareaccess.com, with no https:// and no trailing slash.",
+    "unknown signing key": "Cloudflare's signing keys didn't include the one"
+      + " that signed your token — usually ACCESS_TEAM_DOMAIN pointing at the"
+      + " wrong team.",
+    "no certificates": "Couldn't reach Cloudflare's signing keys for"
+      + " ACCESS_TEAM_DOMAIN. Check it is spelled exactly as the team domain in"
+      + " Zero Trust, with no https:// and no trailing slash.",
+    expired: "Your session has run out. Reload the page to sign in again.",
+    "bad signature": "That token failed its signature check. Reload to sign in again.",
+  };
+
   function gate(title, body) {
     $("#gateTitle").textContent = title;
     $("#gateBody").textContent = body;
@@ -477,8 +499,14 @@
       return gate("Sign-in isn't set up yet", body.error || "See docs/admin.md.");
     }
     if (who.status === 401) {
+      /* The reason matters while Access is being set up. "Not signed in" and
+         "your Access application's AUD tag doesn't match the one deployed" look
+         identical from the outside, and the second is a ten-minute hunt if the
+         page won't say which it is. */
+      const body = await who.json().catch(() => ({}));
       return gate("Sign in to manage the site",
-        "You'll be asked for your email address and sent a code. If you've just signed in, reload the page.");
+        EXPLAIN[body.reason] || "You'll be asked for your email address and sent a code."
+          + " If you've just signed in, reload the page.");
     }
     if (!who.ok) return gate("Something went wrong", "Status " + who.status);
 

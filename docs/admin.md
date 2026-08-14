@@ -40,6 +40,25 @@ Photograph the swatch flat, filling the frame, in daylight. The browser shrinks
 the image before uploading, so a phone photo is fine — and re-encoding it also
 strips the EXIF, which on a phone includes where the picture was taken.
 
+## Trying it before any of the Cloudflare setup
+
+    node tools/stub-api.mjs 8890
+
+Then open <http://127.0.0.1:8890/admin/>. That serves the real site and the real
+admin page against an in-memory stand-in for the API, already signed in. Every
+control works — hide a collection, add one, upload a swatch and watch the colour
+be measured — and the changes show on the shop at
+<http://127.0.0.1:8890/index.html>. Nothing is saved when you stop the server.
+
+This is the right way to show Hari what he is getting, and to decide whether the
+wording suits him, before spending anything on Cloudflare configuration.
+
+To see the other states:
+
+    node tools/stub-api.mjs 8890 anon           # the sign-in gate
+    node tools/stub-api.mjs 8890 unconfigured   # before Access is set up
+    node tools/stub-api.mjs 8890 down           # the shop with the API broken
+
 ## Setting up sign-in
 
 Sign-in is Cloudflare Access: Hari enters his email and Cloudflare sends him a
@@ -53,8 +72,14 @@ everyone.
    have not before; that gives you a team domain like
    `hariscarpets.cloudflareaccess.com`.
 2. **Access → Applications → Add an application → Self-hosted.**
-   - Path: `haris-carpets.co.uk/admin` — and add a second application for
-     `haris-carpets.co.uk/api/admin`, or one covering both.
+   - Path: `haris-carpets.co.uk/admin` — **that path only. Do not put Access in
+     front of `/api/admin`.** Access answers an unauthenticated request with a
+     redirect to its login page, which is right for somebody opening a page in
+     a browser and wrong for a `fetch` from JavaScript: the admin would receive
+     an HTML login form where it expected JSON, and report a broken site rather
+     than "please sign in". The API is protected by the Worker instead, which
+     verifies the same token and can answer 401 properly. Signing in at
+     `/admin` sets the cookie for the whole domain, so the API calls carry it.
    - Add a policy: **Allow**, with the rule **Emails** and Hari's address.
      Add anyone else who should get in.
 3. Copy the application's **Audience (AUD) tag** from its overview page.

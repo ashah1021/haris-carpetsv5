@@ -142,6 +142,35 @@ console.log("Nobody gets in without a valid Access token:");
   check("and identifies who signed in", (await ok.json()).email === "hari@haris-carpets.co.uk");
 }
 
+console.log("\nA refusal says which setting is wrong:");
+{
+  /* Setting Access up is fiddly and every failure looks the same from outside.
+     The reason is what turns "it doesn't work" into a thing to go and fix. */
+  const env = makeEnv();
+  const reason = async (headers) =>
+    (await (await adminRoutes(req("/api/admin/whoami", { headers }), env, ctx)).json()).reason;
+
+  check("nothing sent", await reason({}) === "no token");
+  check("token for another Access app",
+    await reason({ "cf-access-jwt-assertion": await token({ aud: ["nope"] }) }) === "wrong audience");
+  check("token from another team",
+    await reason({ "cf-access-jwt-assertion": await token({ iss: "https://other.cloudflareaccess.com" }) })
+      === "wrong issuer");
+  check("session run out",
+    await reason({ "cf-access-jwt-assertion": await token({ exp: 1 }) }) === "expired");
+
+  /* a team domain that resolves to nothing must name itself, not throw */
+  const saved = globalThis.fetch;
+  globalThis.fetch = async () => new Response("no", { status: 404 });
+  const env2 = makeEnv({ team: "typo.cloudflareaccess.com" });
+  const res = await adminRoutes(req("/api/admin/whoami",
+    { headers: { "cf-access-jwt-assertion": await token({ iss: "https://typo.cloudflareaccess.com" }) } }),
+    env2, ctx);
+  check("an unreachable team domain is reported, not thrown",
+    res.status === 401 && (await res.json()).reason === "no certificates");
+  globalThis.fetch = saved;
+}
+
 console.log("\nUnconfigured is refused, not waved through:");
 {
   const env = makeEnv({ team: "", aud: "" });
