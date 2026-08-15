@@ -341,19 +341,10 @@
   }
 
   function viewHome() {
-    const chosen = DOC.featured || FEATURED;
     const rev = DOC.reviews || { rating: "", count: "", url: "", items: [] };
     const ig = DOC.instagram || { url: "", posts: [] };
     return `
     <h2>Home page</h2>
-
-    <h3 class="mg-photo-head">Featured collections</h3>
-    <p class="mg-lede">Three fits the layout best.</p>
-    <div class="mg-ticks wide">
-      ${allRanges().filter((r) => !isHidden(r.id)).map((r) => `<label class="mg-tick">
-        <input type="checkbox" data-featured value="${esc(r.id)}" ${chosen.includes(r.id) ? "checked" : ""}>
-        <span>${esc(DOC.overrides[r.id]?.name || r.name)}<i>${esc(r.brand)}</i></span></label>`).join("")}
-    </div>
 
     <h3 class="mg-photo-head">Google reviews</h3>
     <p class="mg-lede">Copy your rating and a few of your best reviews across from your Google
@@ -512,12 +503,6 @@
       const set = new Set(base);
       t.checked ? set.add(t.value) : set.delete(t.value);
       DOC.styles[type][styleId] = [...set];
-      mark();
-    }
-    if (t.dataset.featured !== undefined) {
-      const set = new Set(DOC.featured || FEATURED);
-      t.checked ? set.add(t.value) : set.delete(t.value);
-      DOC.featured = [...set];
       mark();
     }
     if (t.id === "newShadeFile") pickSwatch(t.files[0]);

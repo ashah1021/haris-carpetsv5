@@ -294,13 +294,6 @@ const STYLES = {
   rugs: [],
 };
 
-const GALLERY = [
-  { src: IMG.stairs,  alt: "Wool twist carpet fitted to a Victorian staircase and landing" },
-  { src: IMG.bedroom, alt: "Plush oatmeal wool carpet in a bedroom" },
-  { src: IMG.velvet,  alt: "Wool velvet carpet in a panelled living room" },
-  { src: IMG.pile,    alt: "Close detail of deep wool velvet carpet pile" },
-];
-
 const ABOUT = {
   lead: "Flooring ties a whole interior together — so it's worth getting right.",
   body: [
@@ -1613,9 +1606,3 @@ const CATALOGUE = [
   },
 ];
 
-/* Featured ranges on the home page */
-/* Featured ranges on the home page. These ids are checked by the smoke test:
-   they were left behind when the catalogue was regenerated with brand-prefixed
-   ids, and three dead ids meant the home page quietly showed no featured
-   ranges at all. Editable from /admin. */
-const FEATURED = ["westex-elysian", "westex-pure-luxury", "westex-fine-westex-twist"];

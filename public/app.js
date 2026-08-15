@@ -490,7 +490,6 @@ function instagramGrid() {
 }
 
 function viewHome() {
-  const featured = (SITE.featured || FEATURED).map(findRange).filter(Boolean).map(rangeCard).join("");
   /* An optional line the shop can put across the top — a bank holiday, a
      delivery delay, a sale. Empty means no strip at all rather than an empty
      one, so leaving it blank is the normal state. */
@@ -519,7 +518,6 @@ function viewHome() {
     <span><b>Old flooring</b> lifted &amp; taken away</span>
   </div></div>
 
-  ${reviewsStrip()}
 
   <section><div class="wrap">
     <div class="section-head">
@@ -552,14 +550,6 @@ function viewHome() {
     </div>
   </div></section>
 
-  <section><div class="wrap">
-    <div class="section-head">
-      <div><span class="rule"></span><h2>Carpets we're fitting a lot of</h2>
-        <p>Wool-rich ranges from British mills, picked because they wear well in real houses.</p></div>
-      <a class="arrow-link" href="#/catalogue/carpets">All carpets →</a>
-    </div>
-    <div class="grid cols-3">${featured}</div>
-  </div></section>
 
   <section class="band"><div class="wrap">
     <div class="split flip">
@@ -576,11 +566,6 @@ function viewHome() {
     <div style="margin-top:clamp(34px,5vw,60px)">${servicesGrid()}</div>
   </div></section>
 
-  <section><div class="wrap">
-    <div class="section-head"><div><span class="rule"></span><h2>Recently fitted</h2>
-      <p>Stairs, bedrooms, living rooms — a few of the floors we've put down around west London.</p></div></div>
-    <div class="strip">${GALLERY.map((g) => photo(g.src, g.alt, "3-4")).join("")}</div>
-  </div></section>
 
   <section class="sec-alt"><div class="wrap">
     <div class="split">
@@ -592,7 +577,9 @@ function viewHome() {
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
     </div>
-  </div></section>`;
+  </div></section>
+
+  ${reviewsStrip()}`;
 }
 
 /* ---------- catalogue: filterable by brand and colour family ---------- */

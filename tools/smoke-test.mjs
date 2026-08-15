@@ -174,13 +174,6 @@ check("every range has shades or says why not", data.noColour.length === 0, data
 check("non-carpet ranges aren't described as carpet", data.wrongAlt.length === 0, data.wrongAlt.slice(0, 2).join(", "));
 check("lvt catalogue is populated", data.lvt >= 30, `${data.lvt} lvt shades`);
 
-/* Three dead ids here meant the home page showed no featured ranges at all,
-   and nothing said so — the list is filtered by findRange, so a stale id is
-   indistinguishable from an empty section. */
-const feat = await page.evaluate(() =>
-  FEATURED.map((id) => ({ id, ok: CATALOGUE.some((r) => r.id === id) })));
-check("featured ranges all exist", feat.every((f) => f.ok),
-  feat.filter((f) => !f.ok).map((f) => f.id).join(", ") || `${feat.length} on the home page`);
 
 /* The overlay is optional by design. This file is served without one, so the
    fact that everything above passed is the proof — but assert it, because a

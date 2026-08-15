@@ -224,12 +224,6 @@ const nowIn = await page.evaluate(() =>
 check("the style list followed the tick", nowIn.includes(tickedId) === !wasChecked,
   `${tickedId} ${wasChecked ? "removed" : "added"}`);
 
-console.log("\nThe home page picks up featured changes:");
-await go(`${BASE}/admin/`);
-await page.locator("[data-tab='home']").click();
-await page.waitForTimeout(400);
-check("featured options offered", (await page.locator("[data-featured]").count()) > 10);
-
 console.log("\nAdding a collection and a shade from a photograph:");
 {
   await go(`${BASE}/admin/`);
@@ -476,6 +470,19 @@ console.log("\nReviews and Instagram:");
   check("and the picture actually loaded", igImg);
 
   /* keeps the reviews strip small — three quotes, not a testimonials page */
+  /* reviews were under the banner; they belong lower down, after the reasons
+     to believe rather than in front of them */
+  const order = await page.evaluate(() => {
+    const names = [...document.querySelectorAll("#app > *")].map((el) => el.className || el.tagName);
+    return { reviews: names.findIndex((n) => String(n).includes("reviews")),
+             insta: names.findIndex((n, i) => document.querySelectorAll("#app > *")[i].querySelector(".ig-grid")),
+             total: names.length };
+  });
+  check("Instagram is high on the page", order.insta > -1 && order.insta <= 3, `block ${order.insta}`);
+  check("and the reviews are near the foot",
+    order.reviews > order.insta && order.reviews >= order.total - 2,
+    `reviews at ${order.reviews} of ${order.total}`);
+
   check("the strip stays compact",
     (await page.evaluate(() =>
       Math.round(document.querySelector(".reviews").getBoundingClientRect().height))) < 400,

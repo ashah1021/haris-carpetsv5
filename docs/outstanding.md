@@ -28,6 +28,20 @@ Parked deliberately, not forgotten.
   being sold separately rather than included. That hides every entry point; see
   the header of `public/visualiser.js`.
 
+## Waiting on Hari
+
+- **The Instagram access token.** The home page pulls the live feed when
+  `INSTAGRAM_TOKEN` is set; until then it shows whichever posts were chosen by
+  hand in /admin, and nothing at all if none were. Getting the token needs the
+  account owner: it has to be a Business or Creator account connected to a
+  Facebook Page, then a Meta app, then a long-lived token — see the Instagram
+  section of `docs/admin.md`. Once it is set with
+  `npx wrangler secret put INSTAGRAM_TOKEN` the weekly cron keeps it alive on
+  its own.
+- **Real Google reviews.** The rating, the count and the quotes are entered in
+  /admin and the section does not appear until they are. Copy them from the
+  shop's own listing — nothing invented.
+
 ## Waiting on the supplier
 - **61 Cormar shades are missing**, across six ranges: Zenith, Natural Berber
   Twist, Silken Serenity, Trilogy, Inglewood Saxony, Primo Naturals. Their
