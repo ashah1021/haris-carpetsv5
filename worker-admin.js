@@ -57,7 +57,7 @@ const JWKS_TTL = 3600;
 const empty = () => ({
   version: 0, updated: null, content: {}, featured: null,
   styles: {}, overrides: {}, ranges: [], extra: {}, images: {},
-  reviews: null, instagram: null,
+  captions: {}, reviews: null, instagram: null,
 });
 
 /* Uploaded photographs get a random suffix and are never overwritten.
@@ -316,6 +316,7 @@ function clean(input) {
       if (val.hidden === true) o.hidden = true;
       if (typeof val.name === "string" && val.name.trim()) o.name = text(val.name.trim(), 80);
       if (typeof val.note === "string" && val.note.trim()) o.note = text(val.note.trim(), 200);
+      if (typeof val.blurb === "string" && val.blurb.trim()) o.blurb = text(val.blurb.trim(), 600);
       if (Object.keys(o).length) out.overrides[key] = o;
     }
   }
@@ -332,6 +333,17 @@ function clean(input) {
         colours: (Array.isArray(r.colours) ? r.colours : [])
           .slice(0, 400).map(colour).filter(Boolean),
       });
+    }
+  }
+
+  /* What each photograph is described as — the alt text a screen reader hears
+     and what shows if the picture never arrives. Same slot keys as images. */
+  if (input.captions && typeof input.captions === "object") {
+    for (const [slot, caption] of Object.entries(input.captions)) {
+      const parts = slot.split(":");
+      if (parts.length > 3 || !parts.every(isSlug)) continue;
+      const v = text(caption, 200).trim();
+      if (v) out.captions[slot] = v;
     }
   }
 

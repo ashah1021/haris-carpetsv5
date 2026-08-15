@@ -17,8 +17,8 @@ const BASE = process.argv[2] || "http://127.0.0.1:8890";
 const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing API
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
-/* Shop details, About us, Collections, Photos, Styles, Home page */
-const TABS = 6;
+/* Shop details, About us, Home page, Other pages, Collections, Photos, Styles */
+const TABS = 7;
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
@@ -487,6 +487,85 @@ console.log("\nReviews and Instagram:");
     (await page.evaluate(() =>
       Math.round(document.querySelector(".reviews").getBoundingClientRect().height))) < 400,
     `${await page.evaluate(() => Math.round(document.querySelector(".reviews").getBoundingClientRect().height))}px tall`);
+}
+
+console.log("\nEvery text box in the admin changes something on the site:");
+{
+  /* Written as a sweep rather than a handful of examples on purpose: the point
+     of "every field Hari can change" is that none of them is a box that saves
+     happily and alters nothing, which is exactly the bug this started as. Each
+     one gets a unique marker typed into it, and then the pages are searched for
+     those markers. Anything missing is named. */
+  const MARK = "ZQ";
+  const tabs = ["shop", "about", "home", "pages"];
+  const typed = new Map();
+
+  await go(`${BASE}/admin/`);
+  for (const t of tabs) {
+    await page.locator(`[data-tab='${t}']`).click();
+    await page.waitForTimeout(500);
+    for (const el of await page.locator("[data-content]").all()) {
+      const key = await el.getAttribute("data-content");
+      if (key === "notice" || key === "mapEmbed" || key === "mapsUrl") continue;  // checked apart
+      const value = `${MARK}-${key}`;
+      await el.fill(value);
+      typed.set(key, value);
+    }
+  }
+  await page.locator("#save").click();
+  await page.waitForTimeout(1000);
+
+  /* every page that could be showing any of them */
+  const pages = ["#/", "#/about", "#/catalogue", "#/catalogue/carpets", "#/contact", "#/enquire"];
+  let seen = "";
+  for (const hash of pages) {
+    await page.goto(`${BASE}/index.html${hash}`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1300);
+    seen += await page.evaluate(() => document.body.textContent);
+  }
+  const missing = [...typed].filter(([, v]) => !seen.includes(v)).map(([k]) => k);
+  check(`all ${typed.size} text fields reach a page`, missing.length === 0,
+    missing.length ? "not showing: " + missing.join(", ") : `${typed.size} checked`);
+}
+
+console.log("\nPhoto captions:");
+{
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='photos']").click();
+  await page.waitForTimeout(800);
+  await page.locator('[data-caption="hero"]').fill("A wool twist in a bay-window living room");
+  await page.locator('[data-caption="range:westex-ultima"]').fill("Ultima fitted in a hallway");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/`, 1600);
+  check("the banner picture is described",
+    (await page.evaluate(() => document.querySelector(".hero img")?.getAttribute("alt")))
+      === "A wool twist in a bay-window living room");
+  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  check("so is a collection's",
+    (await page.evaluate(() => document.querySelector(".range-hero img")?.getAttribute("alt")))
+      === "Ultima fitted in a hallway");
+}
+
+console.log("\nA collection's own description:");
+{
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='collections']").click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-shades="westex-ultima"]').click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-blurb="westex-ultima"]').fill("Our best-selling wool twist.");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  check("shows on the collection page",
+    (await page.evaluate(() => document.querySelector("#app").textContent))
+      .includes("Our best-selling wool twist."));
+
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='collections']").click();
+  await page.waitForTimeout(500);
 }
 
 console.log("\nA live Instagram feed replaces the chosen posts:");

@@ -40,6 +40,34 @@ Photograph the swatch flat, filling the frame, in daylight. The browser shrinks
 the image before uploading, so a phone photo is fine — and re-encoding it also
 strips the EXIF, which on a phone includes where the picture was taken.
 
+## What can be changed
+
+Everything written on the site, and every photograph. By tab:
+
+| Tab | What is in it |
+|---|---|
+| Shop details | hours, phone, email, address, areas covered, the line under the logo, the footer paragraph, an optional notice across the home page, the Google Maps link and the map embed |
+| About us | the opening line and the body, split into paragraphs on blank lines |
+| Home page | the banner heading, all four claims in the strip, every section heading and small label, Google reviews, Instagram |
+| Other pages | headings and wording on the catalogue, Visit us and Get in touch, plus the description under each flooring type |
+| Collections | hide, rename, the collection's own description, and its shades |
+| Photos | every picture, and a caption for each |
+| Styles | which collections sit under which style |
+
+The faint grey text in an empty box is what the site is showing now, so the
+form doubles as a view of the current wording, and clearing a box restores that
+rather than blanking the page.
+
+**Captions matter more than they look.** The box under each photograph is the
+alt text: what a blind visitor hears, and what Google reads. "Wool twist fitted
+to a staircase in Isleworth" is worth having; "photo" is not.
+
+`tools/admin-e2e.mjs` types a unique marker into **every text box in the admin**,
+saves, then reads all six public pages back and fails naming any field whose
+marker never appeared. That is the check that a box does something — it is how
+`strapline` was found to be a setting the site never rendered, and removed
+rather than left as a control that changes nothing.
+
 ## Shop details and About us
 
 Two tabs of plain boxes: opening hours, phone, email, address, areas covered,

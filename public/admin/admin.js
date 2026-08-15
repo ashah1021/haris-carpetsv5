@@ -42,8 +42,12 @@
     ["address", "Address",        () => CONTACT.address],
     ["area",    "Areas you cover", () => CONTACT.area],
     ["since",   "Line under the logo", () => BUSINESS.since],
+    ["footerBlurb", "Footer paragraph", () => BUSINESS.blurbShort, true],
     ["notice",  "Notice across the top of the home page",
      () => "Leave empty for none — a bank holiday, a delivery delay"],
+    ["mapsUrl", "Link to your Google Maps listing", () => CONTACT.mapsUrl],
+    ["mapEmbed", "Map embed address (Google Maps \u2192 Share \u2192 Embed a map)",
+     () => CONTACT.mapEmbed, true],
   ];
 
   const ABOUT_FIELDS = [
@@ -51,13 +55,51 @@
     ["aboutBody", "About us", () => ABOUT.body.join("\n\n"), true],
   ];
 
+  /* Everything written on the home page, in the order it appears. */
+  const HOME_FIELDS = [
+    ["heroTitle", "Banner heading", () => "The flooring shop on Hanworth Road."],
+    ["proof1Bold", "Claim 1 \u2014 bold bit", () => "30+ years"],
+    ["proof1", "Claim 1 \u2014 the rest", () => "family run"],
+    ["proof2Bold", "Claim 2 \u2014 bold bit", () => "Our own fitters"],
+    ["proof2", "Claim 2 \u2014 the rest", () => "\u2014 not subcontractors"],
+    ["proof3Bold", "Claim 3 \u2014 bold bit", () => "Free"],
+    ["proof3", "Claim 3 \u2014 the rest", () => "home measure & plan"],
+    ["proof4Bold", "Claim 4 \u2014 bold bit", () => "Old flooring"],
+    ["proof4", "Claim 4 \u2014 the rest", () => "lifted & taken away"],
+    ["typesHeading", "Flooring types heading", () => "Every floor, one showroom"],
+    ["instaKicker", "Instagram \u2014 small label", () => "On Instagram"],
+    ["instaHeading", "Instagram heading", () => "Recent work"],
+    ["showroomKicker", "Showroom \u2014 small label", () => "Come and see it in daylight"],
+    ["showroomHeading", "Showroom heading",
+     () => "A screen won't tell you how it feels underfoot"],
+    ["serviceKicker", "Fitting \u2014 small label", () => "How we work"],
+    ["serviceHeading", "Fitting heading", () => "Supplied and fitted, properly"],
+    ["familyKicker", "Family run \u2014 small label", () => "Family run, Hounslow"],
+  ];
+
+  /* The other pages. */
+  const PAGE_FIELDS = [
+    ["catalogueKicker", "Catalogue \u2014 small label", () => "Everything we supply"],
+    ["catalogueHeading", "Catalogue heading", () => "The catalogue"],
+    ["visitKicker", "Visit us \u2014 small label", () => "Come in, or we'll come to you"],
+    ["visitHeading", "Visit us heading", () => "Visit the showroom"],
+    ["mapHeading", "Map heading", () => "Find us"],
+    ["mapText", "Under the map heading",
+     () => "Two minutes from Hounslow West, with parking on Hanworth Road."],
+    ["enquireKicker", "Enquire \u2014 small label", () => "No pressure, no obligation"],
+    ["enquireHeading", "Enquire heading", () => "Get in touch"],
+    ["servicesKicker", "Services \u2014 small label", () => "Our service"],
+    ["servicesHeading", "Services heading", () => "What you get"],
+  ];
+
   const TABS = [
     ["shop", "Shop details"],
     ["about", "About us"],
+    ["home", "Home page"],
+    ["pages", "Other pages"],
     ["collections", "Collections"],
     ["photos", "Photos"],
     ["styles", "Styles"],
-    ["home", "Home page"],
   ];
 
   /* How wide an uploaded photograph is kept. A swatch only ever shows as a
@@ -173,6 +215,19 @@
     ${fields(ABOUT_FIELDS)}`;
   }
 
+  function viewPages() {
+    const types = TYPES.map((t) => [
+      "type-" + t.id, `${t.name} — description`, () => t.blurb, true]);
+    return `
+    <h2>Other pages</h2>
+    <p class="mg-lede">Headings and wording on the catalogue, Visit us and Get in touch.</p>
+    ${fields(PAGE_FIELDS)}
+
+    <h3 class="mg-photo-head">Flooring types</h3>
+    <p class="mg-lede">The description under each type, on the catalogue page.</p>
+    ${fields(types)}`;
+  }
+
   function viewCollections() {
     if (openRange) return viewShades(openRange);
     const list = allRanges();
@@ -227,6 +282,12 @@
     <p class="mg-lede">${esc(r.brand)} · ${shades.length} shade${shades.length === 1 ? "" : "s"}.
       Hide a shade that's out of stock; it stays saved for anyone who shortlisted it.</p>
 
+    <label class="mg-field" style="max-width:70ch;margin-bottom:22px">
+      <span>What this collection is</span>
+      <textarea rows="3" data-blurb="${esc(r.id)}"
+        placeholder="${esc(r.blurb || "")}">${esc(DOC.overrides[r.id]?.blurb || "")}</textarea>
+    </label>
+
     <div class="mg-addshade">
       <h3>Add a shade</h3>
       <p>Photograph the swatch flat, filling the frame, in daylight. The colour is
@@ -270,13 +331,17 @@
     return { src: own ? "../assets/" + own : fallback, replaced: Boolean(own) };
   }
 
-  function photoCard(slot, title, note, fallback) {
+  function photoCard(slot, title, note, fallback, altFallback) {
     const { src, replaced } = currentImage(slot, fallback);
     return `<div class="mg-photo">
       <div class="mg-photo-img"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()"></div>
       <div class="mg-photo-body">
         <b>${esc(title)}</b>
         <span class="mg-meta">${esc(note)}</span>
+        <input type="text" class="mg-iglink" data-caption="${esc(slot)}"
+               value="${esc((DOC.captions || {})[slot] || "")}"
+               placeholder="${esc(altFallback || "Describe the picture")}"
+               aria-label="Caption for ${esc(title)}">
         <label class="mg-replace">
           <input type="file" accept="image/*" data-slot="${esc(slot)}">
           <span class="btn btn-ghost btn-sm">Replace</span>
@@ -292,12 +357,14 @@
     return `
     <h2>Photos</h2>
     <p class="mg-lede">Your own pictures of real jobs beat stock photography every time.
-      Landscape works best. Big files are fine — they're shrunk here before uploading.</p>
+      Landscape works best. Big files are fine — they're shrunk here before uploading.
+      The box under each one describes the picture: it is what a blind visitor hears
+      and what Google reads, so say what is in it rather than "photo".</p>
 
     <h3 class="mg-photo-head">Around the site</h3>
     <div class="mg-photos">
       ${IMG_SLOTS.map(([slot, title, note]) =>
-        photoCard(slot, title, note, "../" + IMG[slot])).join("")}
+        photoCard(slot, title, note, "../" + IMG[slot], title)).join("")}
     </div>
 
     <h3 class="mg-photo-head">Collections</h3>
@@ -307,7 +374,7 @@
     <div class="mg-photos" id="photoRows">
       ${ranges.map((r) => `<div data-search="${esc((r.name + " " + r.brand).toLowerCase())}">
         ${photoCard("range:" + r.id, DOC.overrides[r.id]?.name || r.name,
-                    r.brand, "../" + r.photo)}
+                    r.brand, "../" + r.photo, r.alt || r.name)}
       </div>`).join("")}
     </div>`;
   }
@@ -345,6 +412,8 @@
     const ig = DOC.instagram || { url: "", posts: [] };
     return `
     <h2>Home page</h2>
+    <p class="mg-lede">Every word on the front page. The faint text is what is on there now.</p>
+    ${fields(HOME_FIELDS)}
 
     <h3 class="mg-photo-head">Google reviews</h3>
     <p class="mg-lede">Copy your rating and a few of your best reviews across from your Google
@@ -412,6 +481,7 @@
     $("#panel").innerHTML =
       tab === "shop" ? viewShop()
       : tab === "about" ? viewAbout()
+      : tab === "pages" ? viewPages()
       : tab === "collections" ? viewCollections()
       : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()
@@ -467,6 +537,19 @@
     }
     if (t.id === "newShadeName") refreshAddButton();
 
+    if (t.dataset.caption !== undefined) {
+      DOC.captions = DOC.captions || {};
+      if (t.value.trim()) DOC.captions[t.dataset.caption] = t.value.trim();
+      else delete DOC.captions[t.dataset.caption];
+      mark();
+    }
+    if (t.dataset.blurb !== undefined) {
+      const o = DOC.overrides[t.dataset.blurb] || {};
+      if (t.value.trim()) o.blurb = t.value.trim(); else delete o.blurb;
+      if (Object.keys(o).length) DOC.overrides[t.dataset.blurb] = o;
+      else delete DOC.overrides[t.dataset.blurb];
+      mark();
+    }
     if (t.dataset.rev !== undefined) {
       DOC.reviews = DOC.reviews || { rating: "", count: "", url: "", items: [] };
       DOC.reviews[t.dataset.rev] = t.value;
@@ -812,10 +895,12 @@
 
     const res = await fetch("../api/site", { headers: { accept: "application/json" } });
     const site = res.ok ? await res.json() : {};
-    DOC = { version: 0, content: {}, featured: null, styles: {},
-            overrides: {}, ranges: [], extra: {}, ...site };
+    DOC = { version: 0, content: {}, styles: {}, overrides: {},
+            ranges: [], extra: {}, images: {}, captions: {}, ...site };
     // make sure the shapes exist even if the stored document is older
-    for (const k of ["content", "styles", "overrides", "extra"]) DOC[k] = DOC[k] || {};
+    for (const k of ["content", "styles", "overrides", "extra", "images", "captions"]) {
+      DOC[k] = DOC[k] || {};
+    }
     DOC.ranges = DOC.ranges || [];
 
     render();

@@ -55,7 +55,8 @@ function applyOverlay(site) {
           const co = over[`${r.id}:${slugify(c.name)}`];
           return co?.name ? { ...c, name: co.name } : c;
         });
-      return { ...r, name: o.name || r.name, note: o.note, colours };
+      return { ...r, name: o.name || r.name, note: o.note,
+               blurb: o.blurb || r.blurb, colours };
     });
 }
 
@@ -278,9 +279,28 @@ function applyContentToChrome() {
      showed the shop's — one address per site, please */
   const foot = document.getElementById("footAddress");
   if (foot) foot.textContent = say("address", CONTACT.address);
+  const blurb = document.getElementById("footBlurb");
+  if (blurb) blurb.textContent = say("footerBlurb", blurb.textContent);
 }
 
 const rangePhoto = (r) => siteImage("range:" + r.id, r.photo);
+
+/* The four claims across the top of the home page. Two boxes each in /admin:
+   the bold phrase, then the rest of the line. */
+const PROOF = [
+  ["proof1", "30+ years", "family run"],
+  ["proof2", "Our own fitters", "\u2014 not subcontractors"],
+  ["proof3", "Free", "home measure & plan"],
+  ["proof4", "Old flooring", "lifted & taken away"],
+];
+
+/* What a photograph is described as. Alt text for a screen reader, and the
+   caption shown while a picture is still missing. */
+const caption = (slot, fallback) => {
+  const v = SITE.captions && SITE.captions[slot];
+  return (typeof v === "string" && v.trim()) ? v.trim() : fallback;
+};
+const rangeCaption = (r) => caption("range:" + r.id, r.alt || `${r.name} flooring`);
 
 /* A flooring type shows one of the site photographs above, so replacing that
    photograph changes the tile too — which is what somebody who has just
@@ -368,7 +388,7 @@ function closeZoom() {
 
 function rangeCard(r) {
   return `<a class="card" href="#/range/${esc(r.id)}">
-    ${photo(rangePhoto(r), r.alt || `${r.name} flooring`, "4-3")}
+    ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
     <div class="card-swatches">${r.colours.slice(0, 8).map((x) => `<span style="background:${x.hex}"></span>`).join("")}</div>
     <div class="card-body">
       <span class="k">${esc(r.brand)} · ${esc(r.code)}</span>
@@ -382,8 +402,8 @@ function rangeCard(r) {
 function typeTile(t, i) {
   const lead = i < 2;
   return `<a class="cat-tile${lead ? " lead" : ""}" href="${t.route}">
-    ${photo(typePhoto(t), t.alt || t.name, lead ? "16-9" : "4-3")}
-    <div class="cat-cap"><h3>${esc(t.name)}</h3><p>${esc(t.blurb)}</p>
+    ${photo(typePhoto(t), caption(TYPE_SLOT[t.id] || t.id, t.alt || t.name), lead ? "16-9" : "4-3")}
+    <div class="cat-cap"><h3>${esc(t.name)}</h3><p>${esc(say("type-" + t.id, t.blurb))}</p>
       <span class="go">View ${esc(t.name)}</span></div></a>`;
 }
 
@@ -483,7 +503,7 @@ function instagramGrid() {
   return `
   <section class="sec-alt"><div class="wrap">
     <div class="section-head"><div><span class="rule"></span>
-      <p class="kicker">On Instagram</p><h2>Recent work</h2></div>
+      <p class="kicker">${esc(say("instaKicker", "On Instagram"))}</p><h2>${esc(say("instaHeading", "Recent work"))}</h2></div>
       ${g.url ? `<a class="btn btn-ghost btn-sm" href="${esc(g.url)}" target="_blank" rel="noopener">Follow us</a>` : ""}</div>
     <div class="ig-grid">${posts.slice(0, 8).map(tile).join("")}</div>
   </div></section>`;
@@ -497,11 +517,11 @@ function viewHome() {
   return `
   ${notice ? `<div class="notice"><div class="wrap">${esc(notice)}</div></div>` : ""}
   <section class="hero">
-    ${photo(siteImage("hero", IMG.hero), "Wool carpet in a family living room", "16-9")}
+    ${photo(siteImage("hero", IMG.hero), caption("hero", "Wool carpet in a family living room"), "16-9")}
     <div class="hero-scrim"></div>
     <div class="wrap">
       <p class="kicker">${esc(say("since", BUSINESS.since))}</p>
-      <h1>The flooring shop on Hanworth Road.</h1>
+      <h1>${esc(say("heroTitle", "The flooring shop on Hanworth Road."))}</h1>
       <p>Family-run since the nineties. Carpets, wood, LVT, vinyl and rugs — supplied
          and fitted by our own team, right across London and the Home Counties.</p>
       <div class="hero-cta">
@@ -512,16 +532,13 @@ function viewHome() {
   </section>
 
   <div class="proof"><div class="wrap">
-    <span><b>30+ years</b> family run</span>
-    <span><b>Our own fitters</b> — not subcontractors</span>
-    <span><b>Free</b> home measure &amp; plan</span>
-    <span><b>Old flooring</b> lifted &amp; taken away</span>
+    ${PROOF.map(([k, b, r]) => `<span><b>${esc(say(k + "Bold", b))}</b> ${esc(say(k, r))}</span>`).join("")}
   </div></div>
 
 
   <section><div class="wrap">
     <div class="section-head">
-      <div><span class="rule"></span><h2>Every floor, one showroom</h2>
+      <div><span class="rule"></span><h2>${esc(say("typesHeading", "Every floor, one showroom"))}</h2>
         <p>Wool carpet, engineered wood, laminate, LVT, sheet vinyl and rugs — all under
            one roof on Hanworth Road, and all fitted by us.</p></div>
       ${VISUALISER_ON ? `<a class="arrow-link" href="#/visualiser">Try colours in a room →</a>` : ""}
@@ -534,13 +551,13 @@ function viewHome() {
   <section class="sec-alt"><div class="wrap">
     <div class="split">
       <div class="split-media stack">
-        ${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom in Hounslow", "3-2")}
-        <div class="inset">${photo(siteImage("samples", IMG.samples), "Carpet sample swatches on the showroom counter", "1-1")}</div>
+        ${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom in Hounslow"), "3-2")}
+        <div class="inset">${photo(siteImage("samples", IMG.samples), caption("samples", "Carpet sample swatches on the showroom counter"), "1-1")}</div>
       </div>
       <div class="split-copy">
         <span class="rule"></span>
-        <p class="kicker">Come and see it in daylight</p>
-        <h2>A screen won't tell you how it feels underfoot</h2>
+        <p class="kicker">${esc(say("showroomKicker", "Come and see it in daylight"))}</p>
+        <h2>${esc(say("showroomHeading", "A screen won\'t tell you how it feels underfoot"))}</h2>
         <p class="lede">Colour shifts under different light, and pile you love in a photograph can
            feel wrong the moment you stand on it. That's what the showroom is for.</p>
         <p>Save the shades you like as you browse and bring the list in — we'll pull those
@@ -553,11 +570,11 @@ function viewHome() {
 
   <section class="band"><div class="wrap">
     <div class="split flip">
-      <div class="split-media">${photo(siteImage("fitting", IMG.fitting), "A carpet fitter finishing an edge with a knee kicker", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("fitting", IMG.fitting), caption("fitting", "A carpet fitter finishing an edge with a knee kicker"), "3-2")}</div>
       <div class="split-copy">
         <span class="rule on-dark"></span>
-        <p class="kicker">How we work</p>
-        <h2>Supplied and fitted, properly</h2>
+        <p class="kicker">${esc(say("serviceKicker", "How we work"))}</p>
+        <h2>${esc(say("serviceHeading", "Supplied and fitted, properly"))}</h2>
         <p class="lede">The same team measures the job and comes back to fit it. Nothing gets
            handed to a subcontractor who's never seen your house.</p>
         <p style="margin-top:24px"><a class="btn btn-yellow" href="#/contact">Book a free measure</a></p>
@@ -570,12 +587,12 @@ function viewHome() {
   <section class="sec-alt"><div class="wrap">
     <div class="split">
       <div class="split-copy">
-        <span class="rule"></span><p class="kicker">Family run, Hounslow</p>
+        <span class="rule"></span><p class="kicker">${esc(say("familyKicker", "Family run, Hounslow"))}</p>
         <h2>${esc(say("aboutLead", ABOUT.lead))}</h2>
         <p class="lede" style="margin-top:14px">${esc(sayLines("aboutBody", ABOUT.body)[0])}</p>
         <p style="margin-top:22px"><a class="btn btn-ghost" href="#/about">More about us</a></p>
       </div>
-      <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("stairs", IMG.stairs), caption("stairs", "Wool twist carpet fitted to a staircase and landing"), "3-2")}</div>
     </div>
   </div></section>
 
@@ -731,8 +748,8 @@ function viewCatalogue(typeId, styleId) {
     return `
     <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Catalogue</p></div>
     <section><div class="wrap">
-      <div class="section-head"><div><span class="rule"></span><p class="kicker">Everything we supply</p>
-        <h2>The catalogue</h2>
+      <div class="section-head"><div><span class="rule"></span><p class="kicker">${esc(say("catalogueKicker", "Everything we supply"))}</p>
+        <h2>${esc(say("catalogueHeading", "The catalogue"))}</h2>
         <p>Every floor we stock, by type. Tap any shade to see it close up, and save
            the ones you like to your list as you go.</p></div></div>
       <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
@@ -771,7 +788,7 @@ function viewCatalogue(typeId, styleId) {
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> / ${esc(type.name)}</p></div>
   <section><div class="wrap">
     <div class="section-head">
-      <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(type.blurb)}</p></div>
+      <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(say("type-" + type.id, type.blurb))}</p></div>
       ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
     </div>
 
@@ -845,7 +862,7 @@ function viewRange(id) {
     <a href="${type ? type.route : "#/catalogue"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
   <section><div class="wrap">
     <div class="range-hero">
-      ${photo(rangePhoto(r), r.alt || `${r.name} flooring`, "4-3")}
+      ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
       <div><span class="rule"></span><h1>${esc(r.name)}</h1><p class="lede">${esc(r.blurb)}</p>
         <ul class="spec">${spec.map(([k, v]) => `<li><div><span class="sl">${esc(k)}</span>${esc(v)}</div></li>`).join("")}</ul>
         <p style="margin-top:26px">${VISUALISER_ON
@@ -916,12 +933,12 @@ function viewAbout() {
       <div class="split-copy"><span class="rule"></span>
         <p class="kicker">Family run · Hounslow · ${esc(say("since", BUSINESS.since))}</p>
         <h2>${esc(say("aboutLead", ABOUT.lead))}</h2></div>
-      <div class="split-media">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
+      <div class="split-media">${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}</div>
     </div>
     <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${sayLines("aboutBody", ABOUT.body).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
   </div></section>
   <section class="band"><div class="wrap">
-    <div class="section-head"><div><span class="rule on-dark"></span><p class="kicker">Our service</p><h2>What you get</h2></div></div>
+    <div class="section-head"><div><span class="rule on-dark"></span><p class="kicker">${esc(say("servicesKicker", "Our service"))}</p><h2>${esc(say("servicesHeading", "What you get"))}</h2></div></div>
     ${servicesGrid()}
     <div style="margin-top:30px"><a class="btn btn-yellow" href="#/contact">Book a free measure</a></div>
   </div></section>`;
@@ -936,7 +953,7 @@ function viewContact() {
     <div class="contact-grid">
       <div>
         <span class="rule"></span>
-        <p class="kicker">Come in, or we'll come to you</p><h2>Visit the showroom</h2>
+        <p class="kicker">${esc(say("visitKicker", "Come in, or we\'ll come to you"))}</p><h2>${esc(say("visitHeading", "Visit the showroom"))}</h2>
         <p class="lede" style="margin-top:14px">Pop into the Hounslow showroom, or book a free home measure and we'll come to you across ${esc(say("area", CONTACT.area))}.</p>
         <div style="margin-top:24px">
           <div class="info-row"><span class="il">Showroom</span><span><a href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">${esc(say("address", CONTACT.address))}</a></span></div>
@@ -948,14 +965,14 @@ function viewContact() {
         <p style="margin-top:26px"><a class="btn btn-solid" href="#/enquire">Send an enquiry</a></p>
       </div>
       <div>
-        ${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}
+        ${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}
       </div>
     </div>
   </div></section>
 
   ${map ? `<section class="sec-alt"><div class="wrap">
-    <div class="section-head"><div><span class="rule"></span><h2>Find us</h2>
-      <p>Two minutes from Hounslow West, with parking on Hanworth Road.</p></div>
+    <div class="section-head"><div><span class="rule"></span><h2>${esc(say("mapHeading", "Find us"))}</h2>
+      <p>${esc(say("mapText", "Two minutes from Hounslow West, with parking on Hanworth Road."))}</p></div>
       <a class="btn btn-ghost btn-sm" href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">Open in Google Maps</a></div>
     <div class="map-embed">
       <iframe src="${esc(map)}" title="Map showing Hari's Carpets on Hanworth Road, Hounslow"
@@ -973,8 +990,8 @@ function viewEnquire() {
     <div class="enquire-grid">
       <div>
         <span class="rule"></span>
-        <p class="kicker">No pressure, no obligation</p>
-        <h2>Get in touch</h2>
+        <p class="kicker">${esc(say("enquireKicker", "No pressure, no obligation"))}</p>
+        <h2>${esc(say("enquireHeading", "Get in touch"))}</h2>
         <p class="lede" style="margin-top:14px">Tell us roughly what you're after and we'll come back to you.
           Home measures are free, and we'll bring samples to your door so you can see them in your own light.</p>
         <div style="margin-top:26px">
