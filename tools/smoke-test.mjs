@@ -57,12 +57,17 @@ const ROUTES = [
   ["#/catalogue/carpets/pattern", "an empty style 404s"],
   ["#/range/westex-elysian", "a range"],
   ["#/favourites", "favourites"],
-  ["#/visualiser", "visualiser"],
   ["#/about", "about"],
   ["#/contact", "visit us"],
   ["#/enquire", "enquire"],
   ["#/does-not-exist", "404"],
 ];
+
+/* The visualiser is an optional module — see FEATURES in data.js. These checks
+   follow the flag rather than assuming it, so switching it back on re-arms them
+   instead of leaving a hole. */
+const VISUALISER = /visualiser:\s*true/.test(
+  (await import("node:fs")).readFileSync(new URL("../public/data.js", import.meta.url), "utf8"));
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -115,7 +120,7 @@ console.log("Routes render something a visitor can see:");
 const invisible = [];
 for (const [hash, label] of ROUTES) {
   await page.goto(U(hash), { waitUntil: "networkidle" });
-  await page.waitForTimeout(hash === "#/visualiser" ? 2600 : 500);
+  await page.waitForTimeout(500);
   await scrollThrough(page);
   const blocks = await page.evaluate(BLOCKS);
   const painted = blocks.filter((b) => b.shown).reduce((n, b) => n + b.h, 0);
@@ -270,27 +275,44 @@ await fresh.goto(BASE + "/index.html" + link.split("#")[1] ? link : U("#/favouri
 await fresh.waitForTimeout(700);
 check("share link restores on a clean browser", (await fresh.locator(".swatch").count()) >= 1);
 
-console.log("\nVisualiser works:");
-await page.goto(U("#/visualiser"), { waitUntil: "networkidle" });
-await page.waitForTimeout(2800);
-check("canvas painted", await visible(page, "#visCanvas.ready"));
-check("room options offered", (await page.locator("#vzRooms button").count()) >= 2);
-check("shade strip populated", (await page.locator(".vz-swatch").count()) > 3);
-const firstShade = await page.locator("#vzNowName").textContent();
-await page.locator(".vz-swatch").nth(2).click();
-await page.waitForTimeout(700);
-check("picking a shade changes it", (await page.locator("#vzNowName").textContent()) !== firstShade);
-for (const t of ["wood", "lvt", "vinyl", "rugs"]) {
-  await page.locator(`[data-vz-type="${t}"]`).click();
-  await page.waitForTimeout(1600);
-  check(`${t} type renders`.padEnd(20), await visible(page, "#visCanvas.ready"));
+if (VISUALISER) {
+  console.log("\nVisualiser works:");
+  await page.goto(U("#/visualiser"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(2800);
+  check("canvas painted", await visible(page, "#visCanvas.ready"));
+  check("room options offered", (await page.locator("#vzRooms button").count()) >= 2);
+  check("shade strip populated", (await page.locator(".vz-swatch").count()) > 3);
+  const firstShade = await page.locator("#vzNowName").textContent();
+  await page.locator(".vz-swatch").nth(2).click();
+  await page.waitForTimeout(700);
+  check("picking a shade changes it", (await page.locator("#vzNowName").textContent()) !== firstShade);
+  for (const t of ["wood", "lvt", "vinyl", "rugs"]) {
+    await page.locator(`[data-vz-type="${t}"]`).click();
+    await page.waitForTimeout(1600);
+    check(`${t} type renders`.padEnd(20), await visible(page, "#visCanvas.ready"));
+  }
+} else {
+  console.log("\nVisualiser is switched off:");
+  await page.goto(U("#/visualiser"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  check("its route is a 404", (await page.evaluate(() =>
+    document.querySelector("#app").textContent)).includes("couldn't find that page"));
+  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  check("no link to it anywhere on the home page",
+    (await page.locator('a[href^="#/visualiser"]').count()) === 0);
+  await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  check("nor in the catalogue", (await page.locator('a[href^="#/visualiser"]').count()) === 0);
+  check("nor in the header or footer", (await page.evaluate(() =>
+    document.querySelectorAll('.site-header a[href^="#/visualiser"], footer a[href^="#/visualiser"]').length)) === 0);
 }
 
 console.log("\nMobile:");
 const mob = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
-for (const hash of ["#/", "#/catalogue/carpets", "#/visualiser"]) {
+for (const hash of ["#/", "#/catalogue/carpets", "#/enquire"]) {
   await mob.goto(U(hash), { waitUntil: "networkidle" });
-  await mob.waitForTimeout(hash === "#/visualiser" ? 2600 : 700);
+  await mob.waitForTimeout(700);
   const scrolls = await mob.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check(`no sideways scroll on ${hash}`.padEnd(34), !scrolls);
 }

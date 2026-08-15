@@ -24,9 +24,10 @@ Parked deliberately, not forgotten.
   but nothing in the supplier photography is unambiguously striped and
   inventing one would put a claim on the site we cannot support. Add range ids
   to the `pattern` style in `STYLES` and it appears; leave it and it does not.
-- **Set `FEATURES.visualiser = false`** in `public/data.js` if the visualiser is
-  being sold separately rather than included. That hides every entry point; see
-  the header of `public/visualiser.js`.
+- **The visualiser is switched off** (`FEATURES.visualiser` in `public/data.js`).
+  The shop did not want it. Its code is untouched and still sellable on its own;
+  turning it back on is that one word, and the smoke test re-arms its checks
+  automatically when it is.
 
 ## Waiting on Hari
 

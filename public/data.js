@@ -26,8 +26,11 @@ const FEATURES = {
 
   /* The floor visualiser is a separable add-on, not part of the website build.
      false hides every entry point and stops it loading; visualiser.js and
-     visualiser.css can then be deleted with nothing else to change. */
-  visualiser: true,
+     visualiser.css can then be deleted with nothing else to change.
+
+     Off because the shop does not want it. The code stays where it is — it is
+     still sellable on its own, and turning it back on is this one word. */
+  visualiser: false,
 };
 
 const BUSINESS = {
