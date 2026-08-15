@@ -455,6 +455,46 @@ console.log("\nOnly paths this admin wrote can be pointed at:");
   check("a path outside uploads/ is refused", doc.images.elsewhere === undefined);
 }
 
+console.log("\nReviews and Instagram are checked before they are stored:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0,
+    reviews: {
+      rating: "4.9", count: "37", url: "https://g.page/haris-carpets",
+      items: [
+        { text: "Lovely job on the stairs.", name: "Sam" },
+        { text: "   ", name: "Blank" },
+        { text: "No name given" },
+      ],
+    },
+    instagram: {
+      url: "javascript:alert(1)",
+      posts: [
+        { image: "uploads/insta-0-1122334455.jpg", link: "https://www.instagram.com/p/abc/" },
+        { image: "uploads/insta-1-1122334455.jpg", link: "javascript:alert(1)" },
+        { image: "https://evil.example/tracker.gif", link: "https://ok.example" },
+        { image: "uploads/../../etc/passwd", link: "https://ok.example" },
+      ],
+    },
+  }) }), env, ctx);
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+
+  check("the rating is kept", doc.reviews.rating === "4.9");
+  check("the listing link is kept", doc.reviews.url.includes("g.page"));
+  check("an empty review is dropped", doc.reviews.items.length === 2);
+  check("a review with no name is kept", doc.reviews.items[1].name === "");
+  check("a javascript: profile link is refused", doc.instagram.url === "");
+  check("a good post survives", doc.instagram.posts[0].link.includes("instagram.com"));
+  check("a javascript: post link is stripped", doc.instagram.posts[1].link === "");
+  check("but the post itself is kept", doc.instagram.posts.length === 2);
+  check("an off-site image is dropped", !doc.instagram.posts.some((p) => p.image.startsWith("http")));
+  check("a traversal image path is dropped",
+    !doc.instagram.posts.some((p) => p.image.includes("..")));
+}
+
 console.log("\nThe public read is public, and read-only:");
 {
   const env = makeEnv();

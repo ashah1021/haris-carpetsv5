@@ -646,3 +646,48 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
   background: var(--blue); color: #fff; font-size: 14.5px;
   padding: 11px 0; text-align: center;
 }
+
+/* =========================================================================
+   MAP, REVIEWS, INSTAGRAM
+   ========================================================================= */
+
+/* Google's embed is a fixed 600x450 out of the box. Wrapping it in a ratio box
+   and stretching the iframe is what makes it behave on a phone. */
+/* the form deserves the wider half now that it has a page of its own */
+.enquire-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(28px, 5vw, 64px); align-items: start; }
+@media (max-width: 900px) { .enquire-grid { grid-template-columns: 1fr; } }
+
+.map-embed {
+  position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--line);
+  background: var(--off); overflow: hidden;
+}
+.map-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+@media (max-width: 700px) { /* the form deserves the wider half now that it has a page of its own */
+.enquire-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(28px, 5vw, 64px); align-items: start; }
+@media (max-width: 900px) { .enquire-grid { grid-template-columns: 1fr; } }
+
+.map-embed { aspect-ratio: 4 / 3; } }
+
+/* Deliberately a strip rather than a section: it is corroboration on the way
+   past, not a page of testimonials. */
+.reviews { padding: clamp(30px, 4vw, 46px) 0; border-bottom: 1px solid var(--line); }
+.reviews-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
+.reviews-score { margin: 0; display: flex; align-items: baseline; gap: 10px; }
+.reviews-score b { font-family: var(--f-display); font-size: 30px; color: var(--blue-ink); }
+.reviews-score .stars { color: var(--yellow-deep); font-size: 19px; letter-spacing: .1em; }
+.reviews-sub { margin: 0; color: var(--muted); font-size: 14.5px; flex: 1; }
+
+.reviews-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.reviews-list blockquote {
+  margin: 0; padding-left: 16px; border-left: 3px solid var(--yellow);
+}
+.reviews-list p { margin: 0; font-size: 15px; color: var(--ink-soft); line-height: 1.6; }
+.reviews-list cite {
+  display: block; margin-top: 9px; font-style: normal; font-size: 13px;
+  font-family: var(--f-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+
+.ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ig-tile { display: block; aspect-ratio: 1; overflow: hidden; background: var(--off); }
+.ig-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.ig-tile:hover img { transform: scale(1.06); }

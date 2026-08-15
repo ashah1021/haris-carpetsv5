@@ -19,7 +19,8 @@ const PASSWORD = "correct-horse-battery-staple";
 let session = null;
 
 let DOC = { version: 0, content: {}, featured: null, styles: {},
-            overrides: {}, ranges: [], extra: {}, images: {} };
+            overrides: {}, ranges: [], extra: {}, images: {},
+            reviews: null, instagram: null };
 
 /* Uploads are kept in memory and served back from /assets/, because a stub
    that accepts a photograph and then 404s it is not testing the thing that

@@ -190,3 +190,12 @@ body.admin { background: var(--off); }
   .mg-who { margin-left: 0; width: 100%; }
   .mg-row-acts { width: 100%; }
 }
+
+/* ---- reviews and Instagram on the Home page tab ---- */
+.mg-quotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.mg-quote { background: var(--paper); border: 1px solid var(--line); padding: 14px; }
+.mg-quote .mg-field + .mg-field { margin-top: 10px; }
+.mg-quote textarea, .mg-quote input[type="text"], .mg-iglink {
+  padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px;
+  background: var(--paper); font: inherit; font-size: 14.5px; color: var(--ink); width: 100%;
+}

@@ -49,7 +49,8 @@ const JWKS_TTL = 3600;
 /* ranges = whole new collections. extra = shades added to a collection that
    came from the pipeline, kept apart so regenerating never collides with them. */
 const EMPTY = { version: 0, updated: null, content: {}, featured: null,
-                styles: {}, overrides: {}, ranges: [], extra: {}, images: {} };
+                styles: {}, overrides: {}, ranges: [], extra: {}, images: {},
+                reviews: null, instagram: null };
 
 /* Uploaded photographs get a random suffix and are never overwritten.
    /assets/ is served with a year's immutable cache — that is most of why the
@@ -74,6 +75,16 @@ const isHex = (s) => typeof s === "string" && /^#[0-9a-f]{6}$/i.test(s);
 
 /** Trim to a sane length and refuse anything that isn't a string. */
 const text = (s, max) => (typeof s === "string" ? s.slice(0, max) : "");
+
+/* A link the shop pasted in. Only http(s) — a javascript: or data: URL here
+   would end up as an href on the public site. */
+function httpUrl(v) {
+  if (typeof v !== "string" || v.length > 500) return "";
+  try {
+    const u = new URL(v.trim());
+    return (u.protocol === "https:" || u.protocol === "http:") ? u.toString() : "";
+  } catch { return ""; }
+}
 
 /* ------------------------------------------------------------------ auth */
 
@@ -325,6 +336,32 @@ function clean(input) {
       if (parts.length > 3 || !parts.every(isSlug)) continue;
       if (typeof path === "string" && UPLOAD_PATH.test(path)) out.images[slot] = path;
     }
+  }
+
+  /* What customers have said on Google, and the shop's Instagram grid. Both
+     are entered by hand — see docs/admin.md for why neither is pulled live. */
+  if (input.reviews && typeof input.reviews === "object") {
+    const r = input.reviews;
+    const items = (Array.isArray(r.items) ? r.items : []).slice(0, 8)
+      .map((i) => ({ text: text(i && i.text, 400).trim(), name: text(i && i.name, 60).trim() }))
+      .filter((i) => i.text);
+    out.reviews = {
+      rating: text(r.rating, 8).trim(),
+      count: text(r.count, 12).trim(),
+      url: httpUrl(r.url),
+      items,
+    };
+  }
+
+  if (input.instagram && typeof input.instagram === "object") {
+    const g = input.instagram;
+    const posts = (Array.isArray(g.posts) ? g.posts : []).slice(0, 12)
+      .map((p) => ({
+        image: UPLOAD_PATH.test(p && p.image) ? p.image : "",
+        link: httpUrl(p && p.link),
+      }))
+      .filter((p) => p.image);
+    out.instagram = { url: httpUrl(g.url), posts };
   }
 
   if (input.extra && typeof input.extra === "object") {

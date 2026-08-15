@@ -60,6 +60,29 @@ Everything the shop can change goes through `say()` in app.js. Reading
 `CONTACT.hours` directly anywhere is a value the shop cannot change, and is how
 this tab came to save happily and alter nothing at all.
 
+## Reviews and Instagram
+
+Both live on the **Home page** tab, both are typed in by hand, and both render
+nothing at all until there is something to show — an empty reviews strip or a
+row of grey squares is worse than no section.
+
+**Only paste in reviews people have actually left you.** Putting invented
+testimonials on a real shop's website is lying to customers, and it is the sort
+of thing that is very hard to walk back.
+
+Neither is pulled live, deliberately:
+
+- Google's reviews come from the Places API, which needs a billing-enabled key
+  and returns at most five reviews that Google chooses. For a shop with a few
+  dozen reviews, copying the best three across is less work than the key, and
+  they are the three you would have picked anyway. Say the word and I will wire
+  the API instead; the section reads from the same shape either way.
+- Instagram's Basic Display API was retired at the end of 2024. What is left
+  needs a Business account tied to a Facebook Page and a token that expires and
+  has to be refreshed, and "most popular" needs insights permissions on top.
+  A token quietly expiring and emptying the front page is a worse failure than
+  choosing eight posts once a season.
+
 ## Photographs
 
 The **Photos** tab replaces any picture on the site: the home page banner, the

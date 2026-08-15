@@ -93,6 +93,9 @@ console.log("\nShop details reach the site:");
   const footMail = await page.evaluate(() =>
     document.querySelector('footer a[href^="mailto:"]')?.textContent.trim());
   check("so does the footer email", footMail === typed.email, footMail);
+  const footAddr = await page.evaluate(() =>
+    document.querySelector("#footAddress")?.textContent.trim());
+  check("and the footer address", footAddr === typed.address, footAddr);
 
   await go(`${BASE}/index.html#/`, 1500);
   check("the notice shows on the home page",
@@ -398,6 +401,71 @@ console.log("\nReplacing a photograph:");
     document.querySelector(".hero img")?.getAttribute("src") || "");
   check("'use the original' restores the shipped photo",
     back.includes("hero-living-room.jpg"), back);
+}
+
+console.log("\nReviews and Instagram:");
+{
+  /* Clear both out first, so this passes whatever a previous run left in the
+     stub — and so removing them is covered as well as adding them. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(600);
+  for (const sel of ['[data-rev="rating"]', '[data-rev="count"]', '[data-rev="url"]']) {
+    await page.locator(sel).fill("");
+  }
+  for (const q of await page.locator('[data-part="text"]').all()) await q.fill("");
+  while (await page.locator("[data-igdrop]").count()) {
+    await page.locator("[data-igdrop]").first().click();
+    await page.waitForTimeout(250);
+  }
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/`, 1600);
+  check("neither section is there when nothing has been entered",
+    (await page.locator(".reviews").count()) === 0
+    && (await page.locator(".ig-grid").count()) === 0);
+
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-rev="rating"]').fill("4.9");
+  await page.locator('[data-rev="count"]').fill("37");
+  await page.locator('[data-rev="url"]').fill("https://g.page/haris-carpets");
+  await page.locator('[data-quote="0"][data-part="text"]').fill("Lovely job on the stairs.");
+  await page.locator('[data-quote="0"][data-part="name"]').fill("Sam");
+  await page.locator('[data-ig="url"]').fill("https://www.instagram.com/hariscarpets/");
+  await page.locator('[data-igfile="0"]')
+    .setInputFiles(new URL("../public/assets/showroom.jpg", import.meta.url).pathname);
+  await page.waitForTimeout(1500);
+  await page.locator('[data-igpost="0"]').fill("https://www.instagram.com/p/abc/");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/`, 1700);
+  check("the rating shows", (await page.locator(".reviews-score b").textContent()) === "4.9");
+  check("the count shows", (await page.locator(".reviews-sub").textContent()).includes("37"));
+  check("the review shows",
+    (await page.locator(".reviews-list blockquote p").first().textContent()).includes("stairs"));
+  check("the reviewer is credited",
+    (await page.locator(".reviews-list cite").first().textContent()) === "Sam");
+  check("the Instagram grid appears", (await page.locator(".ig-tile").count()) === 1);
+  const igHref = await page.evaluate(() =>
+    document.querySelector(".ig-tile")?.getAttribute("href"));
+  check("the tile links to the post", igHref?.includes("instagram.com/p/"), igHref);
+  /* the grid sits at the foot of the page and its images are lazy, so they do
+     not load until somebody scrolls to them — which is the point of lazy */
+  await page.evaluate(() => document.querySelector(".ig-grid").scrollIntoView());
+  await page.waitForTimeout(900);
+  const igImg = await page.evaluate(() =>
+    document.querySelector(".ig-tile img")?.naturalWidth > 0);
+  check("and the picture actually loaded", igImg);
+
+  /* keeps the reviews strip small — three quotes, not a testimonials page */
+  check("the strip stays compact",
+    (await page.evaluate(() =>
+      Math.round(document.querySelector(".reviews").getBoundingClientRect().height))) < 400,
+    `${await page.evaluate(() => Math.round(document.querySelector(".reviews").getBoundingClientRect().height))}px tall`);
 }
 
 console.log("\nWith Access and a password both configured — the live shape:");

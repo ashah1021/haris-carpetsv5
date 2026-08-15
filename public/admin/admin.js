@@ -342,13 +342,66 @@
 
   function viewHome() {
     const chosen = DOC.featured || FEATURED;
+    const rev = DOC.reviews || { rating: "", count: "", url: "", items: [] };
+    const ig = DOC.instagram || { url: "", posts: [] };
     return `
     <h2>Home page</h2>
-    <p class="mg-lede">Pick the collections to show on the front page. Three fits the layout best.</p>
+
+    <h3 class="mg-photo-head">Featured collections</h3>
+    <p class="mg-lede">Three fits the layout best.</p>
     <div class="mg-ticks wide">
       ${allRanges().filter((r) => !isHidden(r.id)).map((r) => `<label class="mg-tick">
         <input type="checkbox" data-featured value="${esc(r.id)}" ${chosen.includes(r.id) ? "checked" : ""}>
         <span>${esc(DOC.overrides[r.id]?.name || r.name)}<i>${esc(r.brand)}</i></span></label>`).join("")}
+    </div>
+
+    <h3 class="mg-photo-head">Google reviews</h3>
+    <p class="mg-lede">Copy your rating and a few of your best reviews across from your Google
+      listing. Leave it all blank and the strip doesn't appear at all.
+      <strong>Only paste in reviews people have actually left you.</strong></p>
+    <div class="mg-addrow">
+      <label class="mg-field" style="min-width:120px"><span>Rating</span>
+        <input type="text" data-rev="rating" value="${esc(rev.rating)}" placeholder="4.9"></label>
+      <label class="mg-field" style="min-width:140px"><span>How many</span>
+        <input type="text" data-rev="count" value="${esc(rev.count)}" placeholder="37"></label>
+      <label class="mg-field" style="min-width:280px"><span>Link to your Google listing</span>
+        <input type="text" data-rev="url" value="${esc(rev.url)}" placeholder="https://…"></label>
+    </div>
+    <div class="mg-quotes" id="quotes">
+      ${[...rev.items, { text: "", name: "" }, { text: "", name: "" }, { text: "", name: "" }]
+        .slice(0, Math.max(3, rev.items.length + 1)).map((it, i) => `
+        <div class="mg-quote">
+          <label class="mg-field"><span>Review ${i + 1}</span>
+            <textarea rows="3" data-quote="${i}" data-part="text"
+              placeholder="What they wrote">${esc(it.text)}</textarea></label>
+          <label class="mg-field"><span>Who wrote it</span>
+            <input type="text" data-quote="${i}" data-part="name" value="${esc(it.name)}"
+              placeholder="First name"></label>
+        </div>`).join("")}
+    </div>
+
+    <h3 class="mg-photo-head">Instagram</h3>
+    <p class="mg-lede">Pick your best posts: upload the picture and paste the link to the post.
+      Eight fit the row neatly. Leave it empty and the section doesn't appear.</p>
+    <label class="mg-field" style="max-width:420px"><span>Your Instagram page</span>
+      <input type="text" data-ig="url" value="${esc(ig.url)}" placeholder="https://www.instagram.com/hariscarpets/"></label>
+    <div class="mg-photos" style="margin-top:18px">
+      ${[...ig.posts, {}].slice(0, 12).map((p, i) => `
+        <div class="mg-photo">
+          <div class="mg-photo-img">${p.image
+            ? `<img src="../assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
+          <div class="mg-photo-body">
+            <b>${p.image ? `Post ${i + 1}` : "Add a post"}</b>
+            <input type="text" class="mg-iglink" data-igpost="${i}" value="${esc(p.link || "")}"
+                   placeholder="Link to the post">
+            <label class="mg-replace">
+              <input type="file" accept="image/*" data-igfile="${i}">
+              <span class="btn btn-ghost btn-sm">${p.image ? "Replace" : "Choose picture"}</span>
+            </label>
+            ${p.image ? `<button class="linkish" data-igdrop="${i}">Remove</button>` : ""}
+            <span class="mg-photo-state" data-state="ig-${i}"></span>
+          </div>
+        </div>`).join("")}
     </div>`;
   }
 
@@ -414,6 +467,31 @@
       });
     }
     if (t.id === "newShadeName") refreshAddButton();
+
+    if (t.dataset.rev !== undefined) {
+      DOC.reviews = DOC.reviews || { rating: "", count: "", url: "", items: [] };
+      DOC.reviews[t.dataset.rev] = t.value;
+      mark();
+    }
+    if (t.dataset.quote !== undefined) {
+      DOC.reviews = DOC.reviews || { rating: "", count: "", url: "", items: [] };
+      const i = Number(t.dataset.quote);
+      while (DOC.reviews.items.length <= i) DOC.reviews.items.push({ text: "", name: "" });
+      DOC.reviews.items[i][t.dataset.part] = t.value;
+      mark();
+    }
+    if (t.dataset.ig !== undefined) {
+      DOC.instagram = DOC.instagram || { url: "", posts: [] };
+      DOC.instagram[t.dataset.ig] = t.value;
+      mark();
+    }
+    if (t.dataset.igpost !== undefined) {
+      DOC.instagram = DOC.instagram || { url: "", posts: [] };
+      const i = Number(t.dataset.igpost);
+      while (DOC.instagram.posts.length <= i) DOC.instagram.posts.push({ image: "", link: "" });
+      DOC.instagram.posts[i].link = t.value;
+      mark();
+    }
   });
 
   document.addEventListener("change", (e) => {
@@ -436,6 +514,7 @@
     }
     if (t.id === "newShadeFile") pickSwatch(t.files[0]);
     if (t.dataset.slot !== undefined) replacePhoto(t.dataset.slot, t.files[0]);
+    if (t.dataset.igfile !== undefined) addInstaPhoto(Number(t.dataset.igfile), t.files[0]);
   });
 
   /* Replacing a photograph uploads it straight away rather than waiting for
@@ -528,6 +607,27 @@
     }
   }
 
+  /* An Instagram tile is square on the page, so there is no point keeping a
+     wide photograph at full width. */
+  async function addInstaPhoto(i, file) {
+    if (!file) return;
+    const state = document.querySelector(`[data-state="ig-${i}"]`);
+    const say = (m, bad) => { if (state) { state.textContent = m; state.className = "mg-photo-state" + (bad ? " warn" : ""); } };
+    say("Uploading…");
+    try {
+      const { blob } = await readSwatch(file, TILE);
+      const res = await fetch(`../api/admin/upload?slot=insta-${i}`,
+        { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "upload failed");
+      DOC.instagram = DOC.instagram || { url: "", posts: [] };
+      while (DOC.instagram.posts.length <= i) DOC.instagram.posts.push({ image: "", link: "" });
+      DOC.instagram.posts[i].image = body.path;
+      mark();
+      render();
+    } catch (err) { say(err.message, true); }
+  }
+
   function createRange() {
     const name = $("#nrName").value.trim();
     const brand = $("#nrBrand").value.trim() || "Hari's Carpets";
@@ -556,6 +656,13 @@
     const shades = t.closest("[data-shades]");
     if (shades) { openRange = shades.dataset.shades; return render(); }
     if (t.id === "back") { openRange = null; return render(); }
+
+    const drop = t.closest("[data-igdrop]");
+    if (drop) {
+      DOC.instagram.posts.splice(Number(drop.dataset.igdrop), 1);
+      mark();
+      return render();
+    }
 
     const revert = t.closest("[data-revert]");
     if (revert) { delete DOC.images[revert.dataset.revert]; mark(); return render(); }

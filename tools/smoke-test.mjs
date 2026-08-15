@@ -59,13 +59,21 @@ const ROUTES = [
   ["#/favourites", "favourites"],
   ["#/visualiser", "visualiser"],
   ["#/about", "about"],
-  ["#/contact", "contact"],
+  ["#/contact", "visit us"],
+  ["#/enquire", "enquire"],
   ["#/does-not-exist", "404"],
 ];
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page = await ctx.newPage();
+
+/* The Visit us page embeds a Google map. This environment cannot reach Google,
+   so the request hangs and "networkidle" never arrives — and even where it can,
+   waiting on a third party would make every run slower and flakier. Google is
+   stubbed out; that the iframe is on the page with the right src is asserted
+   below, which is the part that is ours to get right. */
+await ctx.route("**://*.google.com/**", (route) => route.abort());
 
 const errors = [], badResponses = [];
 page.on("pageerror", (e) => errors.push(e.message));
@@ -125,6 +133,23 @@ check("nothing is left invisible after scrolling", invisible.length === 0,
    having in it so far has been a parsing one — a range name kept as a colour,
    the same range emitted twice, a photo filed as a swatch. These assert the
    shape of the data rather than the look of the page. */
+console.log("\nVisit us and Get in touch:");
+await page.goto(U("#/contact"), { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(900);
+const mapSrc = await page.evaluate(() =>
+  document.querySelector(".map-embed iframe")?.getAttribute("src") || "");
+check("the map is embedded", mapSrc.includes("google.com/maps/embed"), mapSrc.slice(0, 48));
+check("the map box has been given a size", await visible(page, ".map-embed"));
+check("the enquiry form has moved off this page",
+  (await page.locator("#enquiry").count()) === 0);
+check("with a link to where it went", (await page.locator('a[href="#/enquire"]').count()) > 0);
+
+await page.goto(U("#/enquire"), { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(700);
+check("the form is on its own page", await visible(page, "#enquiry"));
+check("and it can be filled in", (await page.locator("#enquiry input, #enquiry textarea").count()) >= 4);
+check("with a way back to the showroom", (await page.locator('a[href="#/contact"]').count()) > 0);
+
 console.log("\nCatalogue data is sane:");
 await page.goto(U("#/catalogue"), { waitUntil: "networkidle" });
 await page.waitForTimeout(500);

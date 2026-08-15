@@ -44,6 +44,9 @@ const CONTACT = {
   email: "sales@hariscarpets.co.uk",
   address: "267 Hanworth Road, Hounslow, Middlesex, TW3 3RZ",
   mapsUrl: "https://www.google.com/maps/place/Hari's+Carpets/@51.4624955,-0.3671699,17z",
+  /* The embed URL from Google Maps → Share → Embed a map. Loaded lazily and
+     only on the Visit us page, so it costs nothing anywhere else. */
+  mapEmbed: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2485.7607995459607!2d-0.36978432338261097!3d51.46254807180317!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48760cd02d695605%3A0x9334d501a9eb9dc6!2sHari's%20Carpets!5e0!3m2!1sen!2suk!4v1786791961725!5m2!1sen!2suk",
   hours: "Mon–Sat · Sun by appointment", // TODO: confirm exact opening hours
   area: "London & the Home Counties (within the M25)",
 };

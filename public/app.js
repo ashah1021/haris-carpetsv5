@@ -274,6 +274,10 @@ function applyContentToChrome() {
     a.href = "mailto:" + email;
     a.textContent = email;
   });
+  /* the footer showed the address the site shipped with while the contact page
+     showed the shop's — one address per site, please */
+  const foot = document.getElementById("footAddress");
+  if (foot) foot.textContent = say("address", CONTACT.address);
 }
 
 const rangePhoto = (r) => siteImage("range:" + r.id, r.photo);
@@ -389,6 +393,57 @@ const servicesGrid = () =>
 /* =========================================================================
    VIEWS
    ========================================================================= */
+/* =========================================================================
+   REVIEWS AND INSTAGRAM
+   Both are entered in /admin rather than pulled live, and both render nothing
+   at all until the shop has put something in. An empty reviews strip or a grid
+   of grey squares is worse than no section, and inventing either would be
+   putting words in a customer's mouth on a real shop's website.
+   ========================================================================= */
+function reviewsStrip() {
+  const r = SITE.reviews;
+  if (!r) return "";
+  /* Filtered here as well as on the way in. Whether a section appears at all
+     should not depend on something upstream having tidied the data — an empty
+     quote box saved by accident must not put an empty blockquote on the home
+     page. */
+  const items = (r.items || []).filter((i) => i && i.text && i.text.trim());
+  const rating = (r.rating || "").trim();
+  if (!items.length && !rating) return "";
+  const stars = (n) => "★★★★★".slice(0, Math.max(0, Math.min(5, Math.round(Number(n) || 0))));
+  return `
+  <section class="reviews"><div class="wrap">
+    <div class="reviews-head">
+      ${rating ? `<p class="reviews-score"><b>${esc(rating)}</b>
+        <span class="stars" aria-hidden="true">${stars(rating)}</span></p>` : ""}
+      <p class="reviews-sub">${r.count ? `${esc(r.count)} reviews on Google` : "Reviews on Google"}</p>
+      ${r.url ? `<a class="arrow-link" href="${esc(r.url)}" target="_blank" rel="noopener">Read them all →</a>` : ""}
+    </div>
+    ${items.length ? `<div class="reviews-list">${items.slice(0, 3).map((i) => `
+      <blockquote><p>${esc(i.text)}</p>${i.name ? `<cite>${esc(i.name)}</cite>` : ""}</blockquote>`).join("")}</div>` : ""}
+  </div></section>`;
+}
+
+function instagramGrid() {
+  const g = SITE.instagram;
+  /* same reasoning as the reviews strip: a post with no picture is not a tile */
+  const posts = (g?.posts || []).filter((p) => p && p.image);
+  if (!posts.length) return "";
+  const tile = (p) => {
+    const img = `<img src="${esc(P(p.image))}" alt="" loading="lazy" onerror="this.remove()">`;
+    return p.link
+      ? `<a class="ig-tile" href="${esc(p.link)}" target="_blank" rel="noopener">${img}</a>`
+      : `<span class="ig-tile">${img}</span>`;
+  };
+  return `
+  <section class="sec-alt"><div class="wrap">
+    <div class="section-head"><div><span class="rule"></span>
+      <p class="kicker">On Instagram</p><h2>Recent work</h2></div>
+      ${g.url ? `<a class="btn btn-ghost btn-sm" href="${esc(g.url)}" target="_blank" rel="noopener">Follow us</a>` : ""}</div>
+    <div class="ig-grid">${posts.slice(0, 8).map(tile).join("")}</div>
+  </div></section>`;
+}
+
 function viewHome() {
   const featured = (SITE.featured || FEATURED).map(findRange).filter(Boolean).map(rangeCard).join("");
   /* An optional line the shop can put across the top — a bank holiday, a
@@ -418,6 +473,8 @@ function viewHome() {
     <span><b>Free</b> home measure &amp; plan</span>
     <span><b>Old flooring</b> lifted &amp; taken away</span>
   </div></div>
+
+  ${reviewsStrip()}
 
   <section><div class="wrap">
     <div class="section-head">
@@ -488,7 +545,9 @@ function viewHome() {
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
     </div>
-  </div></section>`;
+  </div></section>
+
+  ${instagramGrid()}`;
 }
 
 /* ---------- catalogue: filterable by brand and colour family ---------- */
@@ -838,6 +897,7 @@ function viewAbout() {
 
 function viewContact() {
   const socials = SOCIALS.map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("");
+  const map = say("mapEmbed", CONTACT.mapEmbed);
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visit us</p></div>
   <section><div class="wrap">
@@ -853,7 +913,44 @@ function viewContact() {
           <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
           <div class="info-row"><span class="il">Follow</span><span class="socials">${socials}</span></div>
         </div>
-        <div style="margin-top:28px">${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}</div>
+        <p style="margin-top:26px"><a class="btn btn-solid" href="#/enquire">Send an enquiry</a></p>
+      </div>
+      <div>
+        ${photo(siteImage("showroom", IMG.showroom), "Inside the Hari's Carpets showroom", "3-2")}
+      </div>
+    </div>
+  </div></section>
+
+  ${map ? `<section class="sec-alt"><div class="wrap">
+    <div class="section-head"><div><span class="rule"></span><h2>Find us</h2>
+      <p>Two minutes from Hounslow West, with parking on Hanworth Road.</p></div>
+      <a class="btn btn-ghost btn-sm" href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">Open in Google Maps</a></div>
+    <div class="map-embed">
+      <iframe src="${esc(map)}" title="Map showing Hari's Carpets on Hanworth Road, Hounslow"
+              loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+  </div></section>` : ""}`;
+}
+
+/* The enquiry form on its own page. It was a column beside the address, where
+   it read as an afterthought; on its own it is the thing the page is for. */
+function viewEnquire() {
+  return `
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Get in touch</p></div>
+  <section><div class="wrap">
+    <div class="enquire-grid">
+      <div>
+        <span class="rule"></span>
+        <p class="kicker">No pressure, no obligation</p>
+        <h2>Get in touch</h2>
+        <p class="lede" style="margin-top:14px">Tell us roughly what you're after and we'll come back to you.
+          Home measures are free, and we'll bring samples to your door so you can see them in your own light.</p>
+        <div style="margin-top:26px">
+          <div class="info-row"><span class="il">Call</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
+          <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
+          <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
+        </div>
+        <p style="margin-top:24px"><a class="arrow-link" href="#/contact">Or visit the showroom →</a></p>
       </div>
       <div><div class="form-card">
         <h3 style="margin-bottom:10px">Send an enquiry</h3>
@@ -901,6 +998,7 @@ function render() {
     case "visualiser": html = VISUALISER_ON ? window.Visualiser.view(parts[1]) : viewNotFound(); break;
     case "about":      html = viewAbout(); break;
     case "contact":    html = viewContact(); break;
+    case "enquire":    html = viewEnquire(); break;
     default:           html = viewNotFound();
   }
   app().innerHTML = html;
