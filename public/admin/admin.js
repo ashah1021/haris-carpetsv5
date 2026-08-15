@@ -368,15 +368,23 @@
         <input type="text" data-rev="url" value="${esc(rev.url)}" placeholder="https://…"></label>
     </div>
     <div class="mg-quotes" id="quotes">
-      ${[...rev.items, { text: "", name: "" }, { text: "", name: "" }, { text: "", name: "" }]
+      ${[...rev.items, {}, {}, {}]
         .slice(0, Math.max(3, rev.items.length + 1)).map((it, i) => `
         <div class="mg-quote">
           <label class="mg-field"><span>Review ${i + 1}</span>
             <textarea rows="3" data-quote="${i}" data-part="text"
               placeholder="What they wrote">${esc(it.text)}</textarea></label>
-          <label class="mg-field"><span>Who wrote it</span>
-            <input type="text" data-quote="${i}" data-part="name" value="${esc(it.name)}"
-              placeholder="First name"></label>
+          <div class="mg-addrow">
+            <label class="mg-field" style="min-width:130px"><span>Who wrote it</span>
+              <input type="text" data-quote="${i}" data-part="name" value="${esc(it.name)}"
+                placeholder="First name"></label>
+            <label class="mg-field" style="min-width:70px"><span>Stars</span>
+              <input type="text" data-quote="${i}" data-part="stars" value="${esc(it.stars || "")}"
+                placeholder="5"></label>
+            <label class="mg-field" style="min-width:110px"><span>When</span>
+              <input type="text" data-quote="${i}" data-part="when" value="${esc(it.when || "")}"
+                placeholder="13 days ago"></label>
+          </div>
         </div>`).join("")}
     </div>
 

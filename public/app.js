@@ -410,27 +410,72 @@ function reviewsStrip() {
   const items = (r.items || []).filter((i) => i && i.text && i.text.trim());
   const rating = (r.rating || "").trim();
   if (!items.length && !rating) return "";
-  const stars = (n) => "★★★★★".slice(0, Math.max(0, Math.min(5, Math.round(Number(n) || 0))));
+
+  const stars = (n) => {
+    const filled = Math.max(0, Math.min(5, Math.round(Number(n) || 0)));
+    return `<span class="stars" role="img" aria-label="${filled} out of 5">${
+      "★".repeat(filled)}<span class="stars-off">${"★".repeat(5 - filled)}</span></span>`;
+  };
+  /* The initial in a coloured disc, the way every review site does it. Hue from
+     the name so the same person is always the same colour. */
+  const avatar = (name) => {
+    const n = (name || "?").trim();
+    let h = 0;
+    for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360;
+    return `<span class="rv-face" style="background:hsl(${h} 45% 42%)" aria-hidden="true">${
+      esc(n[0] ? n[0].toUpperCase() : "?")}</span>`;
+  };
+
   return `
   <section class="reviews"><div class="wrap">
-    <div class="reviews-head">
-      ${rating ? `<p class="reviews-score"><b>${esc(rating)}</b>
-        <span class="stars" aria-hidden="true">${stars(rating)}</span></p>` : ""}
-      <p class="reviews-sub">${r.count ? `${esc(r.count)} reviews on Google` : "Reviews on Google"}</p>
-      ${r.url ? `<a class="arrow-link" href="${esc(r.url)}" target="_blank" rel="noopener">Read them all →</a>` : ""}
+    <div class="reviews-bar">
+      <div class="reviews-brand">
+        <b>Google</b> Reviews
+        ${rating ? `<span class="reviews-score">${esc(rating)} ${stars(rating)}
+          ${r.count ? `<i>(${esc(r.count)})</i>` : ""}</span>` : ""}
+      </div>
+      ${r.url ? `<a class="btn btn-solid btn-sm" href="${esc(r.url)}"
+        target="_blank" rel="noopener">Review us on Google</a>` : ""}
     </div>
     ${items.length ? `<div class="reviews-list">${items.slice(0, 3).map((i) => `
-      <blockquote><p>${esc(i.text)}</p>${i.name ? `<cite>${esc(i.name)}</cite>` : ""}</blockquote>`).join("")}</div>` : ""}
+      <figure class="rv">
+        <figcaption>
+          ${avatar(i.name)}
+          <span class="rv-who"><b>${esc(i.name || "Google customer")}</b>
+            ${i.when ? `<small>${esc(i.when)}</small>` : ""}</span>
+        </figcaption>
+        ${stars(i.stars || 5)}
+        <p>${esc(i.text)}</p>
+      </figure>`).join("")}</div>` : ""}
   </div></section>`;
+}
+
+/* Posts pulled live from Instagram, when the feed is configured and answering.
+   Chosen posts are the fallback, not the other way round: if the token has
+   lapsed the shop still has something on the front page. */
+let IG_LIVE = null;
+
+async function loadInstagram() {
+  try {
+    const res = await fetch("api/instagram", { headers: { accept: "application/json" } });
+    if (!res.ok) return false;
+    const body = await res.json();
+    if (!body?.posts?.length) return false;
+    IG_LIVE = body.posts;
+    return true;
+  } catch { return false; }
 }
 
 function instagramGrid() {
   const g = SITE.instagram;
   /* same reasoning as the reviews strip: a post with no picture is not a tile */
-  const posts = (g?.posts || []).filter((p) => p && p.image);
+  const chosen = (g?.posts || []).filter((p) => p && p.image);
+  const live = (IG_LIVE || []).filter((p) => p && p.image && p.link);
+  const posts = live.length ? live : chosen;
   if (!posts.length) return "";
   const tile = (p) => {
-    const img = `<img src="${esc(P(p.image))}" alt="" loading="lazy" onerror="this.remove()">`;
+    const src = /^https?:\/\//.test(p.image) ? p.image : P(p.image);
+    const img = `<img src="${esc(src)}" alt="${esc(p.caption || "")}" loading="lazy" onerror="this.remove()">`;
     return p.link
       ? `<a class="ig-tile" href="${esc(p.link)}" target="_blank" rel="noopener">${img}</a>`
       : `<span class="ig-tile">${img}</span>`;
@@ -485,6 +530,8 @@ function viewHome() {
     </div>
     <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
   </div></section>
+
+  ${instagramGrid()}
 
   <section class="sec-alt"><div class="wrap">
     <div class="split">
@@ -545,9 +592,7 @@ function viewHome() {
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), "Wool twist carpet fitted to a staircase and landing", "3-2")}</div>
     </div>
-  </div></section>
-
-  ${instagramGrid()}`;
+  </div></section>`;
 }
 
 /* ---------- catalogue: filterable by brand and colour family ---------- */
@@ -1124,5 +1169,7 @@ window.addEventListener("DOMContentLoaded", () => {
      so the shop is readable before this request is even sent; when it lands,
      anything the admin changed redraws. Deliberately not awaited — a slow or
      missing API must cost the visitor nothing. */
-  loadOverlay().then((changed) => { if (changed) { favSyncCount(); render(); } });
+  Promise.all([loadOverlay(), loadInstagram()]).then(([overlay, insta]) => {
+    if (overlay || insta) { favSyncCount(); render(); }
+  });
 });

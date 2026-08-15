@@ -27,6 +27,9 @@ let DOC = { version: 0, content: {}, featured: null, styles: {},
    matters: the site has to end up showing the picture. */
 const UPLOADS = new Map();
 
+/* Set with ?feed= on the stub's own port to pretend Instagram is answering. */
+let LIVE_FEED = { posts: [], live: false };
+
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
                 ".jpg": "image/jpeg", ".png": "image/png", ".json": "application/json",
                 ".svg": "image/svg+xml", ".ico": "image/x-icon" };
@@ -41,6 +44,8 @@ createServer(async (req, res) => {
   if (p.startsWith("/api/")) {
     if (MODE === "down") return send(res, 500, '{"error":"boom"}');
     if (p === "/api/site") return send(res, 200, JSON.stringify(DOC));
+    /* the live Instagram feed, off unless a test turns it on */
+    if (p === "/api/instagram") return send(res, 200, JSON.stringify(LIVE_FEED));
     if (MODE === "unconfigured") return send(res, 503, '{"error":"Sign-in is not set up yet."}');
 
     /* password mode: the gate offers a box, and the right password gets in.
@@ -89,6 +94,17 @@ createServer(async (req, res) => {
       return send(res, 200, JSON.stringify({ ok: true, path, url: "/assets/" + path }));
     }
     return send(res, 404, "{}");
+  }
+
+  /* test hook: /_feed?n=3 turns the live feed on, ?n=0 turns it off */
+  if (p === "/_feed") {
+    const n = Number(url.searchParams.get("n") || 0);
+    LIVE_FEED = { live: n > 0, posts: Array.from({ length: n }, (_, i) => ({
+      image: `https://scontent.example/live-${i}.jpg`,
+      link: `https://www.instagram.com/p/live${i}/`,
+      caption: `Live post ${i}`,
+    })) };
+    return send(res, 200, JSON.stringify(LIVE_FEED));
   }
 
   if (UPLOADS.has(p)) {

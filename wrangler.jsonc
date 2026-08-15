@@ -24,6 +24,12 @@
     "run_worker_first": true
   },
 
+  // Refreshes the Instagram token and the cached feed. Weekly, because a
+  // long-lived token lasts 60 days — five missed runs before anything breaks.
+  "triggers": {
+    "crons": ["0 4 * * 1"]
+  },
+
   "r2_buckets": [
     {
       "binding": "PHOTOS",

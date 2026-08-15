@@ -60,28 +60,56 @@ Everything the shop can change goes through `say()` in app.js. Reading
 `CONTACT.hours` directly anywhere is a value the shop cannot change, and is how
 this tab came to save happily and alter nothing at all.
 
-## Reviews and Instagram
+## Google reviews
 
-Both live on the **Home page** tab, both are typed in by hand, and both render
-nothing at all until there is something to show — an empty reviews strip or a
-row of grey squares is worse than no section.
+On the **Home page** tab: the rating, how many, a link to the listing, and up to
+three reviews with a name, a star count and a date. It renders nothing until
+there is something in it — an empty strip is worse than no strip.
 
-**Only paste in reviews people have actually left you.** Putting invented
-testimonials on a real shop's website is lying to customers, and it is the sort
-of thing that is very hard to walk back.
+Not pulled live. Google's reviews come from the Places API, which needs a
+billing-enabled key and returns five reviews that Google chooses; for a shop
+with a few hundred, copying the best three across is less work than the key and
+they are the three you would have picked anyway. Say the word and I will wire
+it; the section reads the same shape either way.
 
-Neither is pulled live, deliberately:
+**Only paste in reviews people have actually left.** Invented testimonials on a
+real shop's website are a lie to customers and very hard to walk back.
 
-- Google's reviews come from the Places API, which needs a billing-enabled key
-  and returns at most five reviews that Google chooses. For a shop with a few
-  dozen reviews, copying the best three across is less work than the key, and
-  they are the three you would have picked anyway. Say the word and I will wire
-  the API instead; the section reads from the same shape either way.
-- Instagram's Basic Display API was retired at the end of 2024. What is left
-  needs a Business account tied to a Facebook Page and a token that expires and
-  has to be refreshed, and "most popular" needs insights permissions on top.
-  A token quietly expiring and emptying the front page is a worse failure than
-  choosing eight posts once a season.
+## Instagram
+
+The grid sits high on the home page, under the flooring types. It fills itself
+from three places, in this order:
+
+1. **The live feed**, when `INSTAGRAM_TOKEN` is set
+2. **Posts chosen by hand** on the Home page tab, when the feed is unavailable
+3. **Nothing** — the section does not render
+
+That order is the point. Instagram's Basic Display API was retired at the end of
+2024, and the Graph API that replaced it needs a Business or Creator account
+tied to a Facebook Page, a Meta app, and a token that **expires after 60 days**.
+A lapsed token emptying the front page of a shop's website is the likeliest
+failure here, so the fallbacks exist to make that a soft one.
+
+### Turning the live feed on
+
+1. The Instagram account must be **Business or Creator** and connected to a
+   Facebook Page.
+2. Create an app at developers.facebook.com and add **Instagram**.
+3. Generate a **long-lived access token** for the account.
+4. Save it as a secret: `npx wrangler secret put INSTAGRAM_TOKEN`
+
+After that it looks after itself:
+
+- a weekly cron refreshes the token, so five runs would have to fail in a row
+  before it lapsed
+- the refreshed token is kept in R2, because a Worker cannot write its own
+  secrets — the secret is only the starting point
+- the feed is cached for three hours, and the last good copy is served if
+  Instagram is unreachable, so an outage shows slightly old posts rather than
+  an empty row
+
+The one thing to know: Instagram's image URLs are short-lived, which is why the
+feed is refetched every three hours rather than cached for a day.
 
 ## Photographs
 
@@ -223,6 +251,7 @@ look for rather than an exact set of clicks.
 | `PUT /api/admin/site` | signed in, same-origin. Saves the whole document. |
 | `POST /api/admin/photo` | signed in, same-origin. Stores one swatch photograph. |
 | `POST /api/admin/upload` | signed in, same-origin. Stores a photograph under a fresh name in `uploads/`. |
+| `GET /api/instagram` | public. The cached feed, or the last good copy, or nothing. |
 
 Writes also require the `Origin` header to match the site. Access authenticates
 with a cookie, and a cookie rides along on a cross-site request too, so without
@@ -250,6 +279,7 @@ need this — but it is the quickest way to be certain.
 ## Tests
 
     node tools/admin.test.mjs      # the API, including real signature checks
+    node tools/instagram.test.mjs  # the feed, and the token expiring
     node tools/stub-api.mjs 8890 signed-in &
     node tools/stub-api.mjs 8891 down &
     node tools/stub-api.mjs 8892 anon &

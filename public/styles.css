@@ -668,23 +668,47 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 
 .map-embed { aspect-ratio: 4 / 3; } }
 
-/* Deliberately a strip rather than a section: it is corroboration on the way
-   past, not a page of testimonials. */
-.reviews { padding: clamp(30px, 4vw, 46px) 0; border-bottom: 1px solid var(--line); }
-.reviews-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
-.reviews-score { margin: 0; display: flex; align-items: baseline; gap: 10px; }
-.reviews-score b { font-family: var(--f-display); font-size: 30px; color: var(--blue-ink); }
-.reviews-score .stars { color: var(--yellow-deep); font-size: 19px; letter-spacing: .1em; }
-.reviews-sub { margin: 0; color: var(--muted); font-size: 14.5px; flex: 1; }
-
-.reviews-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-.reviews-list blockquote {
-  margin: 0; padding-left: 16px; border-left: 3px solid var(--yellow);
+/* Deliberately a strip rather than a section: corroboration on the way past,
+   not a page of testimonials. Laid out like the review widgets people already
+   recognise — the rating first, because that is the bit anybody reads. */
+.reviews { padding: clamp(28px, 4vw, 44px) 0; border-bottom: 1px solid var(--line); }
+.reviews-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  flex-wrap: wrap; background: var(--off); border: 1px solid var(--line);
+  padding: 14px 18px; margin-bottom: 18px;
 }
-.reviews-list p { margin: 0; font-size: 15px; color: var(--ink-soft); line-height: 1.6; }
-.reviews-list cite {
-  display: block; margin-top: 9px; font-style: normal; font-size: 13px;
-  font-family: var(--f-display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+.reviews-brand {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  font-family: var(--f-display); font-size: 17px; color: var(--ink-soft);
+}
+.reviews-brand b { color: var(--blue-ink); font-weight: 500; }
+.reviews-score {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--f-display); font-size: 20px; color: var(--blue-ink);
+}
+.reviews-score i { font-style: normal; font-size: 14px; color: var(--muted); }
+.stars { color: var(--yellow-deep); letter-spacing: .06em; font-size: .85em; }
+/* the unearned stars stay in place so the row never changes width */
+.stars-off { color: var(--line); }
+
+.reviews-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.rv {
+  margin: 0; background: var(--paper); border: 1px solid var(--line);
+  padding: 16px; display: flex; flex-direction: column; gap: 9px;
+}
+.rv figcaption { display: flex; align-items: center; gap: 11px; }
+.rv-face {
+  width: 34px; height: 34px; flex: none; border-radius: 50%; color: #fff;
+  display: grid; place-items: center;
+  font-family: var(--f-display); font-size: 15px;
+}
+.rv-who b { display: block; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.rv-who small { color: var(--muted); font-size: 12.5px; }
+.rv p {
+  margin: 0; font-size: 14.5px; color: var(--ink-soft); line-height: 1.6;
+  /* four lines, then it stops — otherwise one chatty review sets the height of
+     the whole row */
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
 
 .ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }

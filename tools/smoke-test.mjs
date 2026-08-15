@@ -82,7 +82,7 @@ page.on("response", (r) => {
      against a plain static server, so its absence here is the point rather
      than a fault: the shop has to be complete without it. There is an explicit
      assertion for that below. */
-  if (r.status() >= 400 && !r.url().includes("/api/site")) {
+  if (r.status() >= 400 && !/\/api\/(site|instagram)/.test(r.url())) {
     badResponses.push(`${r.status()} ${r.url()}`);
   }
 });

@@ -15,12 +15,21 @@ import { readFileSync } from "node:fs";
 
 const read = (name) => readFileSync(new URL("../" + name, import.meta.url), "utf8");
 
+/* Every module worker.js pulls in has to be inlined the same way, so this is a
+   list rather than one special case — a new import that is not added here fails
+   loudly below instead of at some confusing point later. */
+const MODULES = ["worker-admin.js", "worker-instagram.js"];
+
 export async function loadWorker() {
-  const admin = read("worker-admin.js").replace(/^export /gm, "");
-  const main = read("worker.js")
-    .replace(/^import \{[^}]*\} from "\.\/worker-admin\.js";$/m, admin);
-  if (main.includes("worker-admin.js")) {
-    throw new Error("the worker-admin import was not inlined — has the import line changed?");
+  let main = read("worker.js");
+  for (const name of MODULES) {
+    const source = read(name).replace(/^export /gm, "");
+    main = main.replace(
+      new RegExp(`^import \\{[^}]*\\} from "\\./${name.replace(".", "\\.")}";$`, "m"),
+      source);
+    if (main.includes(`"./${name}"`)) {
+      throw new Error(`the ${name} import was not inlined — has the import line changed?`);
+    }
   }
   return import("data:text/javascript;base64," + Buffer.from(main).toString("base64"));
 }

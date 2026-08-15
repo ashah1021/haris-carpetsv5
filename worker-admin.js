@@ -351,7 +351,13 @@ function clean(input) {
   if (input.reviews && typeof input.reviews === "object") {
     const r = input.reviews;
     const items = (Array.isArray(r.items) ? r.items : []).slice(0, 8)
-      .map((i) => ({ text: text(i && i.text, 400).trim(), name: text(i && i.name, 60).trim() }))
+      .map((i) => ({
+        text: text(i && i.text, 400).trim(),
+        name: text(i && i.name, 60).trim(),
+        /* whole stars only, and never more than five */
+        stars: String(Math.max(0, Math.min(5, Math.round(Number(i && i.stars) || 0))) || ""),
+        when: text(i && i.when, 40).trim(),
+      }))
       .filter((i) => i.text);
     out.reviews = {
       rating: text(r.rating, 8).trim(),

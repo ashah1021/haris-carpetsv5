@@ -418,8 +418,12 @@ console.log("\nReviews and Instagram:");
     await page.locator("[data-igdrop]").first().click();
     await page.waitForTimeout(250);
   }
-  await page.locator("#save").click();
-  await page.waitForTimeout(900);
+  /* on a freshly started stub there is nothing to clear, so nothing goes dirty
+     and Save stays disabled — which is correct, not a failure */
+  if (!(await page.locator("#save").isDisabled())) {
+    await page.locator("#save").click();
+    await page.waitForTimeout(900);
+  }
 
   await go(`${BASE}/index.html#/`, 1600);
   check("neither section is there when nothing has been entered",
@@ -434,6 +438,8 @@ console.log("\nReviews and Instagram:");
   await page.locator('[data-rev="url"]').fill("https://g.page/haris-carpets");
   await page.locator('[data-quote="0"][data-part="text"]').fill("Lovely job on the stairs.");
   await page.locator('[data-quote="0"][data-part="name"]').fill("Sam");
+  await page.locator('[data-quote="0"][data-part="stars"]').fill("5");
+  await page.locator('[data-quote="0"][data-part="when"]').fill("13 days ago");
   await page.locator('[data-ig="url"]').fill("https://www.instagram.com/hariscarpets/");
   await page.locator('[data-igfile="0"]')
     .setInputFiles(new URL("../public/assets/showroom.jpg", import.meta.url).pathname);
@@ -443,12 +449,20 @@ console.log("\nReviews and Instagram:");
   await page.waitForTimeout(900);
 
   await go(`${BASE}/index.html#/`, 1700);
-  check("the rating shows", (await page.locator(".reviews-score b").textContent()) === "4.9");
-  check("the count shows", (await page.locator(".reviews-sub").textContent()).includes("37"));
+  check("the rating shows", (await page.locator(".reviews-score").textContent()).includes("4.9"));
+  check("the count shows", (await page.locator(".reviews-score").textContent()).includes("37"));
   check("the review shows",
-    (await page.locator(".reviews-list blockquote p").first().textContent()).includes("stairs"));
+    (await page.locator(".rv p").first().textContent()).includes("stairs"));
   check("the reviewer is credited",
-    (await page.locator(".reviews-list cite").first().textContent()) === "Sam");
+    (await page.locator(".rv-who b").first().textContent()) === "Sam");
+  check("when they wrote it shows",
+    (await page.locator(".rv-who small").first().textContent()) === "13 days ago");
+  check("the overall rating is the headline",
+    (await page.locator(".reviews-score").textContent()).includes("4.9"));
+  check("five stars are drawn, not a number",
+    (await page.locator(".rv .stars").first().textContent()).includes("★"));
+  check("and there is a way to leave one",
+    (await page.locator('.reviews-bar a[href*="g.page"]').count()) === 1);
   check("the Instagram grid appears", (await page.locator(".ig-tile").count()) === 1);
   const igHref = await page.evaluate(() =>
     document.querySelector(".ig-tile")?.getAttribute("href"));
@@ -466,6 +480,25 @@ console.log("\nReviews and Instagram:");
     (await page.evaluate(() =>
       Math.round(document.querySelector(".reviews").getBoundingClientRect().height))) < 400,
     `${await page.evaluate(() => Math.round(document.querySelector(".reviews").getBoundingClientRect().height))}px tall`);
+}
+
+console.log("\nA live Instagram feed replaces the chosen posts:");
+{
+  /* the chosen posts from the block above are still in the stub */
+  await page.goto(`${BASE}/_feed?n=4`, { waitUntil: "domcontentloaded" });
+  await go(`${BASE}/index.html#/`, 1800);
+  check("the live posts are used", (await page.locator(".ig-tile").count()) === 4,
+    `${await page.locator(".ig-tile").count()} tiles`);
+  const href = await page.evaluate(() =>
+    document.querySelector(".ig-tile")?.getAttribute("href"));
+  check("each links to its post on Instagram", href?.includes("/p/live0"), href);
+
+  /* a lapsed token, an outage, a Meta app someone deleted */
+  await page.goto(`${BASE}/_feed?n=0`, { waitUntil: "domcontentloaded" });
+  await go(`${BASE}/index.html#/`, 1800);
+  check("without a feed it falls back to the chosen posts",
+    (await page.locator(".ig-tile").count()) === 1,
+    `${await page.locator(".ig-tile").count()} tiles`);
 }
 
 console.log("\nWith Access and a password both configured — the live shape:");
