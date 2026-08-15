@@ -46,11 +46,19 @@ const MAX_DOC = 512 * 1024;        // the whole document
 const MAX_PHOTO = 3 * 1024 * 1024; // one swatch photograph
 const JWKS_TTL = 3600;
 
-/* ranges = whole new collections. extra = shades added to a collection that
-   came from the pipeline, kept apart so regenerating never collides with them. */
-const EMPTY = { version: 0, updated: null, content: {}, featured: null,
-                styles: {}, overrides: {}, ranges: [], extra: {}, images: {},
-                reviews: null, instagram: null };
+/* A blank document. ranges = whole new collections; extra = shades added to a
+   collection that came from the pipeline, kept apart so regenerating never
+   collides with them.
+
+   A function, not a constant. Spreading a shared object copies the reference to
+   every nested one, so `{...EMPTY}` handed out the very same images map each
+   time — and writing a slot into it edited the blank document itself, for the
+   life of the isolate. Every reader gets its own. */
+const empty = () => ({
+  version: 0, updated: null, content: {}, featured: null,
+  styles: {}, overrides: {}, ranges: [], extra: {}, images: {},
+  reviews: null, instagram: null,
+});
 
 /* Uploaded photographs get a random suffix and are never overwritten.
    /assets/ is served with a year's immutable cache — that is most of why the
@@ -249,13 +257,13 @@ function sameOrigin(request) {
 
 async function readDoc(env) {
   const obj = await env.PHOTOS.get(DOC_KEY);
-  if (!obj) return { ...EMPTY };
+  if (!obj) return empty();
   try {
     const doc = JSON.parse(await obj.text());
-    return { ...EMPTY, ...doc };
+    return { ...empty(), ...doc };
   } catch {
     // a corrupt document must not take the site down
-    return { ...EMPTY };
+    return empty();
   }
 }
 
@@ -266,7 +274,7 @@ async function readDoc(env) {
  * the admin should not be able to produce a page that cannot be undone.
  */
 function clean(input) {
-  const out = { ...EMPTY, ranges: [], overrides: {}, styles: {}, content: {}, extra: {} };
+  const out = empty();
 
   /* one shade, from wherever it was posted */
   const colour = (c) => {

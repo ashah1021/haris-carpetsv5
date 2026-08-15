@@ -495,6 +495,41 @@ console.log("\nReviews and Instagram are checked before they are stored:");
     !doc.instagram.posts.some((p) => p.image.includes("..")));
 }
 
+console.log("\nOne save cannot leak into the next:");
+{
+  /* The blank document used to be a shared constant, so spreading it handed
+     every request the same images map — writing a slot edited the blank
+     document itself and it stayed edited for the life of the isolate. Two
+     unrelated shops in one Worker is the alarming version; the visible one is
+     that removing a photograph never took. */
+  const a = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0, images: { hero: "uploads/hero-aaaaaaaaaa.jpg" },
+  }) }), a, ctx);
+
+  /* a completely separate bucket, saving nothing at all */
+  const b = makeEnv();
+  cacheStore = new Map();
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0,
+  }) }), b, ctx);
+  cacheStore = new Map();
+  const fresh = await (await adminRoutes(req("/api/site"), b, ctx)).json();
+  check("a slot saved elsewhere does not appear", Object.keys(fresh.images).length === 0,
+    JSON.stringify(fresh.images));
+
+  /* and removing one from the document it belongs to really removes it */
+  cacheStore = new Map();
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 1, images: {},
+  }) }), a, ctx);
+  cacheStore = new Map();
+  const cleared = await (await adminRoutes(req("/api/site"), a, ctx)).json();
+  check("clearing a slot sticks", Object.keys(cleared.images).length === 0,
+    JSON.stringify(cleared.images));
+}
+
 console.log("\nThe public read is public, and read-only:");
 {
   const env = makeEnv();
