@@ -44,22 +44,22 @@ async function visible(page, sel) {
 
 const ROUTES = [
   ["#/", "home"],
-  ["#/catalogue", "catalogue index"],
-  ["#/catalogue/carpets", "carpets"],
-  ["#/catalogue/wood", "wood"],
-  ["#/catalogue/lvt", "lvt"],
-  ["#/catalogue/vinyl", "vinyl"],
-  ["#/catalogue/rugs", "rugs"],
-  ["#/catalogue/carpets/easy-clean", "a carpet style"],
-  ["#/catalogue/carpets/loop", "another style"],
-  ["#/catalogue/wood/herringbone", "a wood style"],
-  ["#/catalogue/lvt/stone-effect", "an lvt style"],
-  ["#/catalogue/carpets/pattern", "an empty style 404s"],
+  ["#/collections", "collections index"],
+  ["#/collections/carpets", "carpets"],
+  ["#/collections/wood", "wood"],
+  ["#/collections/lvt", "lvt"],
+  ["#/collections/vinyl", "vinyl"],
+  ["#/collections/rugs", "rugs"],
+  ["#/collections/carpets/easy-clean", "a carpet style"],
+  ["#/collections/carpets/loop", "another style"],
+  ["#/collections/wood/herringbone", "a wood style"],
+  ["#/collections/lvt/stone-effect", "an lvt style"],
+  ["#/collections/carpets/pattern", "an empty style 404s"],
   ["#/range/westex-elysian", "a range"],
   ["#/favourites", "favourites"],
   ["#/about", "about"],
   ["#/contact", "visit us"],
-  ["#/enquire", "enquire"],
+  ["#/enquire", "contact us"],
   ["#/does-not-exist", "404"],
 ];
 
@@ -155,8 +155,8 @@ check("the form is on its own page", await visible(page, "#enquiry"));
 check("and it can be filled in", (await page.locator("#enquiry input, #enquiry textarea").count()) >= 4);
 check("with a way back to the showroom", (await page.locator('a[href="#/contact"]').count()) > 0);
 
-console.log("\nCatalogue data is sane:");
-await page.goto(U("#/catalogue"), { waitUntil: "networkidle" });
+console.log("\nCollections data is sane:");
+await page.goto(U("#/collections"), { waitUntil: "networkidle" });
 await page.waitForTimeout(500);
 const data = await page.evaluate(() => {
   const ids = CATALOGUE.map((r) => r.id);
@@ -208,7 +208,7 @@ check("no missing tiles", imgCheck.bad.length === 0,
   `${imgCheck.checked} checked${imgCheck.bad.length ? " — " + imgCheck.bad.slice(0, 3).join(", ") : ""}`);
 
 console.log("\nBrowse-by-style works:");
-await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(1200);
 const tiles = await page.locator(".style-tile").count();
 check("style tiles offered", tiles >= 4, `${tiles} styles`);
@@ -223,14 +223,14 @@ check("no style promises 0 shades", emptyTiles === 0);
 
 await page.locator(".style-tile").first().click();
 await page.waitForTimeout(900);
-check("clicking a style opens it", /#\/catalogue\/carpets\/./.test(page.url()), page.url().split("#")[1]);
+check("clicking a style opens it", /#\/collections\/carpets\/./.test(page.url()), page.url().split("#")[1]);
 check("style page shows shades", (await page.locator(".swatch").count()) > 5,
   `${await page.locator(".swatch").count()} shades`);
 check("shades are grouped by collection", (await page.locator(".style-range").count()) >= 1);
 check("offers the other styles", (await page.locator(".style-chips a").count()) >= 2);
 
-console.log("\nCatalogue works:");
-await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+console.log("\nCollections works:");
+await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(1400);
 const swatches = await page.locator(".swatch").count();
 check("shades render", swatches > 100, `${swatches} tiles`);
@@ -301,16 +301,84 @@ if (VISUALISER) {
   await page.waitForTimeout(900);
   check("no link to it anywhere on the home page",
     (await page.locator('a[href^="#/visualiser"]').count()) === 0);
-  await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+  await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
-  check("nor in the catalogue", (await page.locator('a[href^="#/visualiser"]').count()) === 0);
+  check("nor in Collections", (await page.locator('a[href^="#/visualiser"]').count()) === 0);
   check("nor in the header or footer", (await page.evaluate(() =>
     document.querySelectorAll('.site-header a[href^="#/visualiser"], footer a[href^="#/visualiser"]').length)) === 0);
 }
 
+/* The banner carousel. A slide with height but no opacity is exactly the fault
+   this file was written for, so these check which slide is actually on rather
+   than how many exist. */
+console.log("\nThe banner carousel works:");
+await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.waitForTimeout(900);
+const slideCount = await page.locator(".hero-slide").count();
+check("more than one banner picture", slideCount > 1, `${slideCount} slides`);
+check("dots match the pictures", (await page.locator(".hero-dots button").count()) === slideCount);
+const onNow = () => page.evaluate(() =>
+  [...document.querySelectorAll(".hero-slide")].findIndex((s) => s.classList.contains("on")));
+check("exactly one slide is showing", (await page.evaluate(() =>
+  document.querySelectorAll(".hero-slide.on").length)) === 1);
+check("its photograph loads", await page.evaluate(() =>
+  document.querySelector(".hero-slide.on img")?.naturalWidth > 0));
+await page.locator(".hero-dots button").nth(2).click();
+await page.waitForTimeout(400);
+check("a dot switches picture", (await onNow()) === 2);
+check("and the third photograph loads too", await page.evaluate(() =>
+  document.querySelector(".hero-slide.on img")?.naturalWidth > 0));
+/* Hovering pauses it, so the pointer is parked somewhere else first. */
+await page.mouse.move(5, 780);
+await page.waitForTimeout(7000);
+check("it advances on its own", (await onNow()) !== 2, `now on ${await onNow()}`);
+check("the headline never moved", await visible(page, ".hero h1"));
+
+console.log("\nCollections, not catalogue:");
+const words = await page.evaluate(() => ({
+  nav: [...document.querySelectorAll(".nav a")].map((a) => a.textContent.trim()),
+  page: document.body.innerText,
+}));
+check("the menu says Collections", words.nav.includes("Collections"));
+check("the menu says Contact us", words.nav.includes("Contact us"));
+const stillSaysIt = [];
+for (const hash of ["#/", "#/collections", "#/collections/carpets", "#/collections/carpets/easy-clean",
+                    "#/range/westex-elysian", "#/favourites", "#/about", "#/contact", "#/enquire"]) {
+  await page.goto(U(hash), { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const text = await page.evaluate(() => document.body.innerText);
+  if (/catalogue/i.test(text)) stillSaysIt.push(`${hash}: ${(text.match(/.{0,24}atalogue/i) || [""])[0]}`);
+}
+check("no page says Catalogue anywhere", stillSaysIt.length === 0, stillSaysIt[0] || "");
+await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.waitForTimeout(700);
+const cta = await page.locator('.hero-cta a[href="#/enquire"]').first();
+check("the banner button says Contact us now", (await cta.textContent()).trim() === "Contact us now");
+
+await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+await page.waitForTimeout(900);
+check("the old catalogue link still lands somewhere",
+  page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
+check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
+
+console.log("\nThe enquiry form is wired up:");
+await page.goto(U("#/enquire"), { waitUntil: "networkidle" });
+await page.waitForTimeout(700);
+const topics = await page.locator("#w option").allTextContents();
+check("the measure option is short", topics.includes("Book measure"), topics.slice(0, 2).join(", "));
+check("and the long one is gone", !topics.some((t) => /free home measure/i.test(t)));
+await page.fill("#n", "Test Visitor");
+await page.fill("#e", "test@example.com");
+await page.locator('#enquiry button[type="submit"]').click();
+await page.waitForTimeout(400);
+/* This is the regression: the form was rendered on #/enquire but wireEnquiry
+   was only called for #/contact, so submitting reloaded the page and lost it. */
+check("submitting is caught by the page", (await page.locator("#enquiry h3").count()) === 1,
+  (await page.evaluate(() => document.querySelector("#enquiry")?.innerText.slice(0, 40))) || "form gone");
+
 console.log("\nMobile:");
 const mob = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
-for (const hash of ["#/", "#/catalogue/carpets", "#/enquire"]) {
+for (const hash of ["#/", "#/collections/carpets", "#/enquire"]) {
   await mob.goto(U(hash), { waitUntil: "networkidle" });
   await mob.waitForTimeout(700);
   const scrolls = await mob.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);

@@ -42,6 +42,11 @@ Parked deliberately, not forgotten.
 - **Real Google reviews.** The rating, the count and the quotes are entered in
   /admin and the section does not appear until they are. Copy them from the
   shop's own listing — nothing invented.
+- **Two of the three banner pictures are stand-ins.** Banner 1 is the living
+  room the site shipped with; banners 2 and 3 are the Carpets and Wood tile
+  photographs reused, so the same picture appears twice on the home page until
+  they are replaced. Three photographs of Hari's own jobs, landscape, dropped
+  into the Photos tab fixes it — no code change.
 
 ## Waiting on the supplier
 - **61 Cormar shades are missing**, across six ranges: Zenith, Natural Berber

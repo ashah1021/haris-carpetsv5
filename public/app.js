@@ -2,8 +2,8 @@
    HARI'S CARPETS — app (vanilla JS, no build step)
    Routes:
      #/                       home
-     #/catalogue              every flooring type
-     #/catalogue/<type>       one type, filterable by brand and colour
+     #/collections              every flooring type
+     #/collections/<type>       one type, filterable by brand and colour
      #/range/<id>             one range, all of its colours
      #/favourites             the shortlist the visitor has saved
      #/visualiser             see a colour on a real floor
@@ -509,15 +509,32 @@ function instagramGrid() {
   </div></section>`;
 }
 
+/* The banner pictures, in order, skipping any the shop has emptied. The words
+   over the top never move — only the photograph behind them changes — so a
+   visitor reading the headline is not chasing it around the screen. */
+const HERO_SLOTS = [
+  ["hero",  "Wool carpet in a family living room"],
+  ["hero2", "Velvet pile carpet in a bay-window living room"],
+  ["hero3", "Herringbone wood flooring in a kitchen"],
+];
+const heroSlides = () =>
+  HERO_SLOTS
+    .map(([slot, alt]) => [siteImage(slot, IMG[slot]), caption(slot, alt)])
+    .filter(([src]) => Boolean(src));
+
 function viewHome() {
   /* An optional line the shop can put across the top — a bank holiday, a
      delivery delay, a sale. Empty means no strip at all rather than an empty
      one, so leaving it blank is the normal state. */
   const notice = say("notice", "");
+  const slides = heroSlides();
   return `
   ${notice ? `<div class="notice"><div class="wrap">${esc(notice)}</div></div>` : ""}
   <section class="hero">
-    ${photo(siteImage("hero", IMG.hero), caption("hero", "Wool carpet in a family living room"), "16-9")}
+    <div class="hero-slides" id="heroSlides">
+      ${slides.map(([src, alt], i) =>
+        `<div class="hero-slide${i === 0 ? " on" : ""}">${photo(src, alt, "16-9")}</div>`).join("")}
+    </div>
     <div class="hero-scrim"></div>
     <div class="wrap">
       <p class="kicker">${esc(say("since", BUSINESS.since))}</p>
@@ -525,10 +542,16 @@ function viewHome() {
       <p>Family-run since the nineties. Carpets, wood, LVT, vinyl and rugs — supplied
          and fitted by our own team, right across London and the Home Counties.</p>
       <div class="hero-cta">
-        <a class="btn btn-yellow" href="#/contact">Book a free measure</a>
-        <a class="btn btn-ghost on-dark" href="#/catalogue">Browse the catalogue</a>
+        <a class="btn btn-yellow" href="#/enquire">Contact us now</a>
+        <a class="btn btn-ghost on-dark" href="#/collections">Browse collections</a>
       </div>
     </div>
+    ${slides.length > 1 ? `<div class="hero-dots" id="heroDots"><div class="wrap">
+      ${slides.map((_, i) =>
+        `<button type="button" class="${i === 0 ? "on" : ""}"
+           aria-label="Show banner picture ${i + 1} of ${slides.length}"
+           aria-current="${i === 0}"></button>`).join("")}
+    </div></div>` : ""}
   </section>
 
   <div class="proof"><div class="wrap">
@@ -577,7 +600,7 @@ function viewHome() {
         <h2>${esc(say("serviceHeading", "Supplied and fitted, properly"))}</h2>
         <p class="lede">The same team measures the job and comes back to fit it. Nothing gets
            handed to a subcontractor who's never seen your house.</p>
-        <p style="margin-top:24px"><a class="btn btn-yellow" href="#/contact">Book a free measure</a></p>
+        <p style="margin-top:24px"><a class="btn btn-yellow" href="#/enquire">Contact us now</a></p>
       </div>
     </div>
     <div style="margin-top:clamp(34px,5vw,60px)">${servicesGrid()}</div>
@@ -599,7 +622,7 @@ function viewHome() {
   ${reviewsStrip()}`;
 }
 
-/* ---------- catalogue: filterable by brand and colour family ---------- */
+/* ---------- collections: filterable by brand and colour family ---------- */
 const CAT = { view: "colours", brand: "", family: "", sort: "range" };
 
 /* Counts shown on each chip are faceted: the number next to a brand is how many
@@ -676,7 +699,7 @@ function stylePhotos(styles) {
 
 function styleTile(st, typeId, photos) {
   const n = styleCount(st);
-  return `<a class="style-tile" href="#/catalogue/${esc(typeId)}/${esc(st.id)}">
+  return `<a class="style-tile" href="#/collections/${esc(typeId)}/${esc(st.id)}">
     <div class="style-ph">
       <img src="${esc(photos[st.id])}" alt="${esc(st.name)}" loading="lazy" onerror="this.remove()">
       <span class="style-swatches">${st.list.flatMap((r) => r.colours).slice(0, 6)
@@ -699,8 +722,8 @@ function viewStyle(typeId, styleId) {
   const others = stylesFor(typeId).filter((s) => s.id !== st.id);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> /
-    <a href="#/catalogue/${esc(typeId)}">${esc(type.name)}</a> / ${esc(st.name)}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> /
+    <a href="#/collections/${esc(typeId)}">${esc(type.name)}</a> / ${esc(st.name)}</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><p class="kicker">${esc(type.name)}</p>
@@ -733,23 +756,25 @@ function viewStyle(typeId, styleId) {
     ${others.length ? `<div class="style-more">
       <p class="kicker">Or try</p>
       <div class="style-chips">${others.map((s) =>
-        `<a class="chip" href="#/catalogue/${esc(typeId)}/${esc(s.id)}">${esc(s.name)}<span class="n">${styleCount(s)}</span></a>`).join("")}
-        <a class="chip" href="#/catalogue/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
+        `<a class="chip" href="#/collections/${esc(typeId)}/${esc(s.id)}">${esc(s.name)}<span class="n">${styleCount(s)}</span></a>`).join("")}
+        <a class="chip" href="#/collections/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
     </div>` : ""}
   </div></section>`;
 }
 
-function viewCatalogue(typeId, styleId) {
+function viewCollections(typeId, styleId) {
   const type = typeId ? findType(typeId) : null;
   if (typeId && !type) return viewNotFound();
   if (type && styleId) return viewStyle(typeId, styleId);
 
   if (!type) {
     return `
-    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Catalogue</p></div>
+    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Collections</p></div>
     <section><div class="wrap">
+      <!-- the saved keys stay "catalogue*": renaming them would throw away
+           whatever the shop has already typed into those two boxes -->
       <div class="section-head"><div><span class="rule"></span><p class="kicker">${esc(say("catalogueKicker", "Everything we supply"))}</p>
-        <h2>${esc(say("catalogueHeading", "The catalogue"))}</h2>
+        <h2>${esc(say("catalogueHeading", "Our collections"))}</h2>
         <p>Every floor we stock, by type. Tap any shade to see it close up, and save
            the ones you like to your list as you go.</p></div></div>
       <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
@@ -785,7 +810,7 @@ function viewCatalogue(typeId, styleId) {
              <button class="linkish" data-clear="1">Clear filters</button></p>`);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> / ${esc(type.name)}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> / ${esc(type.name)}</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(say("type-" + type.id, type.blurb))}</p></div>
@@ -858,8 +883,8 @@ function viewRange(id) {
   const swatches = allSwatches().filter((s) => s.rangeId === r.id);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/catalogue">Catalogue</a> /
-    <a href="${type ? type.route : "#/catalogue"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> /
+    <a href="${type ? type.route : "#/collections"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
   <section><div class="wrap">
     <div class="range-hero">
       ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
@@ -892,7 +917,7 @@ function viewFavourites(keys) {
       <h2>Your shortlist is empty</h2>
       <p class="lede" style="margin-top:14px;max-width:56ch">Tap the ♥ on any colour and it lands here.
         The list stays on this device, so you can close the tab and pick up where you left off.</p>
-      <p style="margin-top:24px"><a class="btn btn-solid" href="#/catalogue">Browse the catalogue</a></p>
+      <p style="margin-top:24px"><a class="btn btn-solid" href="#/collections">Browse collections</a></p>
     </div></section>`;
   }
 
@@ -909,7 +934,7 @@ function viewFavourites(keys) {
            into the showroom and we'll get those books out.</p></div>
       <div class="fav-actions">
         <button class="btn btn-ghost btn-sm" id="favShare">Copy link to my list</button>
-        <a class="btn btn-solid btn-sm" href="#/contact" id="favEnquire">Ask us about these</a>
+        <a class="btn btn-solid btn-sm" href="#/enquire" id="favEnquire">Ask us about these</a>
       </div>
     </div>
     ${Object.entries(byType).map(([t, list]) => {
@@ -1009,7 +1034,7 @@ function viewEnquire() {
           <div class="field"><label for="p">Phone</label><input id="p" name="phone"></div>
           <div class="field"><label for="w">What can we help with?</label>
             <select id="w" name="topic">
-              <option>Book a free home measure</option>
+              <option>Book measure</option>
               ${SAMPLES_ON ? "<option>Request carpet samples</option>" : ""}
               ${TYPES.map((t) => `<option>${esc(t.name)}</option>`).join("")}
               <option>Something else</option>
@@ -1040,8 +1065,12 @@ function render() {
   const parts = (location.hash.replace(/^#\/?/, "") || "").split("/").filter(Boolean);
   let html, top = parts[0];
   switch (top) {
-    case undefined:    html = viewHome(); break;
-    case "catalogue":  html = viewCatalogue(parts[1], parts[2]); break;
+    case undefined:      html = viewHome(); break;
+    case "collections":  html = viewCollections(parts[1], parts[2]); break;
+    /* "Catalogue" is what the trade calls it; a customer looking for a carpet
+       is looking for a collection. The old path still resolves so anything
+       already printed, linked or bookmarked lands on the right page. */
+    case "catalogue":    location.replace("#/collections" + parts.slice(1).map((p) => "/" + p).join("")); return;
     case "range":      html = viewRange(parts[1]); break;
     case "favourites": html = viewFavourites(parts[1]); break;
     case "visualiser": html = VISUALISER_ON ? window.Visualiser.view(parts[1]) : viewNotFound(); break;
@@ -1061,7 +1090,10 @@ function render() {
   $(".nav")?.classList.remove("show");
   window.scrollTo({ top: 0, behavior: "auto" });
   favSyncCount();
-  if (top === "contact") wireEnquiry();
+  /* The form moved to its own page; this still said "contact", so the enquiry
+     form rendered but nothing was listening to it. */
+  if (top === "enquire") wireEnquiry();
+  if (top === undefined) mountHero();
   if (top === "visualiser" && VISUALISER_ON) window.Visualiser.mount();
   reveal();
 }
@@ -1082,6 +1114,46 @@ function wireEnquiry() {
     f.innerHTML = `<h3 style="margin-bottom:8px">Thanks — we'll be in touch.</h3>
       <p class="desc">This is a demo confirmation. Wire the form to a real endpoint to receive enquiries.</p>`;
   });
+}
+
+/* ---------- the banner carousel ----------
+   One photograph is the normal state, not a special case: with a single slide
+   there are no dots, no timer and nothing to go wrong, and the banner behaves
+   exactly as it did before. The first slide is marked `on` in the markup, so
+   if this never runs the banner is still a picture rather than a black box. */
+let heroTimer;
+function mountHero() {
+  clearInterval(heroTimer);
+  const box = document.getElementById("heroSlides");
+  const slides = box ? [...box.children] : [];
+  if (slides.length < 2) return;
+
+  const dots = [...document.querySelectorAll("#heroDots button")];
+  let at = 0;
+  const show = (n) => {
+    at = (n + slides.length) % slides.length;
+    slides.forEach((s, i) => s.classList.toggle("on", i === at));
+    dots.forEach((d, i) => { d.classList.toggle("on", i === at); d.setAttribute("aria-current", i === at); });
+  };
+  dots.forEach((d, i) => d.addEventListener("click", () => { show(i); start(); }));
+
+  /* Somebody who has asked for reduced motion gets the first picture and the
+     dots, and moves through them by hand. Nothing advances on its own — the
+     check lives inside start() so no later call can restart the timer. */
+  const wantsMotion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function start() {
+    clearInterval(heroTimer);
+    if (!wantsMotion) return;
+    /* A background tab would otherwise burn through the whole set unseen and
+       come back somewhere arbitrary. */
+    heroTimer = setInterval(() => { if (!document.hidden) show(at + 1); }, 6000);
+  }
+  const hero = box.closest(".hero");
+  hero.addEventListener("pointerenter", () => clearInterval(heroTimer));
+  hero.addEventListener("pointerleave", start);
+  hero.addEventListener("focusin", () => clearInterval(heroTimer));
+  hero.addEventListener("focusout", start);
+  start();
 }
 
 /* Sections fade up once as they come into view. Deliberately restrained: one

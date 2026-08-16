@@ -77,17 +77,19 @@
     ["familyKicker", "Family run \u2014 small label", () => "Family run, Hounslow"],
   ];
 
-  /* The other pages. */
+  /* The other pages. The two collections keys are still named "catalogue*":
+     the page was renamed, but the saved key is what anything already typed
+     into those boxes is stored under, so renaming it would throw that away. */
   const PAGE_FIELDS = [
-    ["catalogueKicker", "Catalogue \u2014 small label", () => "Everything we supply"],
-    ["catalogueHeading", "Catalogue heading", () => "The catalogue"],
+    ["catalogueKicker", "Collections \u2014 small label", () => "Everything we supply"],
+    ["catalogueHeading", "Collections heading", () => "Our collections"],
     ["visitKicker", "Visit us \u2014 small label", () => "Come in, or we'll come to you"],
     ["visitHeading", "Visit us heading", () => "Visit the showroom"],
     ["mapHeading", "Map heading", () => "Find us"],
     ["mapText", "Under the map heading",
      () => "Two minutes from Hounslow West, with parking on Hanworth Road."],
-    ["enquireKicker", "Enquire \u2014 small label", () => "No pressure, no obligation"],
-    ["enquireHeading", "Enquire heading", () => "Get in touch"],
+    ["enquireKicker", "Contact us \u2014 small label", () => "No pressure, no obligation"],
+    ["enquireHeading", "Contact us heading", () => "Get in touch"],
     ["servicesKicker", "Services \u2014 small label", () => "Our service"],
     ["servicesHeading", "Services heading", () => "What you get"],
   ];
@@ -220,11 +222,11 @@
       "type-" + t.id, `${t.name} — description`, () => t.blurb, true]);
     return `
     <h2>Other pages</h2>
-    <p class="mg-lede">Headings and wording on the catalogue, Visit us and Get in touch.</p>
+    <p class="mg-lede">Headings and wording on Collections, Visit us and Get in touch.</p>
     ${fields(PAGE_FIELDS)}
 
     <h3 class="mg-photo-head">Flooring types</h3>
-    <p class="mg-lede">The description under each type, on the catalogue page.</p>
+    <p class="mg-lede">The description under each type, on the Collections page.</p>
     ${fields(types)}`;
   }
 

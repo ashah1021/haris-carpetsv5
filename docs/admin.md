@@ -49,9 +49,9 @@ Everything written on the site, and every photograph. By tab:
 | Shop details | hours, phone, email, address, areas covered, the line under the logo, the footer paragraph, an optional notice across the home page, the Google Maps link and the map embed |
 | About us | the opening line and the body, split into paragraphs on blank lines |
 | Home page | the banner heading, all four claims in the strip, every section heading and small label, Google reviews, Instagram |
-| Other pages | headings and wording on the catalogue, Visit us and Get in touch, plus the description under each flooring type |
+| Other pages | headings and wording on Collections, Visit us and Get in touch, plus the description under each flooring type |
 | Collections | hide, rename, the collection's own description, and its shades |
-| Photos | every picture, and a caption for each |
+| Photos | every picture, and a caption for each — including the three that make up the home page banner |
 | Styles | which collections sit under which style |
 
 The faint grey text in an empty box is what the site is showing now, so the
@@ -61,6 +61,14 @@ rather than blanking the page.
 **Captions matter more than they look.** The box under each photograph is the
 alt text: what a blind visitor hears, and what Google reads. "Wool twist fitted
 to a staircase in Isleworth" is worth having; "photo" is not.
+
+**The home page banner is three pictures**, listed in the Photos tab as banner 1,
+2 and 3. The page cross-fades between them every six seconds, and the dots at
+the bottom right let a visitor step through by hand. The words over the top
+never move, so replacing any of the three is just replacing a photograph — each
+has its own caption, and none of them affects the headline or the buttons.
+Somebody browsing with reduced motion turned on gets the first picture and the
+dots, and nothing moves on its own.
 
 `tools/admin-e2e.mjs` types a unique marker into **every text box in the admin**,
 saves, then reads all six public pages back and fails naming any field whose
@@ -314,6 +322,7 @@ need this — but it is the quickest way to be certain.
     node tools/stub-api.mjs 8894 password &
     node tools/stub-api.mjs 8895 stale &
     node tools/stub-api.mjs 8896 anon &
+    node tools/stub-api.mjs 8897 both &
     node tools/admin-e2e.mjs       # the page, and the shop when the API is down
 
 `admin.test.mjs` generates a real RSA key pair and signs real tokens, so the

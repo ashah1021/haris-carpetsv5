@@ -157,7 +157,7 @@ check("saved", (await page.locator("#state").textContent()).toLowerCase().includ
   await page.locator("#state").textContent());
 
 console.log("\n…takes it off the shop:");
-await go(`${BASE}/index.html#/catalogue/carpets`, 1500);
+await go(`${BASE}/index.html#/collections/carpets`, 1500);
 const gone = await page.evaluate((id) => !RANGES.some((r) => r.id === id), rangeId);
 check("the collection is gone from the catalogue", gone, firstName);
 const stillInSource = await page.evaluate((id) => CATALOGUE.some((r) => r.id === id), rangeId);
@@ -179,7 +179,7 @@ await page.waitForTimeout(400);
 await page.locator(`[data-hide="${rangeId}"]`).click();
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/catalogue/carpets`, 1500);
+await go(`${BASE}/index.html#/collections/carpets`, 1500);
 check("the collection is back", await page.evaluate((id) => RANGES.some((r) => r.id === id), rangeId));
 
 console.log("\nRenaming a shade reaches the shop:");
@@ -204,7 +204,7 @@ const renameKey = await page.locator("[data-rename]").first().getAttribute("data
 await page.locator("[data-rename]").first().fill("Renamed By Hari");
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/catalogue/carpets`, 1500);
+await go(`${BASE}/index.html#/collections/carpets`, 1500);
 check("the new name is on the site",
   await page.evaluate(() => allSwatches().some((s) => s.name === "Renamed By Hari")), renameKey);
 
@@ -218,7 +218,7 @@ const wasChecked = await tick.isChecked();
 await tick.setChecked(!wasChecked);
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/catalogue/carpets/easy-clean`, 1500);
+await go(`${BASE}/index.html#/collections/carpets/easy-clean`, 1500);
 const nowIn = await page.evaluate(() =>
   stylesFor("carpets").find((s) => s.id === "easy-clean")?.list.map((r) => r.id) || []);
 check("the style list followed the tick", nowIn.includes(tickedId) === !wasChecked,
@@ -274,7 +274,7 @@ console.log("\nAdding a collection and a shade from a photograph:");
 
   await page.locator("#save").click();
   await page.waitForTimeout(800);
-  await go(`${BASE}/index.html#/catalogue/carpets`, 1600);
+  await go(`${BASE}/index.html#/collections/carpets`, 1600);
   const live = await page.evaluate(() =>
     allSwatches().find((s) => s.name === "Shop Oatmeal"));
   check("the new shade is on the shop", Boolean(live), live && `${live.range} · ${live.hex}`);
@@ -287,7 +287,7 @@ console.log("\nWhen the admin API is down the shop does not notice:");
   const p2 = await (await browser.newContext()).newPage();
   const errs = [];
   p2.on("pageerror", (e) => errs.push(e.message));
-  await p2.goto(`${DOWN}/index.html#/catalogue/carpets`, { waitUntil: "networkidle" });
+  await p2.goto(`${DOWN}/index.html#/collections/carpets`, { waitUntil: "networkidle" });
   await p2.waitForTimeout(1800);
   const n = await p2.locator(".swatch").count();
   check("the catalogue still renders in full", n > 100, `${n} shades`);
@@ -516,7 +516,7 @@ console.log("\nEvery text box in the admin changes something on the site:");
   await page.waitForTimeout(1000);
 
   /* every page that could be showing any of them */
-  const pages = ["#/", "#/about", "#/catalogue", "#/catalogue/carpets", "#/contact", "#/enquire"];
+  const pages = ["#/", "#/about", "#/collections", "#/collections/carpets", "#/contact", "#/enquire"];
   let seen = "";
   for (const hash of pages) {
     await page.goto(`${BASE}/index.html${hash}`, { waitUntil: "domcontentloaded" });
@@ -533,7 +533,10 @@ console.log("\nPhoto captions:");
   await go(`${BASE}/admin/`);
   await page.locator("[data-tab='photos']").click();
   await page.waitForTimeout(800);
+  check("all three banner pictures are listed",
+    (await page.locator('[data-slot="hero"], [data-slot="hero2"], [data-slot="hero3"]').count()) === 3);
   await page.locator('[data-caption="hero"]').fill("A wool twist in a bay-window living room");
+  await page.locator('[data-caption="hero2"]').fill("Velvet pile in a bay window");
   await page.locator('[data-caption="range:westex-ultima"]').fill("Ultima fitted in a hallway");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
@@ -542,6 +545,11 @@ console.log("\nPhoto captions:");
   check("the banner picture is described",
     (await page.evaluate(() => document.querySelector(".hero img")?.getAttribute("alt")))
       === "A wool twist in a bay-window living room");
+  /* the second slide is a separate slot with its own caption, so a shop that
+     changes one banner picture does not silently relabel the others */
+  check("so is the one behind it",
+    (await page.evaluate(() =>
+      document.querySelectorAll(".hero-slide img")[1]?.getAttribute("alt"))) === "Velvet pile in a bay window");
   await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
   check("so is a collection's",
     (await page.evaluate(() => document.querySelector(".range-hero img")?.getAttribute("alt")))

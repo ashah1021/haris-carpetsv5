@@ -80,6 +80,11 @@ const P = (f) => IMG_BASE + "assets/" + f;
 
 const IMG = {
   hero:        P("hero-living-room.jpg"),
+  /* The banner cycles through these three. They are separate slots rather than
+     a list so each one is a photograph the shop replaces on its own, with its
+     own caption, exactly like every other picture on the site. */
+  hero2:       P("velvet-living-room.jpg"),
+  hero3:       P("wood-herringbone-kitchen.jpg"),
   showroom:    P("showroom.jpg"),
   fitting:     P("fitting-hands.jpg"),
   samples:     P("samples-counter.jpg"),
@@ -101,16 +106,18 @@ const IMG = {
    original and a slot with no override never breaks.
    ========================================================================= */
 const IMG_SLOTS = [
-  ["hero",     "Home page banner",       "The big photograph at the top of the home page"],
+  ["hero",     "Home page banner 1",     "First picture in the banner at the top of the home page"],
+  ["hero2",    "Home page banner 2",     "Second picture the banner cycles to"],
+  ["hero3",    "Home page banner 3",     "Third picture the banner cycles to"],
   ["showroom", "The showroom",           "On the home page and About"],
   ["fitting",  "Fitting",                "Beside the fitting service"],
   ["stairs",   "Stairs and landings",    "Beside the stairs service"],
   ["samples",  "Samples on the counter", "Small inset on the home page"],
-  ["velvet",   "Carpets",                "The Carpets tile in the catalogue"],
-  ["wood",     "Wood & laminate",        "The Wood tile in the catalogue"],
-  ["lvt",      "LVT",                    "The LVT tile in the catalogue"],
-  ["vinyl",    "Vinyl",                  "The Vinyl tile in the catalogue"],
-  ["rug",      "Rugs",                   "The Rugs tile in the catalogue"],
+  ["velvet",   "Carpets",                "The Carpets tile in Collections"],
+  ["wood",     "Wood & laminate",        "The Wood tile in Collections"],
+  ["lvt",      "LVT",                    "The LVT tile in Collections"],
+  ["vinyl",    "Vinyl",                  "The Vinyl tile in Collections"],
+  ["rug",      "Rugs",                   "The Rugs tile in Collections"],
   ["pile",     "Pile close-up",          "Stands in for collections with no photograph"],
   ["bedroom",  "Bedroom",                "Stands in for collections with no photograph"],
 ];
@@ -150,27 +157,27 @@ const VIS_ROOMS = [
    `rooms` lists which visualiser scenes a type makes sense in.
    -------------------------------------------------------------------------- */
 const TYPES = [
-  { id: "carpets", name: "Carpets", route: "#/catalogue/carpets",
+  { id: "carpets", name: "Carpets", route: "#/collections/carpets",
     photo: IMG.velvet, alt: "Wool velvet carpet in a panelled living room",
     blurb: "Wool-rich and synthetic carpets from Britain's leading mills. Browse by brand, range and colour.",
     rooms: ["living-room", "bedroom"] },
 
-  { id: "wood", name: "Wood & Laminate", route: "#/catalogue/wood",
+  { id: "wood", name: "Wood & Laminate", route: "#/collections/wood",
     photo: IMG.wood, alt: "Engineered oak herringbone flooring in a kitchen-diner",
     blurb: "Engineered and solid wood, plus hard-wearing laminate — herringbone, chevron and plank formats.",
     rooms: ["kitchen", "utility"] },
 
-  { id: "lvt", name: "LVT", route: "#/catalogue/lvt",
+  { id: "lvt", name: "LVT", route: "#/collections/lvt",
     photo: IMG.lvt, alt: "Stone-effect luxury vinyl tile flooring in a modern kitchen",
     blurb: "Luxury vinyl tile — the look of wood or stone with the durability for kitchens, bathrooms and busy family spaces.",
     rooms: ["kitchen", "utility"] },
 
-  { id: "vinyl", name: "Vinyl", route: "#/catalogue/vinyl",
+  { id: "vinyl", name: "Vinyl", route: "#/collections/vinyl",
     photo: IMG.vinyl, alt: "Cushioned wood-effect sheet vinyl in a utility room",
     blurb: "Cushioned sheet vinyl — practical, comfortable underfoot and easy to keep clean.",
     rooms: ["utility", "kitchen"] },
 
-  { id: "rugs", name: "Luxury Rugs", route: "#/catalogue/rugs",
+  { id: "rugs", name: "Luxury Rugs", route: "#/collections/rugs",
     photo: IMG.rug, alt: "Patterned woven luxury rug layered over wood flooring",
     blurb: "Luxury rugs, including Louis de Poortere, to finish and pull a room together.",
     rooms: ["living-room"] },
