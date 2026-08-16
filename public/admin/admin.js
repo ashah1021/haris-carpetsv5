@@ -78,7 +78,8 @@
 
   /* Everything written on the home page, in the order it appears. */
   const HOME_FIELDS = [
-    ["since", "Banner — small label", () => BUSINESS.since, false, true],
+    ["since", "Banner — small label above the heading",
+     () => "Leave empty for none — the shop asked for this line off"],
     ["heroTitle", "Banner heading", () => "The flooring shop on Hanworth Road.", false, true],
     ["heroText", "Banner paragraph", () => HOME.heroText, true, true],
     ["heroCta", "Banner — first button", () => "Make an enquiry", false, true],

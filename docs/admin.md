@@ -218,6 +218,31 @@ showroom, the flooring-type tiles, and every collection. Only 11 of 48
 collections came with photography from the mill; the rest show a stand-in, and
 a picture of that carpet fitted in a real room is worth more than any of them.
 
+### Putting a picture on the site, start to finish
+
+1. Sign in at `/admin` and open **Photos** — or **Portfolio**, for a finished
+   job you want in the gallery.
+2. Find the one you want to change. Every card shows the picture that is on the
+   site right now, with a line saying where it appears. There is a search box
+   for the collections, because there are 48 of them.
+3. **Replace**, and pick the photograph. It uploads straight away and the card
+   shows your new one within a second or two.
+4. Fill in the box underneath it. That is what a blind visitor hears and what
+   Google reads — "wool twist fitted to a staircase in Isleworth", not "photo".
+   Leave it and the old description stays, which will now be wrong.
+5. **Save changes**. Nothing is live until you do. The site picks it up within
+   the minute.
+6. If you change your mind, **Use the original** puts the shipped picture back.
+   Your upload is not deleted, so it can be put back too.
+
+**What makes a good one.** Landscape, not portrait — every slot on the site is
+wider than it is tall, so an upright phone photo gets cropped top and bottom.
+Daylight rather than the shop's ceiling lights, which push wool towards yellow.
+Get far enough back that the floor is most of the frame. And a real job beats
+any stock photograph, every time.
+
+Straight off a phone is fine — the size is dealt with below.
+
 Big files are fine. The browser shrinks a photograph before uploading — 1800px
 for a site picture, 900px for a swatch — which also re-encodes it, and that
 drops the EXIF a phone attaches, including where the picture was taken.

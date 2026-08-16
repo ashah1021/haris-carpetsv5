@@ -361,9 +361,9 @@ function applyContentToChrome() {
   const blurb = document.getElementById("footBlurb");
   if (blurb) blurb.textContent = say("footerBlurb", BUSINESS.blurbShort);
 
-  /* The line under the wordmark. It was a literal in index.html while the hero
-     read say("since"), so the two could disagree about how old the business is
-     and only one of them could be corrected. */
+  /* The line under the wordmark. It was a literal in index.html and nothing
+     patched it, so the shop could correct how old the business is everywhere
+     except the one place it sits beside the name. */
   const mark = document.querySelector(".brand-mark small");
   if (mark) {
     const line = say("tagline", BUSINESS.tagline);
@@ -650,7 +650,10 @@ function viewHome() {
     </div>
     <div class="hero-scrim"></div>
     <div class="wrap">
-      ${kicker("since", BUSINESS.since)}
+      ${/* No shipped wording: the shop asked for this line gone, and an empty
+             default is how "gone unless you want it" is said here — same as the
+             notice strip above. Type something in /admin and it appears. */
+        kicker("since", "")}
       ${tag("h1", "heroTitle", "The flooring shop on Hanworth Road.")}
       ${para("heroText", HOME.heroText)}
       <div class="hero-cta">

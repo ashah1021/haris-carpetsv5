@@ -35,7 +35,6 @@ const FEATURES = {
 
 const BUSINESS = {
   name: "Hari's Carpets",
-  since: "Hounslow · Over 32 years",
   tagline: "Hounslow · Est. 32 yrs",
   blurbShort: "Established. Experienced. Family-run.",
 };
