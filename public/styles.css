@@ -72,7 +72,7 @@ h2 { font-size: clamp(27px, 3.4vw, 40px); }
   border-top: 3px solid var(--yellow); border-bottom: 3px solid var(--yellow);
 }
 .rule { width: 62px; margin: 0 0 18px; }
-.br { width: 200px; max-width: 100%; }
+.br { width: 100%; max-width: 100%; }
 .rule.on-dark { border-color: var(--yellow); }
 .rule.centred { margin-inline: auto; }
 
@@ -393,8 +393,12 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .site-footer .fbrand { font-family: var(--f-display); font-size: 25px; letter-spacing: .07em; text-transform: uppercase; }
 /* .br, not .fbrand + .br — the sibling selector meant inserting anything
    between the wordmark and the rule silently stripped its width and left an
-   invisible element */
-.site-footer .br { margin-top: 8px; }
+   invisible element.
+
+   The footer column is far wider than its wordmark, so unlike the header this
+   one cannot just fill its parent. 232px is the width of "HARI'S CARPETS" at
+   the .fbrand size, which is what the rule is meant to sit under. */
+.site-footer .br { width: 232px; margin-top: 8px; }
 .site-footer .fine { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.16); margin-top: 26px;
   padding-top: 18px; font-size: 13px; color: rgba(255,255,255,.7); display: flex; justify-content: space-between;
   flex-wrap: wrap; gap: 10px; }
