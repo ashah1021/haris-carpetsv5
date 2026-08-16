@@ -39,6 +39,10 @@ const UPLOADS = new Map();
 /* Set with ?feed= on the stub's own port to pretend Instagram is answering. */
 let LIVE_FEED = { posts: [], live: false };
 
+/* How the next enquiry is answered, and what the last one contained. */
+let ENQUIRY_MODE = "ok";
+let LAST_ENQUIRY = null;
+
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
                 ".jpg": "image/jpeg", ".png": "image/png", ".json": "application/json",
                 ".svg": "image/svg+xml", ".ico": "image/x-icon" };
@@ -55,6 +59,19 @@ createServer(async (req, res) => {
     if (p === "/api/site") return send(res, 200, JSON.stringify(DOC));
     /* the live Instagram feed, off unless a test turns it on */
     if (p === "/api/instagram") return send(res, 200, JSON.stringify(LIVE_FEED));
+
+    /* Enquiries. The real delivery is covered in enquiry.test.mjs against the
+       Worker itself; what this exists for is the browser end — that the page
+       posts what the visitor typed, and copes with each answer. */
+    if (p === "/api/enquiry") {
+      let body = ""; for await (const c of req) body += c;
+      try { LAST_ENQUIRY = JSON.parse(body); } catch { LAST_ENQUIRY = { unparseable: body }; }
+      if (ENQUIRY_MODE === "fail") return send(res, 502, '{"ok":false,"fallback":true,"error":"We couldn\'t send that just now."}');
+      if (ENQUIRY_MODE === "off") return send(res, 503, '{"ok":false,"fallback":true,"error":"The contact form isn\'t switched on yet."}');
+      if (ENQUIRY_MODE === "slow") return send(res, 200, '{"ok":true,"queued":true}');
+      if (ENQUIRY_MODE === "rate") return send(res, 429, '{"ok":false,"error":"Give us a moment before sending another."}');
+      return send(res, 200, '{"ok":true}');
+    }
     if (MODE === "unconfigured") return send(res, 503, '{"error":"Sign-in is not set up yet."}');
 
     /* password mode: the gate offers a box, and the right password gets in.
@@ -115,6 +132,16 @@ createServer(async (req, res) => {
       caption: `Live post ${i}`,
     })) };
     return send(res, 200, JSON.stringify(LIVE_FEED));
+  }
+
+  /* test hook: /_enquiry?mode=ok|fail|off|rate|slow picks how the next
+     submission is answered; a GET with no mode hands back what was last
+     posted, so a browser test can assert on what actually went over the wire
+     rather than on what the page said afterwards. */
+  if (p === "/_enquiry") {
+    const mode = url.searchParams.get("mode");
+    if (mode) ENQUIRY_MODE = mode;
+    return send(res, 200, JSON.stringify({ mode: ENQUIRY_MODE, last: LAST_ENQUIRY }));
   }
 
   if (UPLOADS.has(p)) {

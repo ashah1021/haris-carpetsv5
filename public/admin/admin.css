@@ -49,13 +49,24 @@ body.admin { background: var(--off); }
 .mg-back { margin: 0 0 14px; }
 .mg-err { color: #9a3412; font-size: 13.5px; margin: 10px 0 0; min-height: 1em; }
 
-/* ---- fields ---- */
+/* ---- fields ----
+   Two shapes, because a field with a show/hide tick needs a wrapper the tick
+   can sit in: `<label class="mg-field">` for a plain box, and
+   `<div class="mg-field"><label>…</label><label class="mg-tick">…</label></div>`
+   for one that can be switched off. Both lay out the same. */
 .mg-fields { display: grid; gap: 18px; max-width: 620px; }
-.mg-field { display: flex; flex-direction: column; gap: 6px; }
-.mg-field > span {
+.mg-field, .mg-field > label:not(.mg-tick) { display: flex; flex-direction: column; gap: 6px; }
+.mg-field > span, .mg-field > label:not(.mg-tick) > span {
   font-family: var(--f-display); font-size: 11.5px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--muted);
 }
+
+/* Switched off. Greyed rather than hidden, so it is obvious the wording is
+   still there and one click away from coming back. */
+.mg-show { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.mg-show span { text-transform: none; letter-spacing: 0; }
+.mg-field.mg-off > label:not(.mg-tick) { opacity: .45; }
+.mg-field.mg-off .mg-show { color: #9a3412; }
 .mg-field input[type="text"], .mg-field textarea, .mg-search {
   padding: 11px 13px; border: 1px solid var(--line); border-radius: 2px;
   background: var(--paper); font: inherit; font-size: 15px; color: var(--ink); width: 100%;

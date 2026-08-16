@@ -35,17 +35,44 @@ const FEATURES = {
 
 const BUSINESS = {
   name: "Hari's Carpets",
-  since: "Hounslow · Over 30 years",
-  strapline: "Carpets, wood, vinyl & rugs — supplied and fitted across London.",
-  blurbShort:
-    "A family-run flooring business in Hounslow, supplying and fitting for homes, trade and commercial projects across London and the Home Counties.",
+  since: "Hounslow · Over 32 years",
+  tagline: "Hounslow · Est. 32 yrs",
+  blurbShort: "Established. Experienced. Family-run.",
+};
+
+/* The prose the pages ship with. Every one of these is a box in /admin and can
+   be rewritten or switched off there — they live here, with the other shipped
+   content, rather than inline in app.js, so that changing the wording never
+   means editing a template. */
+const HOME = {
+  heroText: "A family-run flooring business with over 32 years of experience, supplying and"
+    + " fitting carpets, wood, LVT, vinyl and rugs across London and the Home Counties.",
+  typesText: "Discover our flooring collections, from carpets and rugs to wood, laminate,"
+    + " LVT and vinyl.",
+  serviceText: "The same team measures the job and comes back to fit it. Nothing gets handed"
+    + " to a subcontractor who's never seen your house.",
+  instaText: "Looking for inspiration? Follow us on Instagram @hariscarpets or"
+    + " search #hariscarpets.",
+};
+
+const PAGES = {
+  catalogueText: "Every floor we stock, by type. Tap any shade to see it close up, and save"
+    + " the ones you like to your list as you go.",
+  visitText: "Pop into the Hounslow showroom, or book a free home measure and we'll come to"
+    + " you across",   /* the area follows, and is its own box */
+  enquireText: "Tell us roughly what you're after and we'll come back to you. Home measures"
+    + " are free, and we'll bring samples to your door so you can see them in your own light.",
+  portfolioText: "A few of the floors we've supplied and fitted recently, in real homes"
+    + " across London and the Home Counties.",
 };
 
 const CONTACT = {
   phone: "020 8570 6502",
   phoneHref: "tel:+442085706502",
   email: "sales@hariscarpets.co.uk",
-  address: "267 Hanworth Road, Hounslow, Middlesex, TW3 3RZ",
+  /* One line per line, as it should be written on an envelope. The footer and
+     the Visit us page both break it here rather than running it together. */
+  address: "267 Hanworth Road\nHounslow\nMiddlesex\nTW3 3RZ",
   mapsUrl: "https://www.google.com/maps/place/Hari's+Carpets/@51.4624955,-0.3671699,17z",
   /* The embed URL from Google Maps → Share → Embed a map. Loaded lazily and
      only on the Visit us page, so it costs nothing anywhere else. */
@@ -54,10 +81,14 @@ const CONTACT = {
   area: "London & the Home Counties (within the M25)",
 };
 
+/* The `id` is what the admin stores the URL under (content key "socialInstagram"
+   and so on) and which glyph is drawn beside it. Emptying the box in /admin
+   drops that network from the row rather than leaving a dead link. */
 const SOCIALS = [
-  { name: "Instagram", url: "https://www.instagram.com/hariscarpets/" },
-  { name: "Facebook", url: "https://www.facebook.com/HarisCarpetsUK/" },
-  { name: "Twitter", url: "https://twitter.com/hariscarpets1" },
+  { id: "instagram", name: "Instagram", url: "https://www.instagram.com/hariscarpets/" },
+  { id: "facebook", name: "Facebook", url: "https://www.facebook.com/HarisCarpetsUK/" },
+  { id: "tiktok", name: "TikTok", url: "https://www.tiktok.com/@hariscarpets" },
+  { id: "twitter", name: "X", url: "https://twitter.com/hariscarpets1" },
 ];
 
 /* ----------------------------------------------------------------------------
@@ -305,9 +336,10 @@ const STYLES = {
 };
 
 const ABOUT = {
-  lead: "Flooring ties a whole interior together — so it's worth getting right.",
+  kicker: "Family run · Hounslow · Over 32 years",
+  lead: "Flooring is at the heart of every space — and getting it right matters.",
   body: [
-    "Hari's Carpets is a family-run business based in Hounslow. For over thirty years we've supplied and fitted flooring for homeowners, trade and commercial customers right across London and the Home Counties.",
+    "For over 32 years, Hari's Carpets has been supplying and fitting quality flooring for homes, trade and commercial projects across London and the Home Counties.",
     "We carry an extensive range from trusted British mills, so there's a floor for every room, every level of traffic and every budget. We take the time to understand what you actually need, then help you find the right one — no pressure, no guesswork.",
     "When it comes to fitting, our own skilled team handles the whole job: measuring, planning, uplift of your old flooring and a clean, careful installation finished to a high standard.",
   ],

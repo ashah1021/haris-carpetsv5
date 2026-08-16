@@ -55,6 +55,7 @@ const ROUTES = [
   ["#/collections/wood/herringbone", "a wood style"],
   ["#/collections/lvt/stone-effect", "an lvt style"],
   ["#/collections/carpets/pattern", "an empty style 404s"],
+  ["#/portfolio", "portfolio"],
   ["#/range/westex-elysian", "a range"],
   ["#/favourites", "favourites"],
   ["#/about", "about"],
@@ -81,13 +82,17 @@ const page = await ctx.newPage();
 await ctx.route("**://*.google.com/**", (route) => route.abort());
 
 const errors = [], badResponses = [];
+/* Set around a block that provokes a failure on purpose. A flag rather than
+   widening the regex below, because adding /enquiry to that list would blind
+   this suite to a genuine enquiry failure for ever. */
+let expectFailures = false;
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("response", (r) => {
   /* /api/site is the admin overlay, served by the Worker. This file runs
      against a plain static server, so its absence here is the point rather
      than a fault: the shop has to be complete without it. There is an explicit
      assertion for that below. */
-  if (r.status() >= 400 && !/\/api\/(site|instagram)/.test(r.url())) {
+  if (r.status() >= 400 && !expectFailures && !/\/api\/(site|instagram)/.test(r.url())) {
     badResponses.push(`${r.status()} ${r.url()}`);
   }
 });
@@ -353,7 +358,8 @@ check("no page says Catalogue anywhere", stillSaysIt.length === 0, stillSaysIt[0
 await page.goto(U("#/"), { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
 const cta = await page.locator('.hero-cta a[href="#/enquire"]').first();
-check("the banner button says Contact us now", (await cta.textContent()).trim() === "Contact us now");
+check("the banner button asks for an enquiry",
+  /enquir/i.test((await cta.textContent()).trim()), (await cta.textContent()).trim());
 
 await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(900);
@@ -361,20 +367,74 @@ check("the old catalogue link still lands somewhere",
   page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
 
-console.log("\nThe enquiry form is wired up:");
+console.log("\nThe portfolio page:");
+await page.goto(U("#/portfolio"), { waitUntil: "networkidle" });
+await page.waitForTimeout(700);
+check("it is in the menu", (await page.locator('.nav a[href="#/portfolio"]').count()) === 1);
+check("and in the footer", (await page.locator('footer a[href="#/portfolio"]').count()) === 1);
+/* Nothing is shipped for this page — a portfolio of stock photography would be
+   a lie — so with no admin overlay it must say so rather than show empty frames. */
+check("with no jobs added it says so rather than showing empty frames",
+  (await page.locator(".folio-item").count()) === 0
+  && /showroom/i.test(await page.evaluate(() => document.querySelector("#app").innerText)));
+check("and the page is still worth landing on", await visible(page, "#app section"));
+
+console.log("\nThe address is an address, not a run-on line:");
+await page.goto(U("#/contact"), { waitUntil: "networkidle" });
+await page.waitForTimeout(800);
+const lines = await page.evaluate(() =>
+  (document.querySelector(".info-row a[href*='maps']")?.innerHTML || "").split(/<br\s*\/?>/i).length);
+check("the showroom address is on four lines", lines === 4, `${lines} lines`);
+const footLines = await page.evaluate(() =>
+  (document.getElementById("footAddress")?.innerHTML || "").split(/<br\s*\/?>/i).length);
+/* applyContentToChrome used to set textContent here, which flattened the <br>
+   out of the markup on every render — the reason nobody could get the footer
+   address onto more than one line. */
+check("and so is the one in the footer", footLines === 4, `${footLines} lines`);
+
+console.log("\nThe enquiry form does not lie to anyone:");
 await page.goto(U("#/enquire"), { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
+const formText = await page.evaluate(() => document.querySelector("#app").innerText);
+check("nothing on the page says demo", !/demo/i.test(formText),
+  (formText.match(/.{0,30}demo.{0,30}/i) || [""])[0]);
 const topics = await page.locator("#w option").allTextContents();
-check("the measure option is short", topics.includes("Book measure"), topics.slice(0, 2).join(", "));
-check("and the long one is gone", !topics.some((t) => /free home measure/i.test(t)));
+check("the measure option is gone from the dropdown",
+  !topics.some((t) => /measure/i.test(t)), topics.join(", "));
+const hp = await page.evaluate(() => {
+  const el = document.querySelector('#enquiry input[name="website"]');
+  if (!el) return null;
+  return { type: el.type, height: el.offsetHeight, inView: el.getBoundingClientRect().right > 0 };
+});
+check("there is a honeypot field", hp !== null);
+/* type=hidden is what a form-filling bot skips, so it must be a real text
+   input that CSS has taken out of the layout instead. */
+check("it is a real input a bot will fill in, hidden with CSS", hp?.type === "text" && !hp?.inView);
+
+/* This file runs against a plain static server, so there is no Worker to take
+   the enquiry. That is the point: whatever goes wrong, the visitor must be told
+   the truth and must not lose what they typed. */
+expectFailures = true;
 await page.fill("#n", "Test Visitor");
 await page.fill("#e", "test@example.com");
-await page.locator('#enquiry button[type="submit"]').click();
-await page.waitForTimeout(400);
-/* This is the regression: the form was rendered on #/enquire but wireEnquiry
-   was only called for #/contact, so submitting reloaded the page and lost it. */
-check("submitting is caught by the page", (await page.locator("#enquiry h3").count()) === 1,
-  (await page.evaluate(() => document.querySelector("#enquiry")?.innerText.slice(0, 40))) || "form gone");
+await page.fill("#m", "Stairs and landing please.");
+await page.waitForTimeout(3200);   // the form refuses anything sent inside 3s
+const posted = page.waitForRequest((r) => r.url().includes("/api/enquiry"), { timeout: 5000 });
+await page.locator("#enquiry button[type=submit]").click();
+let sentIt = true;
+try { await posted; } catch { sentIt = false; }
+check("submitting actually posts the enquiry", sentIt);
+await page.waitForTimeout(900);
+check("with nothing to take it, the visitor is not thanked",
+  (await page.locator("#enquiry h3").count()) === 0);
+check("what they typed is still there",
+  (await page.inputValue("#m")) === "Stairs and landing please.");
+check("and they are given another way through",
+  (await page.locator('#enquiryNote a[href^="mailto:"]').count()) === 1);
+check("with their message already in it", await page.evaluate(() =>
+  decodeURIComponent(document.querySelector('#enquiryNote a[href^="mailto:"]')?.href || "")
+    .includes("Stairs and landing")));
+expectFailures = false;
 
 console.log("\nMobile:");
 const mob = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();

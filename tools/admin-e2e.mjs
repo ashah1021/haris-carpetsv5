@@ -17,8 +17,8 @@ const BASE = process.argv[2] || "http://127.0.0.1:8890";
 const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing API
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
-/* Shop details, About us, Home page, Other pages, Collections, Photos, Styles */
-const TABS = 7;
+/* Shop details, About us, Home page, Other pages, Portfolio, Collections, Photos, Styles */
+const TABS = 8;
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
@@ -36,6 +36,9 @@ const browser = await chromium.launch();
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
+
+/* a real jpeg to upload — the tests that need one all use the same picture */
+const shot = new URL("../public/assets/showroom.jpg", import.meta.url).pathname;
 
 const go = async (url, wait = 900) => {
   await page.goto(url, { waitUntil: "networkidle" });
@@ -80,7 +83,10 @@ console.log("\nShop details reach the site:");
   await go(`${BASE}/index.html#/contact`, 1600);
   const contact = await page.evaluate(() => document.querySelector("#app").textContent);
   check("opening hours show", contact.includes(typed.hours), typed.hours);
-  check("the address shows", contact.includes(typed.address));
+  /* An address is written on lines, not run together, so it is compared line by
+     line — the commas the shop types are where it breaks. */
+  check("the address shows", typed.address.split(",").every((l) => contact.includes(l.trim())),
+    typed.address);
   check("the phone number shows", contact.includes(typed.phone));
   check("the email shows", contact.includes(typed.email));
   const tel = await page.evaluate(() =>
@@ -94,8 +100,10 @@ console.log("\nShop details reach the site:");
     document.querySelector('footer a[href^="mailto:"]')?.textContent.trim());
   check("so does the footer email", footMail === typed.email, footMail);
   const footAddr = await page.evaluate(() =>
-    document.querySelector("#footAddress")?.textContent.trim());
-  check("and the footer address", footAddr === typed.address, footAddr);
+    (document.querySelector("#footAddress")?.innerHTML || "").split(/<br\s*\/?>/i)
+      .map((s) => s.trim()));
+  check("and the footer address, on its own lines",
+    footAddr.join("|") === "1 Test Street|Hounslow", footAddr.join("|"));
 
   await go(`${BASE}/index.html#/`, 1500);
   check("the notice shows on the home page",
@@ -349,7 +357,6 @@ console.log("\nSigning in with the site password:");
 
 console.log("\nReplacing a photograph:");
 {
-  const shot = new URL("../public/assets/showroom.jpg", import.meta.url).pathname;
   await go(`${BASE}/admin/`);
   await page.locator("[data-tab='photos']").click();
   await page.waitForTimeout(700);
@@ -455,8 +462,12 @@ console.log("\nReviews and Instagram:");
     (await page.locator(".reviews-score").textContent()).includes("4.9"));
   check("five stars are drawn, not a number",
     (await page.locator(".rv .stars").first().textContent()).includes("★"));
-  check("and there is a way to leave one",
-    (await page.locator('.reviews-bar a[href*="g.page"]').count()) === 1);
+  /* The "Review us on Google" button is gone on purpose: asking for reviews on
+     the strip that is showing off the ones you already have reads as fishing,
+     and the shop asked for it removed. The listing link is still stored — it is
+     what the rating and the count come from. */
+  check("but no button asking for another one",
+    (await page.locator(".reviews-bar a").count()) === 0);
   check("the Instagram grid appears", (await page.locator(".ig-tile").count()) === 1);
   const igHref = await page.evaluate(() =>
     document.querySelector(".ig-tile")?.getAttribute("href"));
@@ -497,8 +508,12 @@ console.log("\nEvery text box in the admin changes something on the site:");
      one gets a unique marker typed into it, and then the pages are searched for
      those markers. Anything missing is named. */
   const MARK = "ZQ";
-  const tabs = ["shop", "about", "home", "pages"];
+  const tabs = ["shop", "about", "home", "pages", "portfolio"];
   const typed = new Map();
+  /* Checked apart: the notice is off unless it has something in it, and the two
+     URLs have to stay URLs or the page they are on cannot render them. */
+  const APART = new Set(["notice", "mapEmbed", "mapsUrl",
+    "socialInstagram", "socialFacebook", "socialTiktok", "socialTwitter"]);
 
   await go(`${BASE}/admin/`);
   for (const t of tabs) {
@@ -506,7 +521,7 @@ console.log("\nEvery text box in the admin changes something on the site:");
     await page.waitForTimeout(500);
     for (const el of await page.locator("[data-content]").all()) {
       const key = await el.getAttribute("data-content");
-      if (key === "notice" || key === "mapEmbed" || key === "mapsUrl") continue;  // checked apart
+      if (APART.has(key) || typed.has(key)) continue;
       const value = `${MARK}-${key}`;
       await el.fill(value);
       typed.set(key, value);
@@ -516,7 +531,8 @@ console.log("\nEvery text box in the admin changes something on the site:");
   await page.waitForTimeout(1000);
 
   /* every page that could be showing any of them */
-  const pages = ["#/", "#/about", "#/collections", "#/collections/carpets", "#/contact", "#/enquire"];
+  const pages = ["#/", "#/about", "#/collections", "#/collections/carpets",
+                 "#/portfolio", "#/contact", "#/enquire"];
   let seen = "";
   for (const hash of pages) {
     await page.goto(`${BASE}/index.html${hash}`, { waitUntil: "domcontentloaded" });
@@ -526,6 +542,192 @@ console.log("\nEvery text box in the admin changes something on the site:");
   const missing = [...typed].filter(([, v]) => !seen.includes(v)).map(([k]) => k);
   check(`all ${typed.size} text fields reach a page`, missing.length === 0,
     missing.length ? "not showing: " + missing.join(", ") : `${typed.size} checked`);
+
+  /* The URLs, which the sweep cannot fill with a marker. Each one is a box that
+     has to end up as an href — mapsUrl was one that did not, for months. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(500);
+  await page.locator('[data-content="mapsUrl"]').fill("https://maps.example/haris");
+  await page.locator('[data-content="socialTiktok"]').fill("https://tiktok.example/haris");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/contact`, 1500);
+  check("the Google Maps link is really a link now",
+    (await page.locator('a[href="https://maps.example/haris"]').count()) > 0);
+  check("and a social link the shop typed is on the page",
+    (await page.locator('.socials a[href="https://tiktok.example/haris"]').count()) === 1);
+}
+
+console.log("\nSwitching a line off takes it off the page:");
+{
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(600);
+
+  const before = await page.inputValue('[data-content="instaHeading"]');
+  const focusedBefore = await page.evaluate(() => document.activeElement?.tagName);
+  await page.locator('[data-off="instaHeading"]').uncheck();
+  await page.waitForTimeout(300);
+  check("the box greys out", (await page.locator('.mg-field.mg-off [data-content="instaHeading"]').count()) === 1);
+  check("what was written in it is left alone",
+    (await page.inputValue('[data-content="instaHeading"]')) === before, before);
+  /* A full re-render here would move the tick out from under the cursor and
+     drop whatever box was being typed in — on this tab there are thirty of them. */
+  check("and the panel is not rebuilt underneath you",
+    (await page.evaluate(() => document.activeElement?.tagName)) !== focusedBefore
+      || (await page.locator("[data-content]").count()) > 20);
+
+  await page.locator("[data-tab='pages']").click();
+  await page.waitForTimeout(400);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(500);
+  check("it is still off after moving away and back",
+    (await page.locator('[data-off="instaHeading"]').isChecked()) === false);
+
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/`, 1600);
+  const heads = await page.evaluate(() =>
+    [...document.querySelectorAll(".ig-grid")].length
+      ? [...document.querySelectorAll("section h2")].map((h) => h.textContent) : ["no grid"]);
+  check("the heading is gone from the home page", !heads.some((h) => /Recent work/.test(h)),
+    heads.join(" | "));
+  /* Gone, not blank: an empty <h2> still takes up space and still reads as a
+     heading to a screen reader. */
+  check("and there is no empty heading left behind", await page.evaluate(() =>
+    ![...document.querySelectorAll("#app h1, #app h2, #app p")].some((el) => !el.textContent.trim())));
+  check("the word undefined appears nowhere",
+    !/undefined/.test(await page.evaluate(() => document.body.innerText)));
+
+  /* and back on again, with the wording intact */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-off="instaHeading"]').check();
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/`, 1600);
+  check("ticking it back on brings it back",
+    /Recent work|ZQ-instaHeading/.test(await page.evaluate(() => document.body.innerText)));
+}
+
+console.log("\nClearing a box is not the same as switching it off:");
+{
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-content="typesHeading"]').fill("");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/`, 1600);
+  check("an empty box puts the original wording back",
+    /Every floor, one showroom/.test(await page.evaluate(() => document.body.innerText)));
+}
+
+console.log("\nThe portfolio:");
+{
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='portfolio']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-folio="0"][data-part="title"]').fill("Hounslow semi");
+  await page.locator('[data-folio="0"][data-part="caption"]').fill("Wool twist through the hall.");
+  await page.locator('[data-foliofile="0"]').setInputFiles(shot);
+  await page.waitForTimeout(1600);
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/portfolio`, 1600);
+  check("the job is on the page", (await page.locator(".folio-item").count()) === 1);
+  check("with its heading", /Hounslow semi/.test(await page.evaluate(() => document.body.innerText)));
+  check("and its description",
+    /Wool twist through the hall/.test(await page.evaluate(() => document.body.innerText)));
+  check("the photograph actually loaded", await page.evaluate(() =>
+    document.querySelector(".folio-item img")?.naturalWidth > 0));
+
+  /* An entry with no photograph is not an entry — an empty frame is worse than
+     a shorter gallery. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='portfolio']").click();
+  await page.waitForTimeout(600);
+  await page.locator('[data-folio="1"][data-part="title"]').fill("No picture for this one");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/portfolio`, 1600);
+  check("an entry with no picture is dropped", (await page.locator(".folio-item").count()) === 1);
+}
+
+console.log("\nAn enquiry gets as far as the wire:");
+{
+  /* enquiry.test.mjs covers delivery against the Worker itself. What this adds
+     is the half that only exists in a browser: that the page sends what the
+     visitor typed, and that it copes with each answer honestly. */
+  const lastSent = async () =>
+    (await (await fetch(`${BASE}/_enquiry`)).json()).last;
+
+  /* Set rather than assumed. The stub keeps its mode for as long as it is
+     running, so a run that stopped early with it left on "fail" would make the
+     next run fail here for a reason that has nothing to do with the code. */
+  await fetch(`${BASE}/_enquiry?mode=ok`);
+
+  await page.goto(`${BASE}/index.html#/collections/carpets`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.locator(".swatch .fav").first().click();
+  await go(`${BASE}/index.html#/favourites`, 1200);
+  await page.locator("#favEnquire").click();
+  await page.waitForTimeout(1200);
+  check("the shortlist takes you to the form", page.url().endsWith("#/enquire"));
+  check("with the shades already written into it",
+    (await page.inputValue("#m")).includes("ask about these shades"));
+
+  await page.fill("#n", "Test Visitor");
+  await page.fill("#e", "visitor@example.com");
+  await page.fill("#p", "07700 900000");
+  await page.waitForTimeout(3200);   // the form refuses anything sent inside 3s
+  await page.locator("#enquiry button[type=submit]").click();
+  await page.waitForTimeout(900);
+  check("the visitor is thanked", (await page.locator("#enquiry h3").count()) === 1,
+    await page.evaluate(() => document.querySelector("#enquiry")?.innerText.slice(0, 40)));
+
+  const sent = await lastSent();
+  check("their name went with it", sent?.name === "Test Visitor");
+  check("and their email", sent?.email === "visitor@example.com");
+  check("and the shortlist they came in with",
+    (sent?.message || "").includes("ask about these shades"));
+  check("the honeypot went over empty", sent?.website === "");
+  check("and the page said when the form was opened", typeof sent?.t === "number");
+
+  /* The provider is down. Reloaded rather than navigated: the URL is already
+     #/enquire, and a goto that only differs by hash does not reload — the form
+     would still be showing the thank-you from the last one. */
+  await fetch(`${BASE}/_enquiry?mode=fail`);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  await page.fill("#n", "Second Visitor");
+  await page.fill("#e", "second@example.com");
+  await page.fill("#m", "Please call me back.");
+  await page.waitForTimeout(3200);
+  await page.locator("#enquiry button[type=submit]").click();
+  await page.waitForTimeout(900);
+  check("a failed send does not thank anybody", (await page.locator("#enquiry h3").count()) === 0);
+  check("what they typed is still on screen",
+    (await page.inputValue("#m")) === "Please call me back.");
+  check("and there is a mailto: to fall back on",
+    (await page.locator('#enquiryNote a[href^="mailto:"]').count()) === 1);
+  check("the send button works again", !(await page.locator("#enquirySend").isDisabled()));
+
+  /* queued rather than sent */
+  await fetch(`${BASE}/_enquiry?mode=slow`);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  await page.fill("#n", "Third Visitor");
+  await page.fill("#e", "third@example.com");
+  await page.waitForTimeout(3200);
+  await page.locator("#enquiry button[type=submit]").click();
+  await page.waitForTimeout(900);
+  check("a queued enquiry is confirmed, not oversold",
+    /safely with us/i.test(await page.evaluate(() => document.querySelector("#enquiry")?.innerText || "")));
+  await fetch(`${BASE}/_enquiry?mode=ok`);
 }
 
 console.log("\nPhoto captions:");

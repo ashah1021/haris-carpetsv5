@@ -29,7 +29,8 @@ const app = () => $("#app");
    identical, which is the point. Nothing on this page waits for the network.
    ========================================================================= */
 let RANGES = CATALOGUE;
-let SITE = { version: 0, content: {}, featured: null, styles: {}, overrides: {}, ranges: [] };
+let SITE = { version: 0, content: {}, off: {}, featured: null, styles: {},
+             overrides: {}, ranges: [], portfolio: [] };
 
 const findRange = (id) => RANGES.find((r) => r.id === id);
 const findType = (id) => TYPES.find((t) => t.id === id);
@@ -241,16 +242,84 @@ const siteImage = (slot, fallback) =>
    value the shop cannot change, which is how the whole Shop details tab came
    to save happily and alter nothing.
    ========================================================================= */
+/* Empty box and switched-off are two different intentions, and the shop needs
+   both. Clearing a box puts the shipped wording back — that is what the faint
+   grey text in /admin is promising, and it means no amount of typing can leave
+   a page with a hole in it. Switching a line off is the deliberate act: it is
+   recorded separately, so the words are still there when it is switched back on.
+
+   `off` is read here and nowhere else. The first version had say() and
+   sayLines() checking it independently, and sayLines() got it wrong — it tests
+   its own result for truthiness, so a switched-off value came back as "" and
+   fell straight through to the shipped default. The About body would have been
+   the one paragraph on the site that could not be turned off. */
 const say = (key, fallback) => {
+  if (SITE.off && SITE.off[key] === true) return "";
   const v = SITE.content && SITE.content[key];
   return (typeof v === "string" && v.trim()) ? v.trim() : fallback;
 };
 
 /* Paragraphs, split on blank lines so the shop writes in a plain box. */
 const sayLines = (key, fallback) => {
+  if (SITE.off && SITE.off[key] === true) return [];
   const v = say(key, null);
   return v ? v.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean) : fallback;
 };
+
+/* An element, or nothing at all. A switched-off heading has to take its <h2>
+   with it: an empty heading still occupies space, still reads as a heading to a
+   screen reader, and still shows the section rule above it. Every heading,
+   kicker and paragraph the shop can change goes through these, so "off" means
+   gone rather than blank. */
+const tag = (name, key, fallback, cls, style) => {
+  const v = say(key, fallback);
+  if (!v) return "";
+  return `<${name}${cls ? ` class="${cls}"` : ""}${style ? ` style="${style}"` : ""}>${esc(v)}</${name}>`;
+};
+const kicker = (key, fallback) => tag("p", key, fallback, "kicker");
+const head = (key, fallback) => tag("h2", key, fallback);
+const para = (key, fallback, cls, style) => tag("p", key, fallback, cls, style);
+
+/* A button whose label the shop can change, and which disappears when they
+   empty it — a button with no words on it is worse than no button. */
+const cta = (key, fallback, href, cls) => {
+  const v = say(key, fallback);
+  return v ? `<a class="${cls}" href="${esc(href)}">${esc(v)}</a>` : "";
+};
+
+/* Social marks, drawn rather than fetched. Every icon on this site is either a
+   text glyph or CSS — there is not one image file used as an icon — and a
+   remote icon font or sprite sheet would be a third-party request on a page
+   that currently makes none. Simple single-path silhouettes, sized by the
+   surrounding font, currentColor so they follow the link colour. */
+const SOCIAL_ICON = {
+  instagram: "M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM17.8 6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z",
+  facebook: "M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.25-1.5 1.55-1.5h1.65V4.6A22 22 0 0 0 14.3 4.5c-2.4 0-4 1.45-4 4.13v2.28H7.6V14h2.7v8z",
+  tiktok: "M16.5 2h-3v13.2a2.6 2.6 0 1 1-2-2.53V9.6a5.7 5.7 0 1 0 5 5.66V9.2a6.8 6.8 0 0 0 4 1.3V7.4a3.9 3.9 0 0 1-4-3.9z",
+  twitter: "M17.5 3h3.2l-7 8 8.2 10h-6.4l-5-6.1-5.8 6.1H1.5l7.5-8.6L1.2 3h6.6l4.5 5.6zm-1.1 16.2h1.8L7.7 4.7H5.8z",
+};
+const socialIcon = (id) => SOCIAL_ICON[id]
+  ? `<svg class="si" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${SOCIAL_ICON[id]}"/></svg>`
+  : "";
+
+/* The Follow row. A network whose box has been emptied in /admin drops out
+   rather than leaving a link to nowhere, and the whole row goes if they are
+   all empty. */
+function socialRow() {
+  const links = SOCIALS.map((s) => {
+    const url = say("social" + s.id[0].toUpperCase() + s.id.slice(1), s.url);
+    if (!url) return "";
+    return `<a href="${esc(url)}" target="_blank" rel="noopener">${socialIcon(s.id)}${esc(s.name)}</a>`;
+  }).filter(Boolean).join("");
+  return links
+    ? `<div class="info-row"><span class="il">Follow</span><span class="socials">${links}</span></div>`
+    : "";
+}
+
+/* Wrap something in a <p> only if there is anything to wrap. Saves every
+   caller from leaving an empty paragraph — and its margin — behind. */
+const pWrap = (inner, style, cls) =>
+  inner ? `<p${cls ? ` class="${cls}"` : ""}${style ? ` style="${style}"` : ""}>${inner}</p>` : "";
 
 /* A phone number typed by a human — "020 8570 6502", or with spaces missing —
    has to become a dialable href. Strip everything but digits and a leading +,
@@ -275,20 +344,45 @@ function applyContentToChrome() {
     a.href = "mailto:" + email;
     a.textContent = email;
   });
-  /* the footer showed the address the site shipped with while the contact page
-     showed the shop's — one address per site, please */
+  /* The footer showed the address the site shipped with while the contact page
+     showed the shop's — one address per site, please.
+
+     Line by line, not textContent. The markup ships with a <br> in it and
+     setting textContent flattened the address to one long line on every
+     render, which is why nobody could get it onto four lines from /admin. */
   const foot = document.getElementById("footAddress");
-  if (foot) foot.textContent = say("address", CONTACT.address);
+  if (foot) {
+    foot.innerHTML = addressLines(say("address", CONTACT.address))
+      .map((line) => esc(line)).join("<br>");
+  }
+  const maps = say("mapsUrl", CONTACT.mapsUrl);
+  if (foot && maps) foot.href = maps;
+
   const blurb = document.getElementById("footBlurb");
-  if (blurb) blurb.textContent = say("footerBlurb", blurb.textContent);
+  if (blurb) blurb.textContent = say("footerBlurb", BUSINESS.blurbShort);
+
+  /* The line under the wordmark. It was a literal in index.html while the hero
+     read say("since"), so the two could disagree about how old the business is
+     and only one of them could be corrected. */
+  const mark = document.querySelector(".brand-mark small");
+  if (mark) {
+    const line = say("tagline", BUSINESS.tagline);
+    mark.textContent = line;
+    mark.hidden = !line;
+  }
 }
+
+/* An address as the shop typed it. They can use real line breaks, or the
+   commas that were there before — either way it comes out as lines. */
+const addressLines = (s) =>
+  String(s || "").split(/\n|,/).map((x) => x.trim()).filter(Boolean);
 
 const rangePhoto = (r) => siteImage("range:" + r.id, r.photo);
 
 /* The four claims across the top of the home page. Two boxes each in /admin:
    the bold phrase, then the rest of the line. */
 const PROOF = [
-  ["proof1", "30+ years", "family run"],
+  ["proof1", "32 years", "family run"],
   ["proof2", "Our own fitters", "\u2014 not subcontractors"],
   ["proof3", "Free", "home measure & plan"],
   ["proof4", "Old flooring", "lifted & taken away"],
@@ -407,8 +501,18 @@ function typeTile(t, i) {
       <span class="go">View ${esc(t.name)}</span></div></a>`;
 }
 
-const servicesGrid = () =>
-  `<div class="grid cols-4">${SERVICES.map((s) => `<div class="svc"><h3>${esc(s.title)}</h3><p>${esc(s.body)}</p></div>`).join("")}</div>`;
+/* The four service cards. Each is two boxes in /admin, and a card whose title
+   has been emptied drops out of the row rather than leaving a gap — which is
+   how the shop removes one without needing us. */
+const servicesGrid = () => {
+  const cards = SERVICES.map((s, i) => {
+    const n = "service" + (i + 1);
+    const title = say(n + "Title", s.title);
+    if (!title) return "";
+    return `<div class="svc"><h3>${esc(title)}</h3>${para(n + "Body", s.body)}</div>`;
+  }).filter(Boolean);
+  return cards.length ? `<div class="grid cols-4">${cards.join("")}</div>` : "";
+};
 
 /* =========================================================================
    VIEWS
@@ -454,8 +558,10 @@ function reviewsStrip() {
         ${rating ? `<span class="reviews-score">${esc(rating)} ${stars(rating)}
           ${r.count ? `<i>(${esc(r.count)})</i>` : ""}</span>` : ""}
       </div>
-      ${r.url ? `<a class="btn btn-solid btn-sm" href="${esc(r.url)}"
-        target="_blank" rel="noopener">Review us on Google</a>` : ""}
+      ${/* No "Review us on Google" button. Asking for reviews on the page that
+            is showing off the reviews you already have reads as fishing, and
+            the shop asked for it gone. The listing link is still stored — the
+            rating and star count are what it is for. */""}
     </div>
     ${items.length ? `<div class="reviews-list">${items.slice(0, 3).map((i) => `
       <figure class="rv">
@@ -500,11 +606,18 @@ function instagramGrid() {
       ? `<a class="ig-tile" href="${esc(p.link)}" target="_blank" rel="noopener">${img}</a>`
       : `<span class="ig-tile">${img}</span>`;
   };
+  /* `g?.url`, not `g.url`. A live feed can arrive while the overlay fetch has
+     failed, which leaves SITE.instagram undefined — and this line then threw
+     inside the render and took the whole home page with it. */
+  const follow = g?.url
+    ? `<a class="btn btn-ghost btn-sm" href="${esc(g.url)}" target="_blank" rel="noopener">Follow us</a>`
+    : "";
   return `
   <section class="sec-alt"><div class="wrap">
     <div class="section-head"><div><span class="rule"></span>
-      <p class="kicker">${esc(say("instaKicker", "On Instagram"))}</p><h2>${esc(say("instaHeading", "Recent work"))}</h2></div>
-      ${g.url ? `<a class="btn btn-ghost btn-sm" href="${esc(g.url)}" target="_blank" rel="noopener">Follow us</a>` : ""}</div>
+      ${kicker("instaKicker", "On Instagram")}${head("instaHeading", "Recent work")}
+      ${para("instaText", HOME.instaText)}</div>
+      ${follow}</div>
     <div class="ig-grid">${posts.slice(0, 8).map(tile).join("")}</div>
   </div></section>`;
 }
@@ -537,13 +650,12 @@ function viewHome() {
     </div>
     <div class="hero-scrim"></div>
     <div class="wrap">
-      <p class="kicker">${esc(say("since", BUSINESS.since))}</p>
-      <h1>${esc(say("heroTitle", "The flooring shop on Hanworth Road."))}</h1>
-      <p>Family-run since the nineties. Carpets, wood, LVT, vinyl and rugs — supplied
-         and fitted by our own team, right across London and the Home Counties.</p>
+      ${kicker("since", BUSINESS.since)}
+      ${tag("h1", "heroTitle", "The flooring shop on Hanworth Road.")}
+      ${para("heroText", HOME.heroText)}
       <div class="hero-cta">
-        <a class="btn btn-yellow" href="#/enquire">Contact us now</a>
-        <a class="btn btn-ghost on-dark" href="#/collections">Browse collections</a>
+        ${cta("heroCta", "Make an enquiry", "#/enquire", "btn btn-yellow")}
+        ${cta("heroCta2", "Explore our collections", "#/collections", "btn btn-ghost on-dark")}
       </div>
     </div>
     ${slides.length > 1 ? `<div class="hero-dots" id="heroDots"><div class="wrap">
@@ -561,9 +673,8 @@ function viewHome() {
 
   <section><div class="wrap">
     <div class="section-head">
-      <div><span class="rule"></span><h2>${esc(say("typesHeading", "Every floor, one showroom"))}</h2>
-        <p>Wool carpet, engineered wood, laminate, LVT, sheet vinyl and rugs — all under
-           one roof on Hanworth Road, and all fitted by us.</p></div>
+      <div><span class="rule"></span>${head("typesHeading", "Every floor, one showroom")}
+        ${para("typesText", HOME.typesText)}</div>
       ${VISUALISER_ON ? `<a class="arrow-link" href="#/visualiser">Try colours in a room →</a>` : ""}
     </div>
     <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
@@ -571,36 +682,15 @@ function viewHome() {
 
   ${instagramGrid()}
 
-  <section class="sec-alt"><div class="wrap">
-    <div class="split">
-      <div class="split-media stack">
-        ${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom in Hounslow"), "3-2")}
-        <div class="inset">${photo(siteImage("samples", IMG.samples), caption("samples", "Carpet sample swatches on the showroom counter"), "1-1")}</div>
-      </div>
-      <div class="split-copy">
-        <span class="rule"></span>
-        <p class="kicker">${esc(say("showroomKicker", "Come and see it in daylight"))}</p>
-        <h2>${esc(say("showroomHeading", "A screen won\'t tell you how it feels underfoot"))}</h2>
-        <p class="lede">Colour shifts under different light, and pile you love in a photograph can
-           feel wrong the moment you stand on it. That's what the showroom is for.</p>
-        <p>Save the shades you like as you browse and bring the list in — we'll pull those
-           books out and you won't have to start again.</p>
-        <p style="margin-top:22px"><a class="arrow-link" href="#/contact">Find us &amp; opening hours →</a></p>
-      </div>
-    </div>
-  </div></section>
-
-
   <section class="band"><div class="wrap">
     <div class="split flip">
       <div class="split-media">${photo(siteImage("fitting", IMG.fitting), caption("fitting", "A carpet fitter finishing an edge with a knee kicker"), "3-2")}</div>
       <div class="split-copy">
         <span class="rule on-dark"></span>
-        <p class="kicker">${esc(say("serviceKicker", "How we work"))}</p>
-        <h2>${esc(say("serviceHeading", "Supplied and fitted, properly"))}</h2>
-        <p class="lede">The same team measures the job and comes back to fit it. Nothing gets
-           handed to a subcontractor who's never seen your house.</p>
-        <p style="margin-top:24px"><a class="btn btn-yellow" href="#/enquire">Contact us now</a></p>
+        ${kicker("serviceKicker", "How we work")}
+        ${head("serviceHeading", "Supplied and fitted, properly")}
+        ${para("serviceText", HOME.serviceText, "lede")}
+        ${pWrap(cta("serviceCta", "Discuss your project", "#/enquire", "btn btn-yellow"), "margin-top:24px")}
       </div>
     </div>
     <div style="margin-top:clamp(34px,5vw,60px)">${servicesGrid()}</div>
@@ -610,10 +700,13 @@ function viewHome() {
   <section class="sec-alt"><div class="wrap">
     <div class="split">
       <div class="split-copy">
-        <span class="rule"></span><p class="kicker">${esc(say("familyKicker", "Family run, Hounslow"))}</p>
-        <h2>${esc(say("aboutLead", ABOUT.lead))}</h2>
-        <p class="lede" style="margin-top:14px">${esc(sayLines("aboutBody", ABOUT.body)[0])}</p>
-        <p style="margin-top:22px"><a class="btn btn-ghost" href="#/about">More about us</a></p>
+        <span class="rule"></span>${kicker("familyKicker", "Family-run for over 32 years")}
+        ${head("aboutLead", ABOUT.lead)}
+        ${/* the first paragraph of the About text, so the two pages cannot
+              disagree — no key of its own, or it would be a box that has to be
+              kept in step with another box by hand */
+          pWrap(esc(sayLines("aboutBody", ABOUT.body)[0] || ""), "margin-top:14px", "lede")}
+        ${pWrap(cta("familyCta", "Discover our story →", "#/about", "btn btn-ghost"), "margin-top:22px")}
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), caption("stairs", "Wool twist carpet fitted to a staircase and landing"), "3-2")}</div>
     </div>
@@ -773,10 +866,10 @@ function viewCollections(typeId, styleId) {
     <section><div class="wrap">
       <!-- the saved keys stay "catalogue*": renaming them would throw away
            whatever the shop has already typed into those two boxes -->
-      <div class="section-head"><div><span class="rule"></span><p class="kicker">${esc(say("catalogueKicker", "Everything we supply"))}</p>
-        <h2>${esc(say("catalogueHeading", "Our collections"))}</h2>
-        <p>Every floor we stock, by type. Tap any shade to see it close up, and save
-           the ones you like to your list as you go.</p></div></div>
+      <div class="section-head"><div><span class="rule"></span>
+        ${kicker("catalogueKicker", "Everything we supply")}
+        ${head("catalogueHeading", "Our collections")}
+        ${para("catalogueText", PAGES.catalogueText)}</div></div>
       <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
     </div></section>`;
   }
@@ -956,38 +1049,43 @@ function viewAbout() {
   <section><div class="wrap">
     <div class="split">
       <div class="split-copy"><span class="rule"></span>
-        <p class="kicker">Family run · Hounslow · ${esc(say("since", BUSINESS.since))}</p>
-        <h2>${esc(say("aboutLead", ABOUT.lead))}</h2></div>
+        ${/* one key for the whole line. It used to be the literal "Family run ·
+              Hounslow · " with say("since") stuck on the end, and since's own
+              default starts "Hounslow ·" — so the page read "Family run ·
+              Hounslow · Hounslow · Over 30 years". */
+          kicker("aboutKicker", ABOUT.kicker)}
+        ${head("aboutLead", ABOUT.lead)}</div>
       <div class="split-media">${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}</div>
     </div>
     <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${sayLines("aboutBody", ABOUT.body).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
-  </div></section>
-  <section class="band"><div class="wrap">
-    <div class="section-head"><div><span class="rule on-dark"></span><p class="kicker">${esc(say("servicesKicker", "Our service"))}</p><h2>${esc(say("servicesHeading", "What you get"))}</h2></div></div>
-    ${servicesGrid()}
-    <div style="margin-top:30px"><a class="btn btn-yellow" href="#/contact">Book a free measure</a></div>
   </div></section>`;
 }
 
 function viewContact() {
-  const socials = SOCIALS.map((s) => `<a href="${s.url}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join("");
   const map = say("mapEmbed", CONTACT.mapEmbed);
+  const maps = say("mapsUrl", CONTACT.mapsUrl);
+  /* the area is its own box, so the sentence is written without it and the two
+     are joined here — that way changing the area does not mean retyping the lede */
+  const lede = [say("visitText", PAGES.visitText), say("area", CONTACT.area)]
+    .filter(Boolean).join(" ").trim();
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visit us</p></div>
   <section><div class="wrap">
     <div class="contact-grid">
       <div>
         <span class="rule"></span>
-        <p class="kicker">${esc(say("visitKicker", "Come in, or we\'ll come to you"))}</p><h2>${esc(say("visitHeading", "Visit the showroom"))}</h2>
-        <p class="lede" style="margin-top:14px">Pop into the Hounslow showroom, or book a free home measure and we'll come to you across ${esc(say("area", CONTACT.area))}.</p>
+        ${kicker("visitKicker", "Come in, or we'll come to you")}
+        ${head("visitHeading", "Visit the showroom")}
+        ${pWrap(lede ? esc(lede.replace(/\s*\.?$/, ".")) : "", "margin-top:14px", "lede")}
         <div style="margin-top:24px">
-          <div class="info-row"><span class="il">Showroom</span><span><a href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">${esc(say("address", CONTACT.address))}</a></span></div>
+          <div class="info-row"><span class="il">Showroom</span><span><a href="${esc(maps)}" target="_blank" rel="noopener">${
+            addressLines(say("address", CONTACT.address)).map(esc).join("<br>")}</a></span></div>
           <div class="info-row"><span class="il">Phone</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
           <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
           <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
-          <div class="info-row"><span class="il">Follow</span><span class="socials">${socials}</span></div>
+          ${socialRow()}
         </div>
-        <p style="margin-top:26px"><a class="btn btn-solid" href="#/enquire">Send an enquiry</a></p>
+        ${pWrap(cta("visitCta", "Send an enquiry", "#/enquire", "btn btn-solid"), "margin-top:26px")}
       </div>
       <div>
         ${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}
@@ -996,9 +1094,9 @@ function viewContact() {
   </div></section>
 
   ${map ? `<section class="sec-alt"><div class="wrap">
-    <div class="section-head"><div><span class="rule"></span><h2>${esc(say("mapHeading", "Find us"))}</h2>
-      <p>${esc(say("mapText", "Two minutes from Hounslow West, with parking on Hanworth Road."))}</p></div>
-      <a class="btn btn-ghost btn-sm" href="${CONTACT.mapsUrl}" target="_blank" rel="noopener">Open in Google Maps</a></div>
+    <div class="section-head"><div><span class="rule"></span>${head("mapHeading", "Find us")}
+      ${para("mapText", "Two minutes from Hounslow West, with parking on Hanworth Road.")}</div>
+      ${maps ? `<a class="btn btn-ghost btn-sm" href="${esc(maps)}" target="_blank" rel="noopener">Open in Google Maps</a>` : ""}</div>
     <div class="map-embed">
       <iframe src="${esc(map)}" title="Map showing Hari's Carpets on Hanworth Road, Hounslow"
               loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
@@ -1015,10 +1113,9 @@ function viewEnquire() {
     <div class="enquire-grid">
       <div>
         <span class="rule"></span>
-        <p class="kicker">${esc(say("enquireKicker", "No pressure, no obligation"))}</p>
-        <h2>${esc(say("enquireHeading", "Get in touch"))}</h2>
-        <p class="lede" style="margin-top:14px">Tell us roughly what you're after and we'll come back to you.
-          Home measures are free, and we'll bring samples to your door so you can see them in your own light.</p>
+        ${kicker("enquireKicker", "No pressure, no obligation")}
+        ${head("enquireHeading", "Get in touch")}
+        ${para("enquireText", PAGES.enquireText, "lede", "margin-top:14px")}
         <div style="margin-top:26px">
           <div class="info-row"><span class="il">Call</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
           <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
@@ -1027,24 +1124,60 @@ function viewEnquire() {
         <p style="margin-top:24px"><a class="arrow-link" href="#/contact">Or visit the showroom →</a></p>
       </div>
       <div><div class="form-card">
-        <h3 style="margin-bottom:10px">Send an enquiry</h3>
+        <h3 style="margin-bottom:10px">${esc(say("formHeading", "Submit an enquiry"))}</h3>
         <form id="enquiry" novalidate>
-          <div class="field"><label for="n">Name</label><input id="n" name="name" required></div>
-          <div class="field"><label for="e">Email</label><input id="e" name="email" type="email" required></div>
-          <div class="field"><label for="p">Phone</label><input id="p" name="phone"></div>
+          <div class="field"><label for="n">Name</label><input id="n" name="name" autocomplete="name" required></div>
+          <div class="field"><label for="e">Email</label><input id="e" name="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="p">Phone</label><input id="p" name="phone" autocomplete="tel"></div>
           <div class="field"><label for="w">What can we help with?</label>
             <select id="w" name="topic">
-              <option>Book measure</option>
               ${SAMPLES_ON ? "<option>Request carpet samples</option>" : ""}
               ${TYPES.map((t) => `<option>${esc(t.name)}</option>`).join("")}
               <option>Something else</option>
             </select></div>
           <div class="field"><label for="m">Message</label><textarea id="m" name="message" rows="4"></textarea></div>
-          <button class="btn btn-solid" type="submit" style="width:100%;justify-content:center">Send enquiry</button>
-          <p class="form-note">Demo form — not connected yet. Wire it to Formspree or Netlify Forms to receive enquiries.</p>
+          ${/* The honeypot. Named like a real field so a form-filling bot fills
+                it in, hidden in CSS rather than with type=hidden, which bots
+                know to skip. A submission that has touched it is answered with
+                a cheerful 200 and thrown away — an error would only teach the
+                bot what to correct. */""}
+          <div class="hp" aria-hidden="true">
+            <label for="website">Website</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <button class="btn btn-solid" type="submit" style="width:100%;justify-content:center"
+                  id="enquirySend">${esc(say("formCta", "Send enquiry"))}</button>
+          <p class="form-note" id="enquiryNote" role="status"></p>
         </form>
       </div></div>
     </div>
+  </div></section>`;
+}
+
+/* Jobs the shop has finished, in their own words and their own photographs.
+   Everything here comes from /admin — there is nothing shipped with the site to
+   fall back on, because a portfolio of stock photography is worse than no
+   portfolio. Until the shop adds one, the page says so plainly. */
+function viewPortfolio() {
+  const items = (SITE.portfolio || []).filter((p) => p && p.image);
+  return `
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Portfolio</p></div>
+  <section><div class="wrap">
+    <div class="section-head"><div><span class="rule"></span>
+      ${kicker("portfolioKicker", "Our work")}
+      ${head("portfolioHeading", "Recently fitted")}
+      ${para("portfolioText", PAGES.portfolioText)}</div>
+      ${pWrap(cta("portfolioCta", "Discuss your project", "#/enquire", "btn btn-solid btn-sm"))}</div>
+    ${items.length ? `<div class="folio">${items.map((p) => `
+      <figure class="folio-item">
+        ${photo(P(p.image), p.caption || p.title || "A floor fitted by Hari's Carpets", "4-3")}
+        ${p.title || p.caption ? `<figcaption>
+          ${p.title ? `<h3>${esc(p.title)}</h3>` : ""}
+          ${p.caption ? `<p>${esc(p.caption)}</p>` : ""}
+        </figcaption>` : ""}
+      </figure>`).join("")}</div>`
+    : `<p class="empty-note">We're putting this gallery together — in the meantime,
+         pop into the showroom and we'll show you what we've been fitting.</p>`}
   </div></section>`;
 }
 
@@ -1071,6 +1204,7 @@ function render() {
        is looking for a collection. The old path still resolves so anything
        already printed, linked or bookmarked lands on the right page. */
     case "catalogue":    location.replace("#/collections" + parts.slice(1).map((p) => "/" + p).join("")); return;
+    case "portfolio":    html = viewPortfolio(); break;
     case "range":      html = viewRange(parts[1]); break;
     case "favourites": html = viewFavourites(parts[1]); break;
     case "visualiser": html = VISUALISER_ON ? window.Visualiser.view(parts[1]) : viewNotFound(); break;
@@ -1107,12 +1241,77 @@ function wireEnquiry() {
     if (m) m.value = sessionStorage.getItem("haris.enquiry.prefill");
     sessionStorage.removeItem("haris.enquiry.prefill");
   }
-  form.addEventListener("submit", (e) => {
+
+  /* When the form was put on screen. The server refuses anything submitted
+     inside three seconds of it. */
+  const opened = Date.now();
+  const note = $("#enquiryNote");
+  const send = $("#enquirySend");
+  const label = send ? send.textContent : "Send enquiry";
+  const said = (text, bad) => {
+    if (!note) return;
+    note.textContent = text;
+    note.className = "form-note" + (bad ? " bad" : "");
+  };
+
+  /* Somewhere else to go when we cannot take the message ourselves. Their own
+     mail client is a completely separate path from our sending provider, which
+     is the thing that has just failed. */
+  const mailtoFallback = (v) => {
+    const to = say("email", CONTACT.email);
+    const body = [`Name: ${v.name}`, v.phone ? `Phone: ${v.phone}` : "", "", v.message]
+      .filter(Boolean).join("\n");
+    const href = `mailto:${to}?subject=${encodeURIComponent("Website enquiry — " + (v.topic || ""))
+      }&body=${encodeURIComponent(body)}`;
+    return ` <a href="${esc(href)}">Open it in your email app</a>, or ring us on `
+      + `<a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a>.`;
+  };
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const f = e.target;
-    if (!f.name.value || !f.email.value) { alert("Please add your name and email."); return; }
-    f.innerHTML = `<h3 style="margin-bottom:8px">Thanks — we'll be in touch.</h3>
-      <p class="desc">This is a demo confirmation. Wire the form to a real endpoint to receive enquiries.</p>`;
+    /* new FormData, not f.name — on a form element, `.name` resolves to the
+       input called "name" and shadows the element's own property. */
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    if (!data.name || !data.email) {
+      said("Please add your name and email.", true);
+      form.querySelector(data.name ? "#e" : "#n")?.focus();
+      return;
+    }
+
+    if (send) { send.disabled = true; send.textContent = "Sending…"; }
+    said("");
+
+    let body = null, ok = false;
+    try {
+      const res = await fetch("api/enquiry", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...data, t: opened, page: location.hash || "#/enquire" }),
+      });
+      body = await res.json().catch(() => null);
+      ok = res.ok && body && body.ok;
+    } catch { /* offline, or the request never landed */ }
+
+    if (ok) {
+      form.innerHTML = `<h3 style="margin-bottom:8px">Thanks — we'll be in touch.</h3>
+        <p class="desc">${body.queued
+          ? "Your message is safely with us and on its way to the shop."
+          : "We've got your message. We usually come back the same day, or the next working day."}</p>`;
+      return;
+    }
+
+    /* Everything typed stays exactly where it is: whatever went wrong, making
+       somebody retype it would be the second thing to go wrong. */
+    if (send) { send.disabled = false; send.textContent = label; }
+    if (body && body.field) form.querySelector(body.field === "email" ? "#e" : "#n")?.focus();
+    const message = (body && body.error) || "We couldn't send that just now.";
+    if (!body || body.fallback || !body.field) {
+      note.innerHTML = esc(message) + mailtoFallback(data);
+      note.className = "form-note bad";
+    } else {
+      said(message, true);
+    }
   });
 }
 

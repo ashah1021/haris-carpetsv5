@@ -33,65 +33,122 @@
   let tab = "shop";
   let openRange = null;   // which collection's shades are being edited
 
-  /* [key, label, help, big?] — the placeholder is what the site shows while the
-     box is empty, so it doubles as "what is on there now". */
+  /* [key, label, current, big?, optional?]
+     - `current` is what the site shows while the box is empty, so the faint
+       grey text doubles as "what is on there now".
+     - `big` gives a textarea instead of a single line.
+     - `optional` adds a tick: untick it and the line disappears from the site
+       altogether. Clearing the box and switching it off are two different
+       things — clearing puts the shipped wording back, switching off shows
+       nothing at all — so both are offered rather than one pretending to be
+       the other. Switching off never throws away what is written: tick it
+       back on and the words are exactly as they were.
+
+     Deliberately NOT optional: the phone number, the email address and the
+     address. Those are patched into every tel: and mailto: link on the page, so
+     switching one off would leave invisible broken links in the header and the
+     footer — and a flooring shop with no phone number on its website is not a
+     feature anybody asked for. */
+  const social = (id) => (SOCIALS.find((s) => s.id === id) || {}).url || "";
+
   const SHOP_FIELDS = [
     ["hours",   "Opening hours",  () => CONTACT.hours],
     ["phone",   "Phone number",   () => CONTACT.phone],
     ["email",   "Email address",  () => CONTACT.email],
-    ["address", "Address",        () => CONTACT.address],
-    ["area",    "Areas you cover", () => CONTACT.area],
-    ["since",   "Line under the logo", () => BUSINESS.since],
-    ["footerBlurb", "Footer paragraph", () => BUSINESS.blurbShort, true],
+    ["address", "Address — one line per line", () => CONTACT.address, 4],
+    ["area",    "Areas you cover", () => CONTACT.area, false, true],
+    ["tagline", "Line under the logo", () => BUSINESS.tagline, false, true],
+    ["footerBlurb", "Footer paragraph", () => BUSINESS.blurbShort, true, true],
     ["notice",  "Notice across the top of the home page",
      () => "Leave empty for none — a bank holiday, a delivery delay"],
     ["mapsUrl", "Link to your Google Maps listing", () => CONTACT.mapsUrl],
-    ["mapEmbed", "Map embed address (Google Maps \u2192 Share \u2192 Embed a map)",
-     () => CONTACT.mapEmbed, true],
+    ["mapEmbed", "Map embed address (Google Maps → Share → Embed a map)",
+     () => CONTACT.mapEmbed, 3, true],
+    ["socialInstagram", "Instagram page", () => social("instagram"), false, true],
+    ["socialFacebook", "Facebook page", () => social("facebook"), false, true],
+    ["socialTiktok", "TikTok page", () => social("tiktok"), false, true],
+    ["socialTwitter", "X (Twitter) page", () => social("twitter"), false, true],
   ];
 
   const ABOUT_FIELDS = [
-    ["aboutLead", "Opening line", () => ABOUT.lead],
-    ["aboutBody", "About us", () => ABOUT.body.join("\n\n"), true],
+    ["aboutKicker", "Small label above the heading", () => ABOUT.kicker, false, true],
+    ["aboutLead", "Opening line", () => ABOUT.lead, false, true],
+    ["aboutBody", "About us", () => ABOUT.body.join("\n\n"), 12, true],
   ];
 
   /* Everything written on the home page, in the order it appears. */
   const HOME_FIELDS = [
-    ["heroTitle", "Banner heading", () => "The flooring shop on Hanworth Road."],
-    ["proof1Bold", "Claim 1 \u2014 bold bit", () => "30+ years"],
-    ["proof1", "Claim 1 \u2014 the rest", () => "family run"],
-    ["proof2Bold", "Claim 2 \u2014 bold bit", () => "Our own fitters"],
-    ["proof2", "Claim 2 \u2014 the rest", () => "\u2014 not subcontractors"],
-    ["proof3Bold", "Claim 3 \u2014 bold bit", () => "Free"],
-    ["proof3", "Claim 3 \u2014 the rest", () => "home measure & plan"],
-    ["proof4Bold", "Claim 4 \u2014 bold bit", () => "Old flooring"],
-    ["proof4", "Claim 4 \u2014 the rest", () => "lifted & taken away"],
-    ["typesHeading", "Flooring types heading", () => "Every floor, one showroom"],
-    ["instaKicker", "Instagram \u2014 small label", () => "On Instagram"],
-    ["instaHeading", "Instagram heading", () => "Recent work"],
-    ["showroomKicker", "Showroom \u2014 small label", () => "Come and see it in daylight"],
-    ["showroomHeading", "Showroom heading",
-     () => "A screen won't tell you how it feels underfoot"],
-    ["serviceKicker", "Fitting \u2014 small label", () => "How we work"],
-    ["serviceHeading", "Fitting heading", () => "Supplied and fitted, properly"],
-    ["familyKicker", "Family run \u2014 small label", () => "Family run, Hounslow"],
+    ["since", "Banner — small label", () => BUSINESS.since, false, true],
+    ["heroTitle", "Banner heading", () => "The flooring shop on Hanworth Road.", false, true],
+    ["heroText", "Banner paragraph", () => HOME.heroText, true, true],
+    ["heroCta", "Banner — first button", () => "Make an enquiry", false, true],
+    ["heroCta2", "Banner — second button", () => "Explore our collections", false, true],
+    ["proof1Bold", "Claim 1 — bold bit", () => "32 years", false, true],
+    ["proof1", "Claim 1 — the rest", () => "family run", false, true],
+    ["proof2Bold", "Claim 2 — bold bit", () => "Our own fitters", false, true],
+    ["proof2", "Claim 2 — the rest", () => "— not subcontractors", false, true],
+    ["proof3Bold", "Claim 3 — bold bit", () => "Free", false, true],
+    ["proof3", "Claim 3 — the rest", () => "home measure & plan", false, true],
+    ["proof4Bold", "Claim 4 — bold bit", () => "Old flooring", false, true],
+    ["proof4", "Claim 4 — the rest", () => "lifted & taken away", false, true],
+    ["typesHeading", "Flooring types heading", () => "Every floor, one showroom", false, true],
+    ["typesText", "Flooring types paragraph", () => HOME.typesText, true, true],
+    ["instaKicker", "Instagram — small label", () => "On Instagram", false, true],
+    ["instaHeading", "Instagram heading", () => "Recent work", false, true],
+    ["instaText", "Instagram paragraph", () => HOME.instaText, true, true],
+    ["serviceKicker", "Fitting — small label", () => "How we work", false, true],
+    ["serviceHeading", "Fitting heading", () => "Supplied and fitted, properly", false, true],
+    ["serviceText", "Fitting paragraph", () => HOME.serviceText, true, true],
+    ["serviceCta", "Fitting — button", () => "Discuss your project", false, true],
+    ["familyKicker", "Family run — small label",
+     () => "Family-run for over 32 years", false, true],
+    ["familyCta", "Family run — button", () => "Discover our story →", false, true],
   ];
+
+  /* The four cards under the fitting section. Emptying a heading takes that
+     card off the row, which is how a service is removed without us. */
+  const SERVICE_FIELDS = SERVICES.flatMap((s, i) => [
+    ["service" + (i + 1) + "Title", `Card ${i + 1} — heading`, () => s.title, false, true],
+    ["service" + (i + 1) + "Body", `Card ${i + 1} — wording`, () => s.body, false, true],
+  ]);
 
   /* The other pages. The two collections keys are still named "catalogue*":
      the page was renamed, but the saved key is what anything already typed
      into those boxes is stored under, so renaming it would throw that away. */
   const PAGE_FIELDS = [
-    ["catalogueKicker", "Collections \u2014 small label", () => "Everything we supply"],
-    ["catalogueHeading", "Collections heading", () => "Our collections"],
-    ["visitKicker", "Visit us \u2014 small label", () => "Come in, or we'll come to you"],
-    ["visitHeading", "Visit us heading", () => "Visit the showroom"],
-    ["mapHeading", "Map heading", () => "Find us"],
+    ["catalogueKicker", "Collections — small label", () => "Everything we supply", false, true],
+    ["catalogueHeading", "Collections heading", () => "Our collections", false, true],
+    ["catalogueText", "Collections paragraph", () => PAGES.catalogueText, true, true],
+    ["visitKicker", "Visit us — small label",
+     () => "Come in, or we'll come to you", false, true],
+    ["visitHeading", "Visit us heading", () => "Visit the showroom", false, true],
+    ["visitText", "Visit us paragraph (the areas you cover are added on the end)",
+     () => PAGES.visitText, true, true],
+    ["visitCta", "Visit us — button", () => "Send an enquiry", false, true],
+    ["mapHeading", "Map heading", () => "Find us", false, true],
     ["mapText", "Under the map heading",
-     () => "Two minutes from Hounslow West, with parking on Hanworth Road."],
-    ["enquireKicker", "Contact us \u2014 small label", () => "No pressure, no obligation"],
-    ["enquireHeading", "Contact us heading", () => "Get in touch"],
-    ["servicesKicker", "Services \u2014 small label", () => "Our service"],
-    ["servicesHeading", "Services heading", () => "What you get"],
+     () => "Two minutes from Hounslow West, with parking on Hanworth Road.", false, true],
+    ["enquireKicker", "Contact us — small label",
+     () => "No pressure, no obligation", false, true],
+    ["enquireHeading", "Contact us heading", () => "Get in touch", false, true],
+    ["enquireText", "Contact us paragraph", () => PAGES.enquireText, true, true],
+    ["formHeading", "Enquiry form — heading", () => "Submit an enquiry"],
+    ["formCta", "Enquiry form — send button", () => "Send enquiry"],
+  ];
+
+  const PORTFOLIO_FIELDS = [
+    ["portfolioKicker", "Portfolio — small label", () => "Our work", false, true],
+    ["portfolioHeading", "Portfolio heading", () => "Recently fitted", false, true],
+    ["portfolioText", "Portfolio paragraph", () => PAGES.portfolioText, true, true],
+    ["portfolioCta", "Portfolio — button", () => "Discuss your project", false, true],
+  ];
+
+  /* Repeated on the tab for the page they show on. "We can't update the hours"
+     turned out to mean "the box is on a different tab from the page I was
+     looking at" — same key, so these are the same box, not a copy of it. */
+  const ALSO_ON_PAGES = [
+    ["hours", "Opening hours", () => CONTACT.hours],
+    ["area", "Areas you cover", () => CONTACT.area, false, true],
   ];
 
   const TABS = [
@@ -99,6 +156,7 @@
     ["about", "About us"],
     ["home", "Home page"],
     ["pages", "Other pages"],
+    ["portfolio", "Portfolio"],
     ["collections", "Collections"],
     ["photos", "Photos"],
     ["styles", "Styles"],
@@ -188,23 +246,44 @@
 
   /* ------------------------------------------------------------------ views */
 
+  const isOff = (key) => DOC.off?.[key] === true;
+
   function fields(list) {
     return `<div class="mg-fields">
-      ${list.map(([k, label, current, big]) => `
-        <label class="mg-field">
-          <span>${esc(label)}</span>
-          ${big
-            ? `<textarea rows="10" data-content="${k}" placeholder="${esc(current())}">${esc(DOC.content[k] || "")}</textarea>`
-            : `<input type="text" data-content="${k}" value="${esc(DOC.content[k] || "")}" placeholder="${esc(current())}">`}
-        </label>`).join("")}
+      ${list.map(([k, label, current, big, optional]) => {
+        const off = optional && isOff(k);
+        /* `big` can be a row count. A one-sentence paragraph in a ten-row box
+           looks like the wrong box; the About text in a four-row one is a
+           scrollbar to write in. */
+        const box = big
+          ? `<textarea rows="${typeof big === "number" ? big : 4}" data-content="${esc(k)}"
+               placeholder="${esc(current())}"${off ? " disabled" : ""}>${esc(DOC.content[k] || "")}</textarea>`
+          : `<input type="text" data-content="${esc(k)}" value="${esc(DOC.content[k] || "")}"
+               placeholder="${esc(current())}"${off ? " disabled" : ""}>`;
+        return `
+        <div class="mg-field${off ? " mg-off" : ""}">
+          <label><span>${esc(label)}</span>${box}</label>
+          ${optional ? `<label class="mg-tick mg-show">
+            <input type="checkbox" data-off="${esc(k)}"${off ? "" : " checked"}>
+            <span>Show this on the website</span>
+          </label>` : ""}
+        </div>`;
+      }).join("")}
     </div>`;
   }
+
+  /* The two things a box can mean, said once, at the top of every tab that has
+     ticks on it. */
+  const BLANKING = `<p class="mg-lede">Clearing a box puts the original wording back.
+    To show <em>nothing at all</em>, untick "Show this on the website" — what you have
+    written stays put, so ticking it back on brings it straight back.</p>`;
 
   function viewShop() {
     return `
     <h2>Shop details</h2>
     <p class="mg-lede">These show all over the website. The faint text in a box is what's
       on there at the moment — type over it to change it, or clear the box to put it back.</p>
+    ${BLANKING}
     ${fields(SHOP_FIELDS)}`;
   }
 
@@ -219,11 +298,16 @@
 
   function viewPages() {
     const types = TYPES.map((t) => [
-      "type-" + t.id, `${t.name} — description`, () => t.blurb, true]);
+      "type-" + t.id, `${t.name} — description`, () => t.blurb, 3, true]);
     return `
     <h2>Other pages</h2>
-    <p class="mg-lede">Headings and wording on Collections, Visit us and Get in touch.</p>
+    <p class="mg-lede">Headings and wording on Collections, Visit us and Contact us.</p>
+    ${BLANKING}
     ${fields(PAGE_FIELDS)}
+
+    <h3 class="mg-photo-head">Also shown on these pages</h3>
+    <p class="mg-lede">The same boxes as on Shop details — change either one.</p>
+    ${fields(ALSO_ON_PAGES)}
 
     <h3 class="mg-photo-head">Flooring types</h3>
     <p class="mg-lede">The description under each type, on the Collections page.</p>
@@ -415,7 +499,13 @@
     return `
     <h2>Home page</h2>
     <p class="mg-lede">Every word on the front page. The faint text is what is on there now.</p>
+    ${BLANKING}
     ${fields(HOME_FIELDS)}
+
+    <h3 class="mg-photo-head">The four service cards</h3>
+    <p class="mg-lede">The row under the fitting section. Clear a heading and that card
+      comes off the row.</p>
+    ${fields(SERVICE_FIELDS)}
 
     <h3 class="mg-photo-head">Google reviews</h3>
     <p class="mg-lede">Copy your rating and a few of your best reviews across from your Google
@@ -475,6 +565,43 @@
     </div>`;
   }
 
+  /* Jobs you have finished. Same shape as the Instagram picker above, because
+     it is the same job — a picture, some words, and a blank one on the end
+     waiting to be filled in. */
+  function viewPortfolio() {
+    const items = DOC.portfolio || [];
+    return `
+    <h2>Portfolio</h2>
+    <p class="mg-lede">Your own photographs of floors you have fitted. Landscape works best,
+      and big files are fine — they're shrunk here before uploading. Nothing is shipped with
+      the site for this page, so what you put here is what is on it.</p>
+    ${fields(PORTFOLIO_FIELDS)}
+
+    <h3 class="mg-photo-head">The pictures</h3>
+    <p class="mg-lede">The heading is what shows under the photograph, and the description
+      below it. Both are optional — a picture on its own is fine.</p>
+    <div class="mg-photos" style="margin-top:18px">
+      ${[...items, {}].slice(0, 24).map((p, i) => `
+        <div class="mg-photo">
+          <div class="mg-photo-img">${p.image
+            ? `<img src="../assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
+          <div class="mg-photo-body">
+            <b>${p.image ? `Job ${i + 1}` : "Add a job"}</b>
+            <input type="text" class="mg-iglink" data-folio="${i}" data-part="title"
+                   value="${esc(p.title || "")}" placeholder="Where, or what it is">
+            <input type="text" class="mg-iglink" data-folio="${i}" data-part="caption"
+                   value="${esc(p.caption || "")}" placeholder="A line about the job">
+            <label class="mg-replace">
+              <input type="file" accept="image/*" data-foliofile="${i}">
+              <span class="btn btn-ghost btn-sm">${p.image ? "Replace" : "Choose picture"}</span>
+            </label>
+            ${p.image ? `<button class="linkish" data-foliodrop="${i}">Remove</button>` : ""}
+            <span class="mg-photo-state" data-state="folio-${i}"></span>
+          </div>
+        </div>`).join("")}
+    </div>`;
+  }
+
   /* ------------------------------------------------------------------ render */
 
   function render() {
@@ -484,6 +611,7 @@
       tab === "shop" ? viewShop()
       : tab === "about" ? viewAbout()
       : tab === "pages" ? viewPages()
+      : tab === "portfolio" ? viewPortfolio()
       : tab === "collections" ? viewCollections()
       : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()
@@ -576,10 +704,35 @@
       DOC.instagram.posts[i].link = t.value;
       mark();
     }
+    if (t.dataset.folio !== undefined) {
+      DOC.portfolio = DOC.portfolio || [];
+      const i = Number(t.dataset.folio);
+      while (DOC.portfolio.length <= i) DOC.portfolio.push({ image: "", title: "", caption: "" });
+      DOC.portfolio[i][t.dataset.part] = t.value;
+      mark();
+    }
   });
 
   document.addEventListener("change", (e) => {
     const t = e.target;
+    /* Show/hide. Deliberately not a re-render: the Home tab has thirty-odd
+       boxes, and rebuilding the panel would move the tick out from under the
+       cursor and drop whatever box was being typed in. Two nodes change, and
+       render() paints the state again on the next tab switch or reload.
+
+       What is written in the box is left alone. Switching a line off and
+       deleting it are different things, and only one of them is undoable. */
+    if (t.dataset.off !== undefined) {
+      DOC.off = DOC.off || {};
+      if (t.checked) delete DOC.off[t.dataset.off];
+      else DOC.off[t.dataset.off] = true;
+      const box = t.closest(".mg-field");
+      box?.classList.toggle("mg-off", !t.checked);
+      /* disabled, not readonly — a readonly box still takes focus and reads
+         like something that ought to work */
+      box?.querySelector("[data-content]")?.toggleAttribute("disabled", !t.checked);
+      mark();
+    }
     if (t.dataset.style !== undefined) {
       const [type, styleId] = t.dataset.style.split("|");
       DOC.styles[type] = DOC.styles[type] || {};
@@ -593,6 +746,7 @@
     if (t.id === "newShadeFile") pickSwatch(t.files[0]);
     if (t.dataset.slot !== undefined) replacePhoto(t.dataset.slot, t.files[0]);
     if (t.dataset.igfile !== undefined) addInstaPhoto(Number(t.dataset.igfile), t.files[0]);
+    if (t.dataset.foliofile !== undefined) addFolioPhoto(Number(t.dataset.foliofile), t.files[0]);
   });
 
   /* Replacing a photograph uploads it straight away rather than waiting for
@@ -706,6 +860,28 @@
     } catch (err) { say(err.message, true); }
   }
 
+  /* A portfolio photograph. Kept wide rather than tile-sized: these are the
+     shop's own work shown large on the page, not thumbnails. */
+  async function addFolioPhoto(i, file) {
+    if (!file) return;
+    const state = document.querySelector(`[data-state="folio-${i}"]`);
+    const say = (m, bad) => { if (state) { state.textContent = m; state.className = "mg-photo-state" + (bad ? " warn" : ""); } };
+    say("Preparing…");
+    try {
+      const { blob } = await readSwatch(file, WIDE);
+      say("Uploading…");
+      const res = await fetch(`../api/admin/upload?slot=folio-${i}`,
+        { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "upload failed");
+      DOC.portfolio = DOC.portfolio || [];
+      while (DOC.portfolio.length <= i) DOC.portfolio.push({ image: "", title: "", caption: "" });
+      DOC.portfolio[i].image = body.path;
+      mark();
+      render();
+    } catch (err) { say(err.message, true); }
+  }
+
   function createRange() {
     const name = $("#nrName").value.trim();
     const brand = $("#nrBrand").value.trim() || "Hari's Carpets";
@@ -738,6 +914,13 @@
     const drop = t.closest("[data-igdrop]");
     if (drop) {
       DOC.instagram.posts.splice(Number(drop.dataset.igdrop), 1);
+      mark();
+      return render();
+    }
+
+    const folioDrop = t.closest("[data-foliodrop]");
+    if (folioDrop) {
+      (DOC.portfolio || []).splice(Number(folioDrop.dataset.foliodrop), 1);
       mark();
       return render();
     }
@@ -897,13 +1080,14 @@
 
     const res = await fetch("../api/site", { headers: { accept: "application/json" } });
     const site = res.ok ? await res.json() : {};
-    DOC = { version: 0, content: {}, styles: {}, overrides: {},
-            ranges: [], extra: {}, images: {}, captions: {}, ...site };
+    DOC = { version: 0, content: {}, off: {}, styles: {}, overrides: {},
+            ranges: [], extra: {}, images: {}, captions: {}, portfolio: [], ...site };
     // make sure the shapes exist even if the stored document is older
-    for (const k of ["content", "styles", "overrides", "extra", "images", "captions"]) {
+    for (const k of ["content", "off", "styles", "overrides", "extra", "images", "captions"]) {
       DOC[k] = DOC[k] || {};
     }
     DOC.ranges = DOC.ranges || [];
+    DOC.portfolio = DOC.portfolio || [];
 
     render();
     $("#state").textContent = "";

@@ -386,6 +386,19 @@ export function clean(input) {
     }
   }
 
+  /* Jobs the shop has finished. Every picture is a path this admin uploaded,
+     so an entry with no picture is not an entry — a portfolio of empty frames
+     is worse than an empty portfolio. */
+  if (Array.isArray(input.portfolio)) {
+    out.portfolio = input.portfolio.slice(0, 24)
+      .map((p) => ({
+        image: UPLOAD_PATH.test(p && p.image) ? p.image : "",
+        title: text(p && p.title, 80).trim(),
+        caption: text(p && p.caption, 300).trim(),
+      }))
+      .filter((p) => p.image);
+  }
+
   /* What customers have said on Google, and the shop's Instagram grid. Both
      are entered by hand — see docs/admin.md for why neither is pulled live. */
   if (input.reviews && typeof input.reviews === "object") {

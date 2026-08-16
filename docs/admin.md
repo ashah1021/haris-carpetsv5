@@ -46,10 +46,11 @@ Everything written on the site, and every photograph. By tab:
 
 | Tab | What is in it |
 |---|---|
-| Shop details | hours, phone, email, address, areas covered, the line under the logo, the footer paragraph, an optional notice across the home page, the Google Maps link and the map embed |
-| About us | the opening line and the body, split into paragraphs on blank lines |
-| Home page | the banner heading, all four claims in the strip, every section heading and small label, Google reviews, Instagram |
-| Other pages | headings and wording on Collections, Visit us and Get in touch, plus the description under each flooring type |
+| Shop details | hours, phone, email, address, areas covered, the line under the logo, the footer paragraph, an optional notice across the home page, the Google Maps link, the map embed, and the four social media pages |
+| About us | the small label, the opening line and the body, split into paragraphs on blank lines |
+| Home page | every word on the front page — the banner heading, paragraph and both buttons, all four claims in the strip, every section heading, small label, paragraph and button, the four service cards, Google reviews and Instagram |
+| Other pages | headings, paragraphs and buttons on Collections, Visit us and Contact us, the enquiry form's heading and send button, plus the description under each flooring type |
+| Portfolio | the wording on that page, and the jobs themselves — a photograph, a heading and a description each |
 | Collections | hide, rename, the collection's own description, and its shades |
 | Photos | every picture, and a caption for each — including the three that make up the home page banner |
 | Styles | which collections sit under which style |
@@ -57,6 +58,24 @@ Everything written on the site, and every photograph. By tab:
 The faint grey text in an empty box is what the site is showing now, so the
 form doubles as a view of the current wording, and clearing a box restores that
 rather than blanking the page.
+
+### Leaving something blank, and switching it off
+
+These are two different things and there are two different controls, because
+one of them is undoable and the other is what you want most of the time.
+
+**Clearing a box puts the original wording back.** That is what the faint grey
+text is promising, and it means no amount of typing can leave a page with a
+hole in it.
+
+**To show nothing at all**, untick *Show this on the website* under the box.
+The line disappears from the page — the heading goes with it, so there is no
+empty gap where it used to be. What you have written stays exactly where it is,
+so ticking it back on brings the words straight back.
+
+Not everything has a tick. The phone number, the email address and the address
+do not, because they are used in every link in the header and footer, and a
+flooring shop with no phone number on its website is not a feature.
 
 **Captions matter more than they look.** The box under each photograph is the
 alt text: what a blind visitor hears, and what Google reads. "Wool twist fitted
@@ -110,6 +129,51 @@ it; the section reads the same shape either way.
 
 **Only paste in reviews people have actually left.** Invented testimonials on a
 real shop's website are a lie to customers and very hard to walk back.
+
+## The enquiry form
+
+Enquiries are emailed to whatever `ENQUIRY_TO` is set to in `wrangler.jsonc`,
+currently `sales@hariscarpets.co.uk`. The visitor's own address goes in
+`Reply-To`, so hitting Reply in the shop's mail client answers them directly.
+
+**It needs one secret and will refuse to work without it:**
+
+    npx wrangler secret put RESEND_KEY
+
+then **redeploy** — a Worker cannot see a secret added since its last deploy.
+Until then the form says it is not switched on and offers the visitor a
+`mailto:` link and the phone number. It never pretends to have sent anything.
+
+### Why Resend and not Cloudflare
+
+Cloudflare's own email sending — both the `send_email` binding and the Email
+Service — requires the sending domain to be a zone in the Cloudflare account.
+`haris-carpets.co.uk` is at Wix, so it is not available. This is the third time
+this project has hit that same wall: Cloudflare Access could not guard `/admin`
+for the same reason, and WAF rate-limiting rules are zone-scoped too. All three
+become available on the day the domain moves.
+
+Open the Resend account **using `sales@hariscarpets.co.uk`**. Resend's free
+test domain will only deliver to the address the account was opened with, which
+is exactly and only where these need to go, so nothing has to be set up in DNS.
+
+Once the domain is on Cloudflare: verify it in Resend, then change
+`ENQUIRY_FROM` in `wrangler.jsonc` to an address at that domain. No code
+changes. Until then, leave it on `onboarding@resend.dev` — putting the shop's
+own domain in `From:` while its SPF and DKIM live at Wix is the classic
+self-spoof pattern and the mail gets junked.
+
+> Careful with the two domains: the mailbox is `sales@hariscarpets.co.uk`, no
+> hyphen. The website is `haris-carpets.co.uk`, with one. Verifying one does not
+> authenticate the other.
+
+### Nothing is lost if the email fails
+
+Every enquiry is written to R2 *before* it is sent. If Resend is unreachable the
+visitor is told plainly that it is queued, and a cron every half hour drains the
+backlog. Copies are deleted after 30 days (90 if they never sent) — they are
+names, emails and phone numbers belonging to members of the public, so the
+bucket is a safety net, not an archive. The shop's mailbox is the record.
 
 ## Instagram
 
@@ -316,6 +380,8 @@ need this — but it is the quickest way to be certain.
 
     node tools/admin.test.mjs      # the API, including real signature checks
     node tools/instagram.test.mjs  # the feed, and the token expiring
+    node tools/enquiry.test.mjs    # the enquiry form, and what happens when it fails
+    node tools/worker.test.mjs     # routing, and the R2 photo route
     node tools/stub-api.mjs 8890 signed-in &
     node tools/stub-api.mjs 8891 down &
     node tools/stub-api.mjs 8892 anon &
@@ -333,3 +399,16 @@ The one worth keeping green above all others is in `admin-e2e.mjs`: with the
 admin API returning 500, the shop still renders its full catalogue with no
 errors. The generated catalogue ships with the site, so a broken overlay must
 cost a customer nothing.
+
+The second is the field sweep in the same file. It types a unique marker into
+**every** box in the admin, saves, then reads all seven public pages back and
+fails naming any field whose marker never appeared. That is the check that a box
+does something.
+
+It only became that check recently. `tools/stub-api.mjs` used to echo the posted
+document straight back instead of running the Worker's own `clean()`, so the
+sweep proved the browser had *sent* each value and nothing more — while the
+Worker was silently dropping 28 of the 44 boxes on every save, because it
+validated content keys with a lowercase-only slug rule and they are camelCase.
+The stub now runs the shipped `clean()`. **If you ever stub the API again,
+stub the transport, not the validation.**

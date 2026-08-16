@@ -18,7 +18,7 @@ const read = (name) => readFileSync(new URL("../" + name, import.meta.url), "utf
 /* Every module worker.js pulls in has to be inlined the same way, so this is a
    list rather than one special case — a new import that is not added here fails
    loudly below instead of at some confusing point later. */
-const MODULES = ["worker-admin.js", "worker-instagram.js"];
+const MODULES = ["worker-admin.js", "worker-instagram.js", "worker-enquiry.js"];
 
 export async function loadWorker() {
   let main = read("worker.js");

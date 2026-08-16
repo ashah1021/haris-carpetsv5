@@ -57,9 +57,22 @@ h1, h2, h3 {
 h2 { font-size: clamp(27px, 3.4vw, 40px); }
 .lede { font-size: clamp(17px, 1.3vw, 19px); color: var(--ink-soft); }
 
-/* the logo's double rule, as a reusable device */
-.rule { display: block; width: 62px; height: 9px; border-top: 3px solid var(--yellow);
-  border-bottom: 3px solid var(--yellow); margin: 0 0 18px; }
+/* THE DOUBLE RULE — the shop's mark, drawn as two yellow lines with a gap.
+   There were three versions of this: .rule at 62×9 with a 3px gap, the header
+   .br with no width at all, and the footer .br at 260px behind an adjacent-
+   sibling selector that lost every property if anything moved between it and
+   the wordmark. The header one was the visible fault: with no width, its length
+   was whatever the wider of the wordmark and the line beneath it happened to
+   measure, and it changed as the wordmark's clamp() scaled with the viewport.
+
+   One set of proportions now, in one place. Everything below only says how wide
+   and where — never how it is drawn. */
+.rule, .br {
+  display: block; box-sizing: border-box; height: 9px;
+  border-top: 3px solid var(--yellow); border-bottom: 3px solid var(--yellow);
+}
+.rule { width: 62px; margin: 0 0 18px; }
+.br { width: 200px; max-width: 100%; }
 .rule.on-dark { border-color: var(--yellow); }
 .rule.centred { margin-inline: auto; }
 
@@ -141,9 +154,9 @@ h2 { font-size: clamp(27px, 3.4vw, 40px); }
   font-family: var(--f-display); font-size: clamp(20px, 2vw, 25px); font-weight: 500;
   letter-spacing: .07em; text-transform: uppercase; color: var(--blue); display: block;
 }
-/* the logo's twin yellow rules, rebuilt in CSS */
-.brand-mark .br { display: block; height: 7px; margin-top: 5px;
-  border-top: 2.5px solid var(--yellow); border-bottom: 2.5px solid var(--yellow); }
+/* The logo's twin yellow rules, rebuilt in CSS. See the .br base rule near the
+   top: the header only sets where it sits, never how it is drawn. */
+.brand-mark .br { margin-top: 5px; }
 .brand-mark small {
   display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: .17em;
   text-transform: uppercase; color: var(--muted);
@@ -348,10 +361,18 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .info-row a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
 .info-row a:hover { border-color: var(--blue); }
 .form-note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.form-note.bad { color: #a02020; }
+/* The honeypot. Taken out of the layout and out of the accessibility tree, but
+   still a real text input a bot will happily fill in. Not display:none and not
+   type=hidden — both are what the scripts look for. */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .form-card { background: var(--off); border: 1px solid var(--line); padding: 24px; }
-.socials { display: flex; gap: 14px; flex-wrap: wrap; }
-.socials a { color: var(--blue); text-decoration: none; }
+.socials { display: flex; gap: 16px; flex-wrap: wrap; }
+.socials a { color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 .socials a:hover { text-decoration: underline; }
+/* sized off the surrounding text so the mark and the word stay in proportion
+   whatever the font is doing */
+.si { width: 1.15em; height: 1.15em; fill: currentColor; flex: none; }
 
 .prose { max-width: 66ch; }
 .prose p { margin: 0 0 18px; color: var(--ink-soft); font-size: 17.5px; line-height: 1.72; }
@@ -370,8 +391,10 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .site-footer a { color: #fff; text-decoration: none; opacity: .85; display: block; padding: 4px 0; }
 .site-footer a:hover { opacity: 1; }
 .site-footer .fbrand { font-family: var(--f-display); font-size: 25px; letter-spacing: .07em; text-transform: uppercase; }
-.site-footer .fbrand + .br { display: block; width: 100%; max-width: 260px; height: 7px; margin-top: 6px;
-  border-top: 2.5px solid var(--yellow); border-bottom: 2.5px solid var(--yellow); }
+/* .br, not .fbrand + .br — the sibling selector meant inserting anything
+   between the wordmark and the rule silently stripped its width and left an
+   invisible element */
+.site-footer .br { margin-top: 8px; }
 .site-footer .fine { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.16); margin-top: 26px;
   padding-top: 18px; font-size: 13px; color: rgba(255,255,255,.7); display: flex; justify-content: space-between;
   flex-wrap: wrap; gap: 10px; }
@@ -737,3 +760,13 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .ig-tile { display: block; aspect-ratio: 1; overflow: hidden; background: var(--off); }
 .ig-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
 .ig-tile:hover img { transform: scale(1.06); }
+
+/* PORTFOLIO — bigger than the Instagram tiles on purpose. These are the shop's
+   own jobs shot properly, so they get room to be looked at rather than being
+   thumbnails in a wall. */
+.folio { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: clamp(20px, 3vw, 34px); margin-top: 8px; }
+.folio-item { margin: 0; }
+.folio-item figcaption { padding-top: 14px; }
+.folio-item h3 { font-family: var(--f-display); font-size: 18px; font-weight: 500; }
+.folio-item figcaption p { color: var(--ink-soft); font-size: 15px; margin-top: 4px; }

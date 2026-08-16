@@ -24,11 +24,29 @@
     "run_worker_first": true
   },
 
-  // Refreshes the Instagram token and the cached feed. Weekly, because a
+  // Two schedules, told apart in worker.js by event.cron.
+  //
+  // Weekly: refreshes the Instagram token and the cached feed. Weekly because a
   // long-lived token lasts 60 days — five missed runs before anything breaks.
+  //
+  // Half-hourly: retries any enquiry whose send failed, and deletes copies once
+  // they are past their keep-by. Enquiries are written to R2 before they are
+  // sent, so this is what turns a provider outage into a delay rather than a
+  // lost customer.
   "triggers": {
-    "crons": ["0 4 * * 1"]
+    "crons": ["0 4 * * 1", "*/30 * * * *"]
   },
+
+  // Enquiry flood protection. A Worker binding rather than a WAF rule on
+  // purpose: WAF rate-limiting is zone-scoped and the site is on workers.dev,
+  // the same wall that stopped Cloudflare Access guarding /admin. The counter
+  // is per Cloudflare location and reconciled after the fact, so treat these as
+  // a ceiling rather than an exact allowance. Changing namespace_id resets the
+  // counters.
+  "ratelimits": [
+    { "name": "ENQUIRY_LIMIT", "namespace_id": "1001", "simple": { "limit": 3, "period": 60 } },
+    { "name": "ENQUIRY_BUDGET", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }
+  ],
 
   "r2_buckets": [
     {
@@ -47,8 +65,19 @@
   // Leave these empty and the admin API answers 503 with an explanation. That
   // is deliberate — an unconfigured admin must refuse everyone, never admit
   // everyone.
+  //
+  // Where enquiries go, and who they appear to come from. Addresses, not
+  // secrets — the RESEND_KEY is the secret, and without it the form refuses and
+  // offers the visitor a mailto: instead of pretending to have sent anything.
+  //
+  // ENQUIRY_FROM stays on resend.dev until haris-carpets.co.uk is a zone in
+  // this Cloudflare account and verified in Resend. Putting the shop's own
+  // domain here before then would be claiming a domain whose SPF and DKIM live
+  // at Wix, and the mail would be junked. See worker-enquiry.js.
   "vars": {
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
-    "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c"
+    "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c",
+    "ENQUIRY_TO": "sales@hariscarpets.co.uk",
+    "ENQUIRY_FROM": "Hari's Carpets <onboarding@resend.dev>"
   }
 }

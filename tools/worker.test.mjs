@@ -98,6 +98,27 @@ await check('POST is not intercepted', async()=>{
   const r = await worker.fetch(req('/assets/hero-living-room.jpg',{method:'POST'}), makeEnv(), ctx);
   eq(await r.text(),'ASSETS:/assets/hero-living-room.jpg','post');
 });
+
+/* adminRoutes answers 404 for anything under /api/ it does not recognise, so a
+   new endpoint dispatched after it looks exactly like an endpoint that was
+   never built. Both of these have to be reached first. */
+await check('an enquiry reaches the enquiry route, not the admin 404', async()=>{
+  cacheStore.clear();
+  const r = await worker.fetch(req('/api/enquiry',{ method:'POST',
+    headers:{ origin:'https://x.test', 'content-type':'application/json' },
+    body:'{}' }), makeEnv(), ctx);
+  const body = await r.json();
+  /* 503 because no RESEND_KEY is set in this env — the point is that the reply
+     came from worker-enquiry.js and not from adminRoutes' generic "not found" */
+  eq(r.status, 503, 'status');
+  eq(body.fallback, true, 'offers a fallback');
+});
+await check('and the Instagram feed still reaches its own route', async()=>{
+  cacheStore.clear();
+  const r = await worker.fetch(req('/api/instagram'), makeEnv(), ctx);
+  eq(r.status, 200, 'status');
+  eq(Array.isArray((await r.json()).posts), true, 'posts');
+});
 await check('traversal cannot escape the photo prefix', async()=>{
   cacheStore.clear();
   for (const p of ['/assets/../data.js','/assets/..%2f..%2fdata.js','/assets/a/b/c/d.jpg']) {

@@ -19,6 +19,7 @@
 
 import { adminRoutes } from "./worker-admin.js";
 import { instagramRoute, instagramCron } from "./worker-instagram.js";
+import { enquiryRoute, enquiryCron } from "./worker-enquiry.js";
 
 const PHOTO_DIR = "/assets/";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -68,9 +69,11 @@ export default {
        because there is no file there to serve. */
     if (env.PHOTOS) {
       try {
-        if (new URL(request.url).pathname === "/api/instagram") {
-          return await instagramRoute(request, env, ctx);
-        }
+        /* Both of these must be dispatched before adminRoutes, which answers
+           404 for anything under /api/ it does not recognise. */
+        const path = new URL(request.url).pathname;
+        if (path === "/api/instagram") return await instagramRoute(request, env, ctx);
+        if (path === "/api/enquiry") return await enquiryRoute(request, env, ctx);
         const res = await adminRoutes(request, env, ctx);
         if (res) return res;
       } catch (err) {
@@ -95,9 +98,15 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  /* Keeps the Instagram token alive and the feed warm. See worker-instagram.js
-     — a token lapsing is the failure this whole arrangement is built around. */
+  /* Two schedules, told apart by which one fired.
+
+     The weekly one keeps the Instagram token alive and the feed warm — see
+     worker-instagram.js, a token lapsing is the failure that whole arrangement
+     is built around. The half-hourly one drains any enquiry the send failed
+     on, and lets old copies go. */
   async scheduled(event, env, ctx) {
-    if (env.PHOTOS) ctx.waitUntil(instagramCron(env));
+    if (!env.PHOTOS) return;
+    if (event.cron === "0 4 * * 1") ctx.waitUntil(instagramCron(env));
+    else ctx.waitUntil(enquiryCron(env));
   },
 };

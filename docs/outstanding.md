@@ -3,6 +3,14 @@
 Parked deliberately, not forgotten.
 
 ## Before handover
+- **Set `RESEND_KEY`, or the contact form does not work.** Open the Resend
+  account using `sales@hariscarpets.co.uk` — its free test domain will only
+  deliver to the address the account was opened with, which is the one address
+  these need to reach, so no DNS is needed. Then
+  `npx wrangler secret put RESEND_KEY` **and redeploy**: a Worker cannot see a
+  secret added since its last deploy. Until it is set the form tells visitors it
+  is not switched on and offers them a `mailto:` and the phone number — it does
+  not pretend. See the enquiry section of `docs/admin.md`.
 - **Rotate the R2 API key pair.** The credentials were pasted into a chat
   transcript, so treat them as burned. Cloudflare dashboard → R2 → Manage API
   tokens. Then update `~/.config/rclone/rclone.conf` and any local env vars.
@@ -47,6 +55,13 @@ Parked deliberately, not forgotten.
   photographs reused, so the same picture appears twice on the home page until
   they are replaced. Three photographs of Hari's own jobs, landscape, dropped
   into the Photos tab fixes it — no code change.
+- **The Portfolio page is empty until Hari adds jobs.** Nothing is shipped for
+  it on purpose — a portfolio of stock photography would be a lie — so the page
+  currently says the gallery is being put together and points at the showroom.
+  Photos, headings and descriptions all go in the Portfolio tab.
+- **The rest of the "Supplied and fitted properly" wording.** Hari said the copy
+  there is still to be decided. Every part of that section is now a box in the
+  admin, so he can write it himself whenever he settles on it.
 
 ## Waiting on the supplier
 - **61 Cormar shades are missing**, across six ranges: Zenith, Natural Berber
