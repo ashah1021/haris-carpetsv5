@@ -356,6 +356,86 @@ console.log("\nAnything unrecognised in a saved document is dropped:");
     doc.extra["some-range"][0].file === undefined);
 }
 
+/* The bug this section exists for. Content keys are names in the code and are
+   camelCase; ids are slugs and are not. One regex was doing both jobs, so every
+   camelCase key was silently discarded — the admin said "Saved" and the shop's
+   headings never changed. These assertions fail on the old code, which is the
+   only reason to trust them. */
+console.log("\nContent keys are names, ids are slugs, and the two are not the same:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0,
+    content: {
+      heroTitle: "camelCase", mapEmbed: "https://maps", aboutBody: "two\n\nparas",
+      "type-carpets": "kebab-case", proof1: "lower and a digit",
+      "has:colon": "no", "has space": "no", "has.dot": "no",
+      "1leading": "no", ["x".repeat(70)]: "no",
+    },
+    /* the strict rule must stay strict exactly where a name becomes a path */
+    images: { Hero: "uploads/x.jpg", hero: "uploads/x.jpg" },
+    captions: { Hero: "no", hero: "yes" },
+    overrides: { "Westex-Ultima": { hidden: true }, "westex-ultima": { hidden: true } },
+  }) }), env, ctx);
+
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+  check("a camelCase content key survives", doc.content.heroTitle === "camelCase");
+  check("so do the other camelCase ones",
+    doc.content.mapEmbed === "https://maps" && doc.content.aboutBody === "two\n\nparas");
+  check("a kebab-case content key survives", doc.content["type-carpets"] === "kebab-case");
+  check("a lowercase content key still survives", doc.content.proof1 === "lower and a digit");
+  check("a colon in a content key is refused", doc.content["has:colon"] === undefined);
+  check("so are spaces, dots, a leading digit and 70 characters",
+    doc.content["has space"] === undefined && doc.content["has.dot"] === undefined
+    && doc.content["1leading"] === undefined && doc.content["x".repeat(70)] === undefined);
+
+  /* An upload names a file after its slot. A capital would be accepted by the
+     upload route, mint a path, and then be refused here — a photograph in the
+     bucket that nothing on the site can ever point at. */
+  check("an image slot with a capital is still refused", doc.images.Hero === undefined);
+  check("and the lowercase one is kept", doc.images.hero === "uploads/x.jpg");
+  check("a caption slot with a capital is still refused", doc.captions.Hero === undefined);
+  check("an override id with a capital is still refused",
+    doc.overrides["Westex-Ultima"] === undefined);
+  check("and the real id survives", doc.overrides["westex-ultima"].hidden === true);
+}
+
+console.log("\nWording the shop has switched off:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  const many = {};
+  for (let i = 0; i < 300; i++) many["k" + i] = true;
+  await adminRoutes(req("/api/admin/site", { method: "PUT", headers, body: JSON.stringify({
+    baseVersion: 0,
+    content: { instaHeading: "Recent work" },
+    off: { instaHeading: true, notTrue: "yes", alsoNot: 1, "has:colon": true, ...many },
+  }) }), env, ctx);
+
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+  check("a switched-off key is stored", doc.off.instaHeading === true);
+  check("but the wording is not thrown away", doc.content.instaHeading === "Recent work");
+  check("only true counts", doc.off.notTrue === undefined && doc.off.alsoNot === undefined);
+  check("a colon in an off key is refused", doc.off["has:colon"] === undefined);
+  check("the map is capped", Object.keys(doc.off).length <= 200,
+    `${Object.keys(doc.off).length} keys`);
+}
+
+console.log("\nAn older stored document still opens:");
+{
+  /* a document written before `off` and `portfolio` existed */
+  const env = makeEnv({ objects: {
+    "admin/site.json": JSON.stringify({ version: 3, content: { hours: "Mon-Sat" } }) } });
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+  check("its wording is intact", doc.content.hours === "Mon-Sat");
+  check("and the new shapes are there to read", doc.off && typeof doc.off === "object"
+    && Array.isArray(doc.portfolio));
+}
+
 console.log("\nPhoto upload:");
 {
   const env = makeEnv();

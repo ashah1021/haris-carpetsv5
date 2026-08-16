@@ -11,6 +11,7 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
+import { loadAdmin } from "./load-worker.mjs";
 
 const ROOT = new URL("../public/", import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8890);
@@ -18,9 +19,17 @@ const MODE = process.argv[3] || "signed-in";  // …| stale = a Worker older tha
 const PASSWORD = "correct-horse-battery-staple";
 let session = null;
 
-let DOC = { version: 0, content: {}, featured: null, styles: {},
-            overrides: {}, ranges: [], extra: {}, images: {}, captions: {},
-            reviews: null, instagram: null };
+/* The real validator, not a copy of it.
+
+   This stub used to echo the posted document straight back, which made the
+   41-field sweep in admin-e2e.mjs prove only that the *browser* sent the value.
+   The Worker was meanwhile dropping every camelCase key on the floor, so 28 of
+   the admin's 44 boxes saved nothing and every test still passed. Running the
+   shipped clean() here means the stub and the Worker cannot disagree about what
+   survives a save. */
+const { clean, empty } = await loadAdmin();
+
+let DOC = empty();
 
 /* Uploads are kept in memory and served back from /assets/, because a stub
    that accepts a photograph and then 404s it is not testing the thing that
@@ -78,8 +87,9 @@ createServer(async (req, res) => {
       let body = ""; for await (const c of req) body += c;
       const input = JSON.parse(body);
       if (input.baseVersion !== DOC.version) return send(res, 409, '{"error":"stale"}');
-      DOC = { ...input, version: DOC.version + 1 };
-      delete DOC.baseVersion;
+      DOC = clean(input);
+      DOC.version = input.baseVersion + 1;
+      DOC.updated = new Date().toISOString();
       return send(res, 200, JSON.stringify({ ok: true, version: DOC.version }));
     }
     if (p === "/api/admin/photo") {

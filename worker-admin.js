@@ -54,10 +54,10 @@ const JWKS_TTL = 3600;
    every nested one, so `{...EMPTY}` handed out the very same images map each
    time — and writing a slot into it edited the blank document itself, for the
    life of the isolate. Every reader gets its own. */
-const empty = () => ({
-  version: 0, updated: null, content: {}, featured: null,
+export const empty = () => ({
+  version: 0, updated: null, content: {}, off: {}, featured: null,
   styles: {}, overrides: {}, ranges: [], extra: {}, images: {},
-  captions: {}, reviews: null, instagram: null,
+  captions: {}, reviews: null, instagram: null, portfolio: [],
 });
 
 /* Uploaded photographs get a random suffix and are never overwritten.
@@ -77,8 +77,26 @@ const json = (body, status = 200, extra = {}) =>
                "cache-control": "no-store", ...extra },
   });
 
+/* Two different kinds of name, and conflating them cost the shop every heading
+   on the site.
+
+   A slug is an *id* — a range, a style, a photo slot. They come out of slugify()
+   and tools/emit-catalogue.py, they are lowercase by construction, and some of
+   them become R2 object keys. That rule stays strict.
+
+   A content key is a *name in the code* — heroTitle, mapEmbed, aboutBody. Those
+   are camelCase, so isSlug rejected all of them: 28 of the 44 boxes in /admin
+   accepted text, reported "Saved", and were thrown away here on the way to R2.
+   The shop reported it as "we can't edit the wording, but some places we can" —
+   the places that worked were the handful of lowercase keys. */
 const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const isSlug = (s) => typeof s === "string" && SLUG.test(s);
+
+/* No colon on purpose: colon is this document's compound-key separator
+   ("range:<id>", "shade:<range>:<colour>"), and a content key must never be
+   mistaken for one. */
+const KEY = /^[A-Za-z][A-Za-z0-9-]{0,63}$/;
+const isKey = (s) => typeof s === "string" && KEY.test(s);
 const isHex = (s) => typeof s === "string" && /^#[0-9a-f]{6}$/i.test(s);
 
 /** Trim to a sane length and refuse anything that isn't a string. */
@@ -273,7 +291,7 @@ async function readDoc(env) {
  * as untrusted even though only a signed-in admin can write it — a mistake in
  * the admin should not be able to produce a page that cannot be undone.
  */
-function clean(input) {
+export function clean(input) {
   const out = empty();
 
   /* one shade, from wherever it was posted */
@@ -286,7 +304,17 @@ function clean(input) {
 
   if (input.content && typeof input.content === "object") {
     for (const [k, v] of Object.entries(input.content)) {
-      if (isSlug(k) && typeof v === "string") out.content[k] = text(v, 2000);
+      if (isKey(k) && typeof v === "string") out.content[k] = text(v, 2000);
+    }
+  }
+
+  /* Wording the shop has switched off. Kept apart from content so that turning
+     a line off does not throw away what is written in it — tick it back on and
+     the words are still there. `true` only: a truthy string must not become a
+     flag, and a cap stops a bad client inflating the document with keys. */
+  if (input.off && typeof input.off === "object") {
+    for (const [k, v] of Object.entries(input.off).slice(0, 200)) {
+      if (isKey(k) && v === true) out.off[k] = true;
     }
   }
 
