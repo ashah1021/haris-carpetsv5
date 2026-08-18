@@ -39,7 +39,12 @@ const GRAPH = "https://graph.instagram.com";
 const reply = (body, status = 200, extra = {}) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", ...extra },
+    /* no-store, like every other JSON route here. Without it a browser is
+       entitled to cache this heuristically, and then reloading the page to see
+       whether the feed has come to life shows you the answer from before you
+       fixed it — which is a miserable thing to debug. */
+    headers: { "content-type": "application/json; charset=utf-8",
+               "cache-control": "no-store", ...extra },
   });
 
 async function readJson(env, key) {
@@ -57,6 +62,25 @@ const writeJson = (env, key, value) =>
 async function currentToken(env) {
   const stored = await readJson(env, TOKEN_KEY);
   return stored?.token || env.INSTAGRAM_TOKEN || "";
+}
+
+/* Every token worth trying, best first.
+ *
+ * This used to be `stored || configured`, full stop, and that is a trap with no
+ * way out of it from a browser. The moment anything was written to R2 the
+ * Cloudflare secret was never read again — so resetting the token in Meta, which
+ * kills the stored one, left the Worker using a dead token and ignoring the new
+ * secret for ever. Clearing it needed wrangler, which is exactly what somebody
+ * on a phone does not have.
+ *
+ * So: try the stored one first, because a refreshed token is newer than the
+ * secret it came from, then fall back to the secret. The one that works wins and
+ * gets stored, which drops the dead one. */
+async function tokens(env) {
+  const stored = await readJson(env, TOKEN_KEY);
+  return [stored && stored.token, env.INSTAGRAM_TOKEN]
+    .filter(Boolean)
+    .filter((t, i, all) => all.indexOf(t) === i);
 }
 
 /* Whatever Instagram said, trimmed, and with any echo of the token taken back
@@ -77,42 +101,49 @@ function refusal(body, token) {
  * that are fixed in four different places.
  */
 async function fetchFeed(env) {
-  const token = await currentToken(env);
-  if (!token) {
+  const candidates = await tokens(env);
+  if (!candidates.length) {
     return { posts: null, configured: false,
       reason: "No token. Set INSTAGRAM_TOKEN as a secret in Cloudflare, then redeploy." };
   }
 
   const fields = "id,caption,media_url,permalink,media_type,thumbnail_url,timestamp";
-  const url = `${GRAPH}/me/media?fields=${fields}&limit=12&access_token=${encodeURIComponent(token)}`;
+  let last = "no reason given";
 
-  let res, body;
-  try {
-    res = await fetch(url, { cf: { cacheTtl: 0 } });
-    body = await res.json();
-  } catch (err) {
-    return { posts: null, configured: true,
-      reason: "Couldn't reach Instagram: " + ((err && err.message) || "request failed") };
-  }
-  if (!res.ok || (body && body.error)) {
-    return { posts: null, configured: true,
-      reason: "Instagram refused the token — " + refusal(body, token) };
-  }
+  for (const token of candidates) {
+    const url = `${GRAPH}/me/media?fields=${fields}&limit=12&access_token=${encodeURIComponent(token)}`;
 
-  const posts = (body.data || [])
-    /* a video's media_url is the video file; its still is thumbnail_url */
-    .map((m) => ({
-      image: m.media_type === "VIDEO" ? m.thumbnail_url : m.media_url,
-      link: m.permalink,
-      caption: typeof m.caption === "string" ? m.caption.slice(0, 200) : "",
-      at: m.timestamp || "",
-    }))
-    .filter((p) => p.image && p.link);
+    let res, body;
+    try {
+      res = await fetch(url, { cf: { cacheTtl: 0 } });
+      body = await res.json();
+    } catch (err) {
+      last = "Couldn't reach Instagram: " + ((err && err.message) || "request failed");
+      continue;
+    }
+    if (!res.ok || (body && body.error)) {
+      last = "Instagram refused the token — " + refusal(body, token);
+      continue;   /* the stored one may be dead; the configured one may not be */
+    }
 
-  return posts.length
-    ? { posts, configured: true }
-    : { posts: null, configured: true,
+    const posts = (body.data || [])
+      /* a video's media_url is the video file; its still is thumbnail_url */
+      .map((m) => ({
+        image: m.media_type === "VIDEO" ? m.thumbnail_url : m.media_url,
+        link: m.permalink,
+        caption: typeof m.caption === "string" ? m.caption.slice(0, 200) : "",
+        at: m.timestamp || "",
+      }))
+      .filter((p) => p.image && p.link);
+
+    if (!posts.length) {
+      return { posts: null, configured: true,
         reason: "The token works, but the account returned no pictures we can show." };
+    }
+    return { posts, configured: true, token };
+  }
+
+  return { posts: null, configured: true, reason: last };
 }
 
 /**
@@ -125,10 +156,13 @@ export async function instagramRoute(request, env, ctx) {
 
   if (fresh) return reply({ posts: cached.posts, at: cached.at, live: true });
 
-  const { posts, reason, configured } = await fetchFeed(env);
+  const { posts, reason, configured, token } = await fetchFeed(env);
   if (posts) {
     const doc = { posts, at: Date.now() };
     ctx.waitUntil(writeJson(env, FEED_KEY, doc));
+    /* Whichever token just worked is the one to keep, so a dead stored token
+       stops being tried the moment a good secret replaces it. */
+    ctx.waitUntil(keepToken(env, token));
     return reply({ posts, at: doc.at, live: true });
   }
 
@@ -179,6 +213,19 @@ export async function instagramCron(env) {
     }
   }
 
-  const { posts } = await fetchFeed(env);
-  if (posts) await writeJson(env, FEED_KEY, { posts, at: Date.now() });
+  const { posts, token: worked } = await fetchFeed(env);
+  if (posts) {
+    await writeJson(env, FEED_KEY, { posts, at: Date.now() });
+    await keepToken(env, worked);
+  }
+}
+
+/** Remember the token that worked, unless it is already the one we remember. */
+async function keepToken(env, token) {
+  if (!token) return;
+  try {
+    const stored = await readJson(env, TOKEN_KEY);
+    if (stored && stored.token === token) return;
+    await writeJson(env, TOKEN_KEY, { token, refreshedAt: Date.now(), expiresIn: null });
+  } catch { /* the feed still went out, which is the part that matters */ }
 }

@@ -241,5 +241,60 @@ console.log("\nAn empty feed says why it is empty:");
     body.live === true && body.reason === undefined && body.configured === undefined);
 }
 
+/* Resetting the token in Meta kills whatever is stored in R2. Before this, the
+   stored one was consulted first and the configured secret was never read
+   again — so the only way out was wrangler, which is exactly what somebody
+   fixing this from a phone has not got. */
+console.log("\nA dead stored token does not shadow a freshly-set secret:");
+{
+  const env = makeEnv({
+    token: "IGAAthe-new-secret",
+    objects: { "admin/instagram-token.json": { token: "IGAAdead-stored-one", refreshedAt: Date.now() } },
+  });
+  const tried = [];
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    tried.push(u.includes("IGAAdead-stored-one") ? "stored" : "secret");
+    if (u.includes("IGAAdead-stored-one")) {
+      return new Response(JSON.stringify({ error: { message: "Error validating access token" } }),
+        { status: 400 });
+    }
+    return new Response(JSON.stringify({ data: [POST(1), POST(2)] }), { status: 200 });
+  };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("the stored one is tried first", tried[0] === "stored");
+  check("and when it is refused the secret is tried", tried[1] === "secret", tried.join(" then "));
+  check("so the feed comes back", body.live === true && body.posts.length === 2);
+  check("and the dead token is replaced by the one that worked",
+    env.PHOTOS.read("admin/instagram-token.json").token === "IGAAthe-new-secret",
+    env.PHOTOS.read("admin/instagram-token.json").token);
+}
+{
+  /* both refused — then it is genuinely broken and should say so */
+  const env = makeEnv({
+    token: "IGAAalso-bad",
+    objects: { "admin/instagram-token.json": { token: "IGAAdead", refreshedAt: Date.now() } },
+  });
+  let calls = 0;
+  globalThis.fetch = async () => { calls++;
+    return new Response(JSON.stringify({ error: { message: "Error validating access token" } }),
+      { status: 400 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("both are tried before giving up", calls === 2, `${calls} calls`);
+  check("and the answer says Instagram refused it",
+    /refused the token/.test(body.reason || ""), body.reason);
+  check("the good token is left alone in R2",
+    env.PHOTOS.read("admin/instagram-token.json").token === "IGAAdead");
+}
+
+console.log("\nThe feed is never served from a stale browser cache:");
+{
+  const env = makeEnv();
+  instagram({ media: { data: [POST(1)] } });
+  const res = await ig.instagramRoute(req, env, ctx);
+  check("it says no-store", res.headers.get("cache-control") === "no-store",
+    res.headers.get("cache-control"));
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
