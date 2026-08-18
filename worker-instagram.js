@@ -59,23 +59,45 @@ async function currentToken(env) {
   return stored?.token || env.INSTAGRAM_TOKEN || "";
 }
 
+/* Whatever Instagram said, trimmed, and with any echo of the token taken back
+   out. Some APIs quote the offending value at you, and this one ends up on a
+   public endpoint. */
+function refusal(body, token) {
+  const said = String((body && body.error && (body.error.message || body.error.type))
+    || "no reason given").slice(0, 160);
+  return token ? said.split(token).join("[token]") : said;
+}
+
 /**
- * Ask Instagram for the newest posts. Returns null on any failure, so the
- * caller can fall back rather than replacing a good feed with an empty one.
+ * Ask Instagram for the newest posts.
+ *
+ * Returns { posts, reason, configured }. posts is null on any failure, so the
+ * caller can fall back rather than replacing a good feed with an empty one —
+ * and `reason` says which failure it was, because "no posts" has four causes
+ * that are fixed in four different places.
  */
 async function fetchFeed(env) {
   const token = await currentToken(env);
-  if (!token) return null;
+  if (!token) {
+    return { posts: null, configured: false,
+      reason: "No token. Set INSTAGRAM_TOKEN as a secret in Cloudflare, then redeploy." };
+  }
 
   const fields = "id,caption,media_url,permalink,media_type,thumbnail_url,timestamp";
   const url = `${GRAPH}/me/media?fields=${fields}&limit=12&access_token=${encodeURIComponent(token)}`;
 
-  let body;
+  let res, body;
   try {
-    const res = await fetch(url, { cf: { cacheTtl: 0 } });
+    res = await fetch(url, { cf: { cacheTtl: 0 } });
     body = await res.json();
-    if (!res.ok || body.error) return null;
-  } catch { return null; }
+  } catch (err) {
+    return { posts: null, configured: true,
+      reason: "Couldn't reach Instagram: " + ((err && err.message) || "request failed") };
+  }
+  if (!res.ok || (body && body.error)) {
+    return { posts: null, configured: true,
+      reason: "Instagram refused the token — " + refusal(body, token) };
+  }
 
   const posts = (body.data || [])
     /* a video's media_url is the video file; its still is thumbnail_url */
@@ -87,7 +109,10 @@ async function fetchFeed(env) {
     }))
     .filter((p) => p.image && p.link);
 
-  return posts.length ? posts : null;
+  return posts.length
+    ? { posts, configured: true }
+    : { posts: null, configured: true,
+        reason: "The token works, but the account returned no pictures we can show." };
 }
 
 /**
@@ -100,7 +125,7 @@ export async function instagramRoute(request, env, ctx) {
 
   if (fresh) return reply({ posts: cached.posts, at: cached.at, live: true });
 
-  const posts = await fetchFeed(env);
+  const { posts, reason, configured } = await fetchFeed(env);
   if (posts) {
     const doc = { posts, at: Date.now() };
     ctx.waitUntil(writeJson(env, FEED_KEY, doc));
@@ -112,7 +137,16 @@ export async function instagramRoute(request, env, ctx) {
   if (cached?.posts?.length) {
     return reply({ posts: cached.posts, at: cached.at, live: true, stale: true });
   }
-  return reply({ posts: [], live: false });
+
+  /* Nothing to show, so say why. "live: false" on its own cannot tell the
+     difference between a secret that never arrived and a token Instagram
+     refused, and those are fixed in completely different places — one in the
+     Cloudflare dashboard, one in the Meta app. The shop cannot read Worker
+     logs from a phone, so the answer goes here, in words, the same way the
+     admin sign-in gate names its own fault instead of making somebody guess.
+     The token itself never appears: see refusal(). */
+  console.error("instagram feed empty:", reason);
+  return reply({ posts: [], live: false, configured, reason });
 }
 
 /**
@@ -145,6 +179,6 @@ export async function instagramCron(env) {
     }
   }
 
-  const posts = await fetchFeed(env);
+  const { posts } = await fetchFeed(env);
   if (posts) await writeJson(env, FEED_KEY, { posts, at: Date.now() });
 }

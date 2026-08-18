@@ -188,5 +188,58 @@ console.log("\nThe stored token wins over the configured one:");
     !calls.some((c) => c.includes("the-original-secret")));
 }
 
+/* The endpoint has to be able to say why it is empty. The shop is not going to
+   read Worker logs from a phone, and "live: false" on its own cannot tell a
+   secret that never arrived from a token Instagram refused — two problems
+   fixed in two different dashboards. */
+console.log("\nAn empty feed says why it is empty:");
+{
+  const env = makeEnv({ token: "" });
+  instagram();
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("with no token it names the secret to set",
+    /INSTAGRAM_TOKEN/.test(body.reason || ""), body.reason);
+  check("and reports that none arrived", body.configured === false);
+  check("with no posts, as before", body.live === false && body.posts.length === 0);
+}
+{
+  const env = makeEnv({ token: "IGAAgoodlookingtoken" });
+  instagram();   // no media configured, so Instagram answers with an error
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a refused token reads as refused, not as missing", body.configured === true);
+  check("and Instagram's own words come through",
+    /refused the token/.test(body.reason || ""), body.reason);
+  /* The one thing this must never do. The endpoint is public. */
+  check("the token appears nowhere in the answer",
+    !JSON.stringify(body).includes("IGAAgoodlookingtoken"));
+}
+{
+  /* exactly that: the provider quoting the token back inside its own error */
+  const env = makeEnv({ token: "IGAAsecretvalue" });
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({ error: { message: "Invalid OAuth access token IGAAsecretvalue - cannot parse" } }),
+    { status: 400 });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a token echoed back by Instagram is redacted out",
+    !JSON.stringify(body).includes("IGAAsecretvalue"));
+  check("while the rest of the message survives",
+    /cannot parse/.test(body.reason || ""), body.reason);
+}
+{
+  const env = makeEnv({ token: "IGAAfine" });
+  globalThis.fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a working token with no pictures says so instead",
+    /no pictures/.test(body.reason || ""), body.reason);
+  check("and does not blame the token", body.configured === true);
+}
+{
+  const env = makeEnv({ token: "IGAAfine" });
+  instagram({ media: { data: [POST(1)] } });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a working feed carries no diagnostics at all",
+    body.live === true && body.reason === undefined && body.configured === undefined);
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
