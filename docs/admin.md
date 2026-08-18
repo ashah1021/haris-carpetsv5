@@ -196,7 +196,12 @@ failure here, so the fallbacks exist to make that a soft one.
    Facebook Page.
 2. Create an app at developers.facebook.com and add **Instagram**.
 3. Generate a **long-lived access token** for the account.
-4. Save it as a secret: `npx wrangler secret put INSTAGRAM_TOKEN`
+4. Save it as a secret: `npx wrangler secret put INSTAGRAM_TOKEN`, then **redeploy** —
+   a Worker cannot see a secret added since its last deploy.
+5. If the Meta app has **Require app secret** switched on (Settings → Advanced), add
+   the app secret too, as `INSTAGRAM_APP_SECRET`. With that setting on, Meta refuses
+   every call that is not signed with it, however good the token is. The Worker signs
+   its calls whenever that secret is present, so it is safe to set either way.
 
 After that it looks after itself:
 

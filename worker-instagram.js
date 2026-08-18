@@ -33,6 +33,27 @@ const REFRESH_AFTER = 7 * 86400 * 1000;
 
 const GRAPH = "https://graph.instagram.com";
 
+/* "Require app secret" in the Meta app's advanced settings. With it on, Meta
+ * refuses any call that does not carry an appsecret_proof: an HMAC-SHA256 of
+ * the access token, keyed with the app secret. It is the more secure setting
+ * and the dashboard nudges people towards it, so this is sent whenever the app
+ * secret is configured — harmless when the setting is off, essential when it
+ * is on, and it means the toggle can be flipped either way without anybody
+ * having to remember that this exists.
+ *
+ * INSTAGRAM_APP_SECRET is optional. Without it the calls go out unsigned, which
+ * is what happened before this existed. */
+async function proofFor(env, token) {
+  const secret = typeof env.INSTAGRAM_APP_SECRET === "string" && env.INSTAGRAM_APP_SECRET.trim();
+  if (!secret) return "";
+  try {
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(token));
+    return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch { return ""; }
+}
+
 /* Named apart from the identical helper in worker-admin.js: the two live in
    separate module scopes in production, but the test loader inlines both into
    one and a duplicate declaration is a syntax error there. */
@@ -149,7 +170,10 @@ async function fetchFeed(env) {
       continue;   /* not sent anywhere: see wrongShape() */
     }
 
-    const url = `${GRAPH}/me/media?fields=${fields}&limit=12&access_token=${encodeURIComponent(token)}`;
+    const proof = await proofFor(env, token);
+    const url = `${GRAPH}/me/media?fields=${fields}&limit=12`
+      + `&access_token=${encodeURIComponent(token)}`
+      + (proof ? `&appsecret_proof=${proof}` : "");
 
     let res, body;
     try {
@@ -160,8 +184,17 @@ async function fetchFeed(env) {
       continue;
     }
     if (!res.ok || (body && body.error)) {
-      last = "Instagram refused the token — " + refusal(body, token)
-        + (looksLikeToken(token) ? "" : "." + TOKEN_HELP);
+      const said = refusal(body, token);
+      /* This refusal has one cause and a one-line fix, so it is worth
+         recognising rather than passing straight through. */
+      const needsProof = /appsecret_proof|app secret/i.test(said)
+        && !(await proofFor(env, token));
+      last = "Instagram refused the token — " + said
+        + (needsProof
+          ? ". The app has \u201cRequire app secret\u201d switched on, so either turn that"
+            + " off in the Meta app\u2019s advanced settings, or add the app secret to"
+            + " Cloudflare as a second secret called INSTAGRAM_APP_SECRET and redeploy."
+          : looksLikeToken(token) ? "" : "." + TOKEN_HELP);
       continue;   /* the stored one may be dead; the configured one may not be */
     }
 

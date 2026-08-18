@@ -356,5 +356,44 @@ console.log("\nThe wrong credential is recognised as the wrong credential:");
   check("and works", body.live === true);
 }
 
+/* The Meta app has "Require app secret" switched on, which makes every call
+   without an appsecret_proof signature fail — a perfect token included. */
+console.log("\nCalls are signed when the app secret is configured:");
+{
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
+  env.INSTAGRAM_APP_SECRET = "d5d1352c4c1e5320f5fcff8ed2a83ba3";
+  let sent = "";
+  globalThis.fetch = async (url) => { sent = String(url);
+    return new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("the feed comes back", body.live === true);
+  check("and the call carried a proof", /appsecret_proof=[0-9a-f]{64}/.test(sent),
+    (sent.match(/appsecret_proof=\w{12}/) || ["absent"])[0] + "…");
+  /* The proof is a signature, not the secret. Sending the secret itself would
+     be handing it to anyone who could see the request. */
+  check("the secret itself is never in the URL", !sent.includes("d5d1352c4c1e5320f5fcff8ed2a83ba3"));
+}
+{
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });   // no app secret set
+  let sent = "";
+  globalThis.fetch = async (url) => { sent = String(url);
+    return new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("without one, calls go out unsigned and still work", body.live === true);
+  check("with no proof attached", !/appsecret_proof/.test(sent));
+}
+{
+  /* and when Meta says that is why it refused, say what to do about it */
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({ error: { message: "API calls from the server require an appsecret_proof argument" } }),
+    { status: 400 });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a missing proof is named as the cause",
+    /Require app secret/.test(body.reason || ""), body.reason);
+  check("with both ways out of it",
+    /turn that off/.test(body.reason || "") && /INSTAGRAM_APP_SECRET/.test(body.reason || ""));
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
