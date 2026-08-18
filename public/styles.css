@@ -391,14 +391,18 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .site-footer a { color: #fff; text-decoration: none; opacity: .85; display: block; padding: 4px 0; }
 .site-footer a:hover { opacity: 1; }
 .site-footer .fbrand { font-family: var(--f-display); font-size: 25px; letter-spacing: .07em; text-transform: uppercase; }
-/* .br, not .fbrand + .br — the sibling selector meant inserting anything
-   between the wordmark and the rule silently stripped its width and left an
-   invisible element.
+/* The rule is as wide as the wordmark, and it has to stay that way in whatever
+   font actually loads.
 
-   The footer column is far wider than its wordmark, so unlike the header this
-   one cannot just fill its parent. 232px is the width of "HARI'S CARPETS" at
-   the .fbrand size, which is what the rule is meant to sit under. */
-.site-footer .br { width: 232px; margin-top: 8px; }
+   It was a fixed 232px, measured off the wordmark — but measured in this
+   container, where Jost is blocked and a fallback was rendering. On the live
+   site Jost is narrower, so the rule hung out past the end of the words. A
+   number in pixels was the wrong tool: the width belongs to the text.
+
+   .fbrand-block shrinks to the wordmark and .br fills it, which is exactly what
+   the header already does with .brand-mark. Nothing to keep in step. */
+.site-footer .fbrand-block { width: fit-content; max-width: 100%; }
+.site-footer .br { margin-top: 8px; }
 .site-footer .fine { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.16); margin-top: 26px;
   padding-top: 18px; font-size: 13px; color: rgba(255,255,255,.7); display: flex; justify-content: space-between;
   flex-wrap: wrap; gap: 10px; }
@@ -814,5 +818,16 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 
 /* Privacy and data-deletion sit in the fine print, where people look for them,
    rather than in the main navigation where they would compete with the shop. */
+/* Marks, not more link text. Sized off the surrounding font and painted with
+   currentColor, so they follow the footer's own colours. */
+.foot-socials { display: flex; gap: 16px; margin-top: 14px; }
+.foot-socials a {
+  display: inline-flex; padding: 0; opacity: .85;
+  transition: opacity .18s ease, color .18s ease;
+}
+.foot-socials a:hover { opacity: 1; color: var(--yellow); }
+.foot-socials a:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
+.foot-socials .si { width: 21px; height: 21px; }
+
 .site-footer .fine-links { display: flex; gap: 18px; flex-wrap: wrap; }
 .site-footer .fine-links a { display: inline; padding: 0; text-decoration: underline; }

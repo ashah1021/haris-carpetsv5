@@ -302,15 +302,19 @@ const socialIcon = (id) => SOCIAL_ICON[id]
   ? `<svg class="si" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${SOCIAL_ICON[id]}"/></svg>`
   : "";
 
-/* The Follow row. A network whose box has been emptied in /admin drops out
-   rather than leaving a link to nowhere, and the whole row goes if they are
-   all empty. */
+/* Which networks the shop is actually on. One list, read by the Visit us row
+   and the footer alike, so a link changed in /admin changes in both. A network
+   whose box has been emptied drops out rather than leaving a link to nowhere. */
+const socialsInUse = () => SOCIALS
+  .map((s) => ({ ...s, url: say("social" + s.id[0].toUpperCase() + s.id.slice(1), s.url) }))
+  .filter((s) => s.url);
+
+/* The Follow row on Visit us: mark and name, because there is room for both and
+   the row is read rather than scanned. */
 function socialRow() {
-  const links = SOCIALS.map((s) => {
-    const url = say("social" + s.id[0].toUpperCase() + s.id.slice(1), s.url);
-    if (!url) return "";
-    return `<a href="${esc(url)}" target="_blank" rel="noopener">${socialIcon(s.id)}${esc(s.name)}</a>`;
-  }).filter(Boolean).join("");
+  const links = socialsInUse().map((s) =>
+    `<a href="${esc(s.url)}" target="_blank" rel="noopener">${socialIcon(s.id)}${esc(s.name)}</a>`
+  ).join("");
   return links
     ? `<div class="info-row"><span class="il">Follow</span><span class="socials">${links}</span></div>`
     : "";
@@ -364,6 +368,16 @@ function applyContentToChrome() {
   /* The line under the wordmark. It was a literal in index.html and nothing
      patched it, so the shop could correct how old the business is everywhere
      except the one place it sits beside the name. */
+  /* Marks only in the footer — a column of link text with four more words in it
+     reads as more list, where a row of marks reads as "we are on these". Each
+     one still carries its name for a screen reader. */
+  const socials = document.getElementById("footSocials");
+  if (socials) {
+    socials.innerHTML = socialsInUse().map((s) =>
+      `<a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="${esc(s.name)}"
+          title="${esc(s.name)}">${socialIcon(s.id)}</a>`).join("");
+  }
+
   const mark = document.querySelector(".brand-mark small");
   if (mark) {
     const line = say("tagline", BUSINESS.tagline);

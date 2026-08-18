@@ -436,6 +436,31 @@ check("with their message already in it", await page.evaluate(() =>
     .includes("Stairs and landing")));
 expectFailures = false;
 
+console.log("\nThe footer:");
+await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.waitForTimeout(800);
+const marks = await page.locator("#footSocials a").count();
+check("social links are in the footer", marks >= 3, `${marks} links`);
+check("each one is a mark, not more link text",
+  (await page.locator("#footSocials a svg").count()) === marks);
+check("and each is named for a screen reader", await page.evaluate(() =>
+  [...document.querySelectorAll("#footSocials a")].every((a) => a.getAttribute("aria-label"))));
+/* The rule under the wordmark was a fixed pixel width measured against a
+   fallback font, so it hung past the end of the words as soon as the real one
+   loaded. It comes from the text now, and this proves it in a font the number
+   was never measured against. */
+const ruleFits = await page.evaluate(() => {
+  document.documentElement.style.setProperty("--f-display", "Georgia, serif");
+  const el = document.querySelector(".site-footer .fbrand");
+  const r = document.createRange(); r.selectNodeContents(el);
+  const text = r.getBoundingClientRect().width;
+  const rule = document.querySelector(".site-footer .br").getBoundingClientRect().width;
+  document.documentElement.style.removeProperty("--f-display");
+  return { text: Math.round(text), rule: Math.round(rule) };
+});
+check("the footer rule is exactly as wide as the wordmark",
+  Math.abs(ruleFits.rule - ruleFits.text) <= 2, `text ${ruleFits.text} vs rule ${ruleFits.rule}`);
+
 console.log("\nMobile:");
 const mob = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
 for (const hash of ["#/", "#/collections/carpets", "#/enquire"]) {

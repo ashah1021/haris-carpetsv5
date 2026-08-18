@@ -54,8 +54,12 @@
   <footer class="site-footer">
     <div class="wrap">
       <div>
-        <div class="fbrand">Hari's Carpets</div>
-        <span class="br" aria-hidden="true"></span>
+        <!-- the wordmark and its rule share a shrink-to-fit box, so the rule is
+             exactly as wide as the words however the font renders -->
+        <div class="fbrand-block">
+          <div class="fbrand">Hari's Carpets</div>
+          <span class="br" aria-hidden="true"></span>
+        </div>
         <p id="footBlurb" style="max-width:38ch;opacity:.85;margin-top:14px">Established. Experienced. Family-run.</p>
       </div>
       <div>
@@ -74,7 +78,9 @@
         <a id="footAddress" href="https://www.google.com/maps/place/Hari's+Carpets/@51.4624955,-0.3671699,17z" target="_blank" rel="noopener">267 Hanworth Road<br>Hounslow<br>Middlesex<br>TW3 3RZ</a>
         <a href="tel:+442085706502">020 8570 6502</a>
         <a href="mailto:sales@hariscarpets.co.uk">sales@hariscarpets.co.uk</a>
-        <a href="https://www.instagram.com/hariscarpets/" target="_blank" rel="noopener">Instagram @hariscarpets</a>
+        <!-- filled in by applyContentToChrome from the same list as the Visit us
+             page, so a link changed in /admin changes in both places -->
+        <div class="foot-socials" id="footSocials"></div>
       </div>
       <div class="fine">
         <span>© <span id="yr"></span> Hari's Carpets. All rights reserved.</span>
