@@ -774,3 +774,8 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 .folio-item figcaption { padding-top: 14px; }
 .folio-item h3 { font-family: var(--f-display); font-size: 18px; font-weight: 500; }
 .folio-item figcaption p { color: var(--ink-soft); font-size: 15px; margin-top: 4px; }
+
+/* Privacy and data-deletion sit in the fine print, where people look for them,
+   rather than in the main navigation where they would compete with the shop. */
+.site-footer .fine-links { display: flex; gap: 18px; flex-wrap: wrap; }
+.site-footer .fine-links a { display: inline; padding: 0; text-decoration: underline; }
