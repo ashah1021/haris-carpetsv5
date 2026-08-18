@@ -296,5 +296,65 @@ console.log("\nThe feed is never served from a stale browser cache:");
     res.headers.get("cache-control"));
 }
 
+/* The App ID, the App Secret and the access token are a few clicks apart in
+   Meta's dashboard, and the shop got the secret. Instagram's own answer to that
+   is "Cannot parse access token", which does not tell anybody what to go and
+   fetch instead. */
+console.log("\nThe wrong credential is recognised as the wrong credential:");
+{
+  const env = makeEnv({ token: "d5d1352c4c1e5320f5fcff8ed2a83ba3" });   // 32 hex = App Secret
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response("{}", { status: 200 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("an App Secret is named as the App Secret", /App Secret/.test(body.reason || ""), body.reason);
+  check("and it says what a real token looks like", /IGAA/.test(body.reason || ""));
+  check("and where to get one", /Generate access token/.test(body.reason || ""));
+  /* The secret is the more dangerous of the two to leak; there is no reason to
+     put it in Meta's request logs once we can see what it is. */
+  check("the secret is never sent to Instagram", calls === 0, `${calls} calls`);
+  check("and never appears in the answer",
+    !JSON.stringify(body).includes("d5d1352c4c1e5320f5fcff8ed2a83ba3"));
+}
+{
+  const env = makeEnv({ token: "1050505044878400" });   // the App ID
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response("{}", { status: 200 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("an App ID is named as the App ID", /App ID/.test(body.reason || ""), body.reason);
+  check("and is not sent either", calls === 0);
+}
+{
+  /* Anything else is Instagram's call. We only attach the hint to its refusal —
+     guessing "too short" ourselves would one day reject a good token because
+     the format had changed. */
+  const env = makeEnv({ token: "not-obviously-either-thing" });
+  let calls = 0;
+  globalThis.fetch = async () => { calls++;
+    return new Response(JSON.stringify({ error: { message: "Cannot parse access token" } }),
+      { status: 400 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("an unrecognisable string is still put to Instagram", calls === 1);
+  check("and its refusal comes with the hint attached",
+    /Cannot parse/.test(body.reason || "") && /IGAA/.test(body.reason || ""), body.reason);
+}
+{
+  /* a token pasted with a trailing newline still works */
+  const env = makeEnv({ token: "  IGAA" + "x".repeat(160) + "\n" });
+  instagram({ media: { data: [POST(1)] } });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a token pasted with stray whitespace is trimmed, not rejected",
+    body.live === true && body.posts.length === 1);
+}
+{
+  /* a plausible-looking token is still Instagram's call, not ours */
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
+  let calls = 0;
+  globalThis.fetch = async () => { calls++;
+    return new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 }); };
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a token-shaped token is sent to Instagram to judge", calls === 1);
+  check("and works", body.live === true);
+}
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

@@ -79,9 +79,41 @@ async function currentToken(env) {
 async function tokens(env) {
   const stored = await readJson(env, TOKEN_KEY);
   return [stored && stored.token, env.INSTAGRAM_TOKEN]
+    .map((t) => (typeof t === "string" ? t.trim() : ""))   /* a pasted value can carry a newline */
     .filter(Boolean)
     .filter((t, i, all) => all.indexOf(t) === i);
 }
+
+/* What this string is, if it is not a token.
+ *
+ * The App ID, the App Secret and the access token sit within a few clicks of
+ * each other in Meta's dashboard and only one of them works here. Recognising
+ * the wrong one and saying which it is beats sending it to Instagram and
+ * relaying "Cannot parse access token" back — which tells somebody nothing
+ * about what to go and fetch instead.
+ *
+ * It also keeps the App Secret out of Meta's request logs. That is the more
+ * dangerous of the two to leak, and there is no reason to transmit it once we
+ * can see what it is. */
+function wrongShape(token) {
+  if (/^[0-9a-f]{32}$/i.test(token)) {
+    return "that is the App Secret \u2014 32 characters of hex \u2014 not an access token";
+  }
+  if (/^\d{8,25}$/.test(token)) return "that is the App ID, not an access token";
+  /* Nothing else is refused here. Only those two are unmistakable; anything
+     else is Instagram's call, not ours, and a guess at "too short" would one
+     day reject a perfectly good token because the format had changed. */
+  return "";
+}
+
+/* A refusal reads better with a nudge attached when the string was never
+   token-shaped to begin with. A hint, not a rule — Instagram has already
+   decided; this only helps somebody act on its answer. */
+const looksLikeToken = (t) => /^IG[A-Za-z]/.test(t) && t.length >= 50;
+
+const TOKEN_HELP = " An Instagram access token is 150\u2013200 characters and starts IGAA or IGQ."
+  + " In the Meta app dashboard it is under Instagram \u2192 API setup, as"
+  + " \u201cGenerate access token\u201d beside the connected account.";
 
 /* Whatever Instagram said, trimmed, and with any echo of the token taken back
    out. Some APIs quote the offending value at you, and this one ends up on a
@@ -111,6 +143,12 @@ async function fetchFeed(env) {
   let last = "no reason given";
 
   for (const token of candidates) {
+    const wrong = wrongShape(token);
+    if (wrong) {
+      last = "The value set as the token isn't one \u2014 " + wrong + "." + TOKEN_HELP;
+      continue;   /* not sent anywhere: see wrongShape() */
+    }
+
     const url = `${GRAPH}/me/media?fields=${fields}&limit=12&access_token=${encodeURIComponent(token)}`;
 
     let res, body;
@@ -122,7 +160,8 @@ async function fetchFeed(env) {
       continue;
     }
     if (!res.ok || (body && body.error)) {
-      last = "Instagram refused the token — " + refusal(body, token);
+      last = "Instagram refused the token — " + refusal(body, token)
+        + (looksLikeToken(token) ? "" : "." + TOKEN_HELP);
       continue;   /* the stored one may be dead; the configured one may not be */
     }
 
