@@ -40,6 +40,10 @@ const UPLOADS = new Map();
 let LIVE_FEED = { posts: [], live: false };
 
 /* How the next enquiry is answered, and what the last one contained. */
+/* stand-ins for Instagram's own CDN, served from /assets by this stub */
+const LIVE_PICS = ["hero-living-room.jpg", "showroom.jpg", "stairs-wool-twist.jpg",
+  "velvet-living-room.jpg", "wood-herringbone-kitchen.jpg", "fitting-hands.jpg"];
+
 let ENQUIRY_MODE = "ok";
 let LAST_ENQUIRY = null;
 
@@ -131,10 +135,17 @@ createServer(async (req, res) => {
        what production sends rather than a simplified stand-in. */
     LIVE_FEED = { live: n > 0, ...(n > 0 ? {} : {
       configured: true, reason: "Instagram refused the token \u2014 Error validating access token" }),
+      /* Real files, not scontent.example. Instagram serves absolute URLs and
+         the grid handles both, but a picture that cannot load makes every
+         layout assertion here meaningless — and the tiles unreadable in a
+         screenshot. */
+      profile: n > 0 ? { username: "hariscarpets", followers: 1417, posts: 276 } : null,
       posts: Array.from({ length: n }, (_, i) => ({
-      image: `https://scontent.example/live-${i}.jpg`,
+      image: LIVE_PICS[i % LIVE_PICS.length],
       link: `https://www.instagram.com/p/live${i}/`,
-      caption: `Live post ${i}`,
+      caption: i % 3 === 0
+        ? `Wool twist fitted to the stairs and landing on a job in Hounslow — post ${i}`
+        : `Live post ${i}`,
     })) };
     return send(res, 200, JSON.stringify(LIVE_FEED));
   }

@@ -212,10 +212,29 @@ async function fetchFeed(env) {
       return { posts: null, configured: true,
         reason: "The token works, but the account returned no pictures we can show." };
     }
-    return { posts, configured: true, token };
+    return { posts, profile: await fetchProfile(env, token), configured: true, token };
   }
 
   return { posts: null, configured: true, reason: last };
+}
+
+/* The handle and the follower count, for the strip above the grid. Entirely
+   optional: followers_count is only returned for professional accounts and can
+   be refused on its own, so a failure here quietly costs the strip and never
+   the feed. */
+async function fetchProfile(env, token) {
+  try {
+    const proof = await proofFor(env, token);
+    const res = await fetch(`${GRAPH}/me?fields=username,followers_count,media_count`
+      + `&access_token=${encodeURIComponent(token)}` + (proof ? `&appsecret_proof=${proof}` : ""));
+    const body = await res.json();
+    if (!res.ok || body.error || !body.username) return null;
+    return {
+      username: String(body.username).slice(0, 40),
+      followers: Number(body.followers_count) || 0,
+      posts: Number(body.media_count) || 0,
+    };
+  } catch { return null; }
 }
 
 /**
@@ -226,22 +245,24 @@ export async function instagramRoute(request, env, ctx) {
   const cached = await readJson(env, FEED_KEY);
   const fresh = cached && Date.now() - (cached.at || 0) < FEED_TTL;
 
-  if (fresh) return reply({ posts: cached.posts, at: cached.at, live: true });
+  if (fresh) return reply({ posts: cached.posts, profile: cached.profile || null,
+    at: cached.at, live: true });
 
-  const { posts, reason, configured, token } = await fetchFeed(env);
+  const { posts, profile, reason, configured, token } = await fetchFeed(env);
   if (posts) {
-    const doc = { posts, at: Date.now() };
+    const doc = { posts, profile: profile || null, at: Date.now() };
     ctx.waitUntil(writeJson(env, FEED_KEY, doc));
     /* Whichever token just worked is the one to keep, so a dead stored token
        stops being tried the moment a good secret replaces it. */
     ctx.waitUntil(keepToken(env, token));
-    return reply({ posts, at: doc.at, live: true });
+    return reply({ posts, profile: doc.profile, at: doc.at, live: true });
   }
 
   /* Instagram said no. Hand back the last good feed if there is one — old
      posts are a far smaller problem than an empty section. */
   if (cached?.posts?.length) {
-    return reply({ posts: cached.posts, at: cached.at, live: true, stale: true });
+    return reply({ posts: cached.posts, profile: cached.profile || null,
+      at: cached.at, live: true, stale: true });
   }
 
   /* Nothing to show, so say why. "live: false" on its own cannot tell the
@@ -285,9 +306,9 @@ export async function instagramCron(env) {
     }
   }
 
-  const { posts, token: worked } = await fetchFeed(env);
+  const { posts, profile, token: worked } = await fetchFeed(env);
   if (posts) {
-    await writeJson(env, FEED_KEY, { posts, at: Date.now() });
+    await writeJson(env, FEED_KEY, { posts, profile: profile || null, at: Date.now() });
     await keepToken(env, worked);
   }
 }

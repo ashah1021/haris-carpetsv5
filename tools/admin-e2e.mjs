@@ -406,6 +406,10 @@ console.log("\nReplacing a photograph:");
 
 console.log("\nReviews and Instagram:");
 {
+  /* Set, not assumed. The stub keeps its feed for as long as it is running, so
+     a previous run — or somebody poking it by hand — would otherwise decide
+     whether these pass. */
+  await fetch(`${BASE}/_feed?n=0`);
   /* Clear both out first, so this passes whatever a previous run left in the
      stub — and so removing them is covered as well as adding them. */
   await go(`${BASE}/admin/`);
@@ -429,7 +433,7 @@ console.log("\nReviews and Instagram:");
   await go(`${BASE}/index.html#/`, 1600);
   check("neither section is there when nothing has been entered",
     (await page.locator(".reviews").count()) === 0
-    && (await page.locator(".ig-grid").count()) === 0);
+    && (await page.locator(".ig-wall").count()) === 0);
 
   await go(`${BASE}/admin/`);
   await page.locator("[data-tab='home']").click();
@@ -474,7 +478,7 @@ console.log("\nReviews and Instagram:");
   check("the tile links to the post", igHref?.includes("instagram.com/p/"), igHref);
   /* the grid sits at the foot of the page and its images are lazy, so they do
      not load until somebody scrolls to them — which is the point of lazy */
-  await page.evaluate(() => document.querySelector(".ig-grid").scrollIntoView());
+  await page.evaluate(() => document.querySelector(".ig-wall").scrollIntoView());
   await page.waitForTimeout(900);
   const igImg = await page.evaluate(() =>
     document.querySelector(".ig-tile img")?.naturalWidth > 0);
@@ -486,7 +490,7 @@ console.log("\nReviews and Instagram:");
   const order = await page.evaluate(() => {
     const names = [...document.querySelectorAll("#app > *")].map((el) => el.className || el.tagName);
     return { reviews: names.findIndex((n) => String(n).includes("reviews")),
-             insta: names.findIndex((n, i) => document.querySelectorAll("#app > *")[i].querySelector(".ig-grid")),
+             insta: names.findIndex((n, i) => document.querySelectorAll("#app > *")[i].querySelector(".ig-wall")),
              total: names.length };
   });
   check("Instagram is high on the page", order.insta > -1 && order.insta <= 3, `block ${order.insta}`);
@@ -589,7 +593,7 @@ console.log("\nSwitching a line off takes it off the page:");
   await page.waitForTimeout(900);
   await go(`${BASE}/index.html#/`, 1600);
   const heads = await page.evaluate(() =>
-    [...document.querySelectorAll(".ig-grid")].length
+    [...document.querySelectorAll(".ig-wall")].length
       ? [...document.querySelectorAll("section h2")].map((h) => h.textContent) : ["no grid"]);
   check("the heading is gone from the home page", !heads.some((h) => /Recent work/.test(h)),
     heads.join(" | "));
@@ -754,6 +758,53 @@ console.log("\nThe admin says whether the Instagram feed is working:");
   check("and what happens in the meantime", /pick below/.test(off));
   check("flagged, not green", (await page.locator("#igStatus").getAttribute("class")).includes("warn"));
   check("with no stray double full stop", !/\.\s*\./.test(off));
+  await fetch(`${BASE}/_feed?n=0`);
+}
+
+console.log("\nThe Instagram wall:");
+{
+  await fetch(`${BASE}/_feed?n=9`);
+  await go(`${BASE}/index.html#/`, 1800);
+  await page.evaluate(() => document.querySelector(".ig-wall")?.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(700);
+
+  check("nine posts are shown", (await page.locator(".ig-tile").count()) === 9);
+  check("every picture loads", (await page.evaluate(() =>
+    [...document.querySelectorAll(".ig-tile img")].filter((i) => i.naturalWidth > 0).length)) === 9);
+
+  /* The wall has to fill exactly: an orphan tile alone on a last row is what
+     eight equal squares gave, and it looked like a mistake. Nine with a 2x2
+     lead tiles cleanly at two, three and four columns. */
+  for (const [w, h, label] of [[1280, 900, "desktop"], [820, 900, "tablet"], [390, 844, "phone"]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(400);
+    const ragged = await page.evaluate(() => {
+      const wall = document.querySelector(".ig-wall");
+      const tiles = [...wall.children].map((t) => t.getBoundingClientRect());
+      return Math.round(wall.getBoundingClientRect().bottom - Math.max(...tiles.map((t) => t.bottom)));
+    });
+    check(`no hole in the wall on ${label}`.padEnd(30), ragged === 0, `${ragged}px short`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(300);
+
+  const lead = await page.evaluate(() => {
+    const t = document.querySelector(".ig-tile.lead").getBoundingClientRect();
+    const s = document.querySelectorAll(".ig-tile")[1].getBoundingClientRect();
+    return Math.round(t.width / s.width);
+  });
+  check("the newest post is the big one", lead === 2, `${lead}x`);
+  /* Hover does not exist on a phone, so the lead tile keeps its caption on
+     show — otherwise captions would be a desktop-only feature. */
+  check("and carries its caption without hovering", await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector(".ig-tile.lead .ig-cap")).opacity) === 1));
+  check("the others keep theirs until hovered", await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelectorAll(".ig-tile")[1].querySelector(".ig-cap")).opacity) === 0));
+
+  check("the account is named", /@hariscarpets/.test(await page.locator(".ig-who").textContent()));
+  check("with its follower count", /1.4k followers/.test(await page.locator(".ig-who").textContent()));
+  check("and the Follow button carries the Instagram mark",
+    (await page.locator(".ig-follow svg").count()) === 1);
   await fetch(`${BASE}/_feed?n=0`);
 }
 

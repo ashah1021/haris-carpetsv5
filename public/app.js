@@ -580,6 +580,7 @@ function reviewsStrip() {
    Chosen posts are the fallback, not the other way round: if the token has
    lapsed the shop still has something on the front page. */
 let IG_LIVE = null;
+let IG_PROFILE = null;   /* handle and counts, when Instagram will give them */
 
 async function loadInstagram() {
   try {
@@ -588,6 +589,7 @@ async function loadInstagram() {
     const body = await res.json();
     if (!body?.posts?.length) return false;
     IG_LIVE = body.posts;
+    IG_PROFILE = body.profile || null;
     return true;
   } catch { return false; }
 }
@@ -599,26 +601,49 @@ function instagramGrid() {
   const live = (IG_LIVE || []).filter((p) => p && p.image && p.link);
   const posts = live.length ? live : chosen;
   if (!posts.length) return "";
-  const tile = (p) => {
+
+  const tile = (p, i) => {
     const src = /^https?:\/\//.test(p.image) ? p.image : P(p.image);
-    const img = `<img src="${esc(src)}" alt="${esc(p.caption || "")}" loading="lazy" onerror="this.remove()">`;
+    const cap = String(p.caption || "").trim();
+    const inner = `<img src="${esc(src)}" alt="${esc(cap)}" loading="lazy" onerror="this.remove()">`
+      + (cap ? `<span class="ig-cap"><span>${esc(cap)}</span></span>` : "");
+    const cls = "ig-tile" + (i === 0 ? " lead" : "");
     return p.link
-      ? `<a class="ig-tile" href="${esc(p.link)}" target="_blank" rel="noopener">${img}</a>`
-      : `<span class="ig-tile">${img}</span>`;
+      ? `<a class="${cls}" href="${esc(p.link)}" target="_blank" rel="noopener">${inner}</a>`
+      : `<span class="${cls}">${inner}</span>`;
   };
+
   /* `g?.url`, not `g.url`. A live feed can arrive while the overlay fetch has
      failed, which leaves SITE.instagram undefined — and this line then threw
      inside the render and took the whole home page with it. */
-  const follow = g?.url
-    ? `<a class="btn btn-ghost btn-sm" href="${esc(g.url)}" target="_blank" rel="noopener">Follow us</a>`
+  const url = g?.url || (IG_PROFILE ? "https://www.instagram.com/" + IG_PROFILE.username + "/" : "");
+  const follow = url
+    ? `<a class="btn btn-ghost btn-sm ig-follow" href="${esc(url)}" target="_blank" rel="noopener">
+        ${socialIcon("instagram")}Follow us</a>`
     : "";
+
+  /* The account itself, when Instagram will tell us. A follower count is the
+     part that makes a feed read as a live account rather than a gallery. */
+  const n = (v) => (v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k"
+    : String(v));
+  const who = IG_PROFILE ? `
+    <div class="ig-who">
+      <b>@${esc(IG_PROFILE.username)}</b>
+      ${IG_PROFILE.posts ? `<span>${n(IG_PROFILE.posts)} posts</span>` : ""}
+      ${IG_PROFILE.followers ? `<span>${n(IG_PROFILE.followers)} followers</span>` : ""}
+    </div>` : "";
+
+  /* Nine, and the first one twice the size. Nine is not arbitrary: with the
+     lead tile spanning two columns and two rows, nine fills the wall exactly at
+     two, three and four columns, so no width leaves a hole or an orphan on a
+     row of its own. Eight equal squares gave seven and a straggler. */
   return `
   <section class="sec-alt"><div class="wrap">
     <div class="section-head"><div><span class="rule"></span>
       ${kicker("instaKicker", "On Instagram")}${head("instaHeading", "Recent work")}
-      ${para("instaText", HOME.instaText)}</div>
+      ${para("instaText", HOME.instaText)}${who}</div>
       ${follow}</div>
-    <div class="ig-grid">${posts.slice(0, 8).map(tile).join("")}</div>
+    <div class="ig-wall">${posts.slice(0, 9).map(tile).join("")}</div>
   </div></section>`;
 }
 

@@ -348,12 +348,40 @@ console.log("\nThe wrong credential is recognised as the wrong credential:");
 {
   /* a plausible-looking token is still Instagram's call, not ours */
   const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
-  let calls = 0;
-  globalThis.fetch = async () => { calls++;
+  const hit = [];
+  globalThis.fetch = async (url) => { hit.push(String(url));
     return new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 }); };
   const body = await (await ig.instagramRoute(req, env, ctx)).json();
-  check("a token-shaped token is sent to Instagram to judge", calls === 1);
+  check("a token-shaped token is sent to Instagram to judge",
+    hit.some((u) => u.includes("/me/media")));
   check("and works", body.live === true);
+}
+
+console.log("\nThe account behind the feed:");
+{
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
+  globalThis.fetch = async (url) => new Response(JSON.stringify(
+    String(url).includes("/me/media")
+      ? { data: [POST(1), POST(2)] }
+      : { username: "hariscarpets", followers_count: 1417, media_count: 276 }),
+    { status: 200 });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("the handle comes through", body.profile?.username === "hariscarpets");
+  check("with the follower and post counts",
+    body.profile?.followers === 1417 && body.profile?.posts === 276);
+  check("and is cached with the feed",
+    env.PHOTOS.read("admin/instagram-feed.json").profile.username === "hariscarpets");
+}
+{
+  /* followers_count is refused on its own for some account types. Losing the
+     strip is acceptable; losing the feed with it is not. */
+  const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
+  globalThis.fetch = async (url) => String(url).includes("/me/media")
+    ? new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 })
+    : new Response(JSON.stringify({ error: { message: "nope" } }), { status: 400 });
+  const body = await (await ig.instagramRoute(req, env, ctx)).json();
+  check("a refused profile still leaves the feed", body.live === true && body.posts.length === 1);
+  check("just without the account strip", body.profile === null);
 }
 
 /* The Meta app has "Require app secret" switched on, which makes every call

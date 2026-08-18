@@ -760,10 +760,47 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
   display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.ig-tile { display: block; aspect-ratio: 1; overflow: hidden; background: var(--off); }
-.ig-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
-.ig-tile:hover img { transform: scale(1.06); }
+/* THE INSTAGRAM WALL
+   Nine posts with the newest one at twice the size. Nine is not arbitrary: with
+   the lead tile spanning two columns and two rows, nine fills the wall exactly
+   at two, three and four columns — 4 + 8 cells, 2 + 6, 4 + 4 + ... — so no
+   screen width leaves a hole in it or an orphan tile on a row of its own. The
+   previous eight equal squares gave seven across and a straggler underneath. */
+.ig-wall { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.ig-tile {
+  display: block; position: relative; aspect-ratio: 1; overflow: hidden;
+  background: var(--off); text-decoration: none;
+}
+.ig-tile.lead { grid-column: span 2; grid-row: span 2; }
+.ig-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+.ig-tile:hover img, .ig-tile:focus-visible img { transform: scale(1.05); }
+.ig-tile:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* The caption, over the foot of the picture. Hidden until the tile is hovered
+   or focused, except on the lead tile where there is room for it to live. */
+.ig-cap {
+  position: absolute; inset: auto 0 0 0; padding: 34px 12px 11px; color: #fff;
+  font-size: 13.5px; line-height: 1.45; opacity: 0; transition: opacity .28s ease;
+  background: linear-gradient(0deg, rgba(10,22,42,.88) 0%, rgba(10,22,42,.55) 55%, transparent 100%);
+}
+.ig-cap > span {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ig-tile:hover .ig-cap, .ig-tile:focus-visible .ig-cap { opacity: 1; }
+/* Touch has no hover, so the biggest one keeps its caption on show — otherwise
+   captions would be a desktop-only feature nobody on a phone ever sees. */
+.ig-tile.lead .ig-cap { opacity: 1; font-size: 15px; padding: 46px 16px 15px; }
+.ig-tile.lead .ig-cap > span { -webkit-line-clamp: 3; }
+
+/* the account, so it reads as a live feed rather than a gallery of stills */
+.ig-who { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-top: 12px;
+  font-size: 14.5px; color: var(--muted); }
+.ig-who b { font-family: var(--f-display); font-size: 16px; font-weight: 500; color: var(--blue); }
+.ig-follow { display: inline-flex; align-items: center; gap: 8px; }
+.ig-follow .si { width: 1.1em; height: 1.1em; }
+
+@media (max-width: 900px) { .ig-wall { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .ig-wall { grid-template-columns: repeat(2, 1fr); gap: 7px; } }
 
 /* PORTFOLIO — bigger than the Instagram tiles on purpose. These are the shop's
    own jobs shot properly, so they get room to be looked at rather than being
