@@ -544,6 +544,7 @@
     <h3 class="mg-photo-head">Instagram</h3>
     <p class="mg-lede">Pick your best posts: upload the picture and paste the link to the post.
       Eight fit the row neatly. Leave it empty and the section doesn't appear.</p>
+    <p class="mg-feed" id="igStatus">Checking the live feed\u2026</p>
     <label class="mg-field" style="max-width:420px"><span>Your Instagram page</span>
       <input type="text" data-ig="url" value="${esc(ig.url)}" placeholder="https://www.instagram.com/hariscarpets/"></label>
     <div class="mg-photos" style="margin-top:18px">
@@ -617,6 +618,43 @@
       : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()
       : viewHome();
+    if (tab === "home") showFeedStatus();
+  }
+
+  /* Whether the live Instagram feed is actually working, in words, on the page
+     where somebody would go looking. Without this the only way to tell is to
+     type an API address into a browser and read raw JSON, which is not a thing
+     to ask of a carpet shop — and "the grid is empty" has four causes that are
+     fixed in four different places. The token is never in this answer. */
+  async function showFeedStatus() {
+    const el = $("#igStatus");
+    if (!el) return;
+    const set = (text, kind) => {
+      if (!$("#igStatus")) return;          // tab changed while we were waiting
+      $("#igStatus").textContent = text;
+      $("#igStatus").className = "mg-feed " + kind;
+    };
+    try {
+      const res = await fetch("../api/instagram", { headers: { accept: "application/json" } });
+      const body = await res.json();
+      if (body.posts && body.posts.length) {
+        set(`Live feed working \u2014 ${body.posts.length} post${
+          body.posts.length === 1 ? "" : "s"} straight from Instagram${
+          body.stale ? ", though Instagram is not answering just now so these are the last ones we saw" : ""
+        }. The posts you pick below are only used if the feed stops.`, "ok");
+        return;
+      }
+      if (body.configured === false) {
+        set("Live feed off \u2014 no access token has reached the site yet. Until one does, "
+          + "the section shows whichever posts you pick below.", "warn");
+        return;
+      }
+      const why = String(body.reason || "the site couldn't get any posts from Instagram").trim();
+      set("Live feed not working \u2014 " + why + (/[.!?]$/.test(why) ? "" : ".")
+        + " The section shows whichever posts you pick below in the meantime.", "warn");
+    } catch {
+      set("Couldn't check the live feed just now.", "warn");
+    }
   }
 
   /* ------------------------------------------------------------------ saving */

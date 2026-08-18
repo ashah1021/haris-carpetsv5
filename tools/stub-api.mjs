@@ -126,7 +126,12 @@ createServer(async (req, res) => {
   /* test hook: /_feed?n=3 turns the live feed on, ?n=0 turns it off */
   if (p === "/_feed") {
     const n = Number(url.searchParams.get("n") || 0);
-    LIVE_FEED = { live: n > 0, posts: Array.from({ length: n }, (_, i) => ({
+    /* n=0 answers in the shape the Worker really uses when it has nothing —
+       diagnostics and all — so the admin's status line is exercised against
+       what production sends rather than a simplified stand-in. */
+    LIVE_FEED = { live: n > 0, ...(n > 0 ? {} : {
+      configured: true, reason: "Instagram refused the token \u2014 Error validating access token" }),
+      posts: Array.from({ length: n }, (_, i) => ({
       image: `https://scontent.example/live-${i}.jpg`,
       link: `https://www.instagram.com/p/live${i}/`,
       caption: `Live post ${i}`,

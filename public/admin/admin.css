@@ -210,3 +210,14 @@ body.admin { background: var(--off); }
   padding: 9px 11px; border: 1px solid var(--line); border-radius: 2px;
   background: var(--paper); font: inherit; font-size: 14.5px; color: var(--ink); width: 100%;
 }
+
+/* ---- live feed status ----
+   Reads as a sentence, not a badge: the person reading it needs to know what to
+   do next, and "off" on its own does not say that. */
+.mg-feed {
+  margin: 14px 0 0; padding: 11px 14px; border-radius: 3px; font-size: 14.5px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--muted);
+  max-width: 620px;
+}
+.mg-feed.ok { border-color: #1f7a4d; background: #eaf6ef; color: #14532d; }
+.mg-feed.warn { border-color: #b06f00; background: #fdf3e0; color: #7a4a00; }

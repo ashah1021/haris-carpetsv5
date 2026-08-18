@@ -730,6 +730,33 @@ console.log("\nAn enquiry gets as far as the wire:");
   await fetch(`${BASE}/_enquiry?mode=ok`);
 }
 
+/* Whether the live feed is working has to be readable by the shop, not by
+   somebody willing to type an API address into a browser and read raw JSON.
+   "The grid is empty" has four causes fixed in four different places. */
+console.log("\nThe admin says whether the Instagram feed is working:");
+{
+  await fetch(`${BASE}/_feed?n=3`);
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(1400);
+  const on = await page.locator("#igStatus").textContent();
+  check("a working feed says so", /working/i.test(on), on.slice(0, 60));
+  check("and how many posts", /3 posts/.test(on));
+  check("in green", (await page.locator("#igStatus").getAttribute("class")).includes("ok"));
+
+  await fetch(`${BASE}/_feed?n=0`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(300);
+  await page.locator("[data-tab='home']").click();
+  await page.waitForTimeout(1400);
+  const off = await page.locator("#igStatus").textContent();
+  check("a broken feed says why", /refused the token/i.test(off), off.slice(0, 80));
+  check("and what happens in the meantime", /pick below/.test(off));
+  check("flagged, not green", (await page.locator("#igStatus").getAttribute("class")).includes("warn"));
+  check("with no stray double full stop", !/\.\s*\./.test(off));
+  await fetch(`${BASE}/_feed?n=0`);
+}
+
 console.log("\nPhoto captions:");
 {
   await go(`${BASE}/admin/`);
