@@ -3,14 +3,12 @@
 Parked deliberately, not forgotten.
 
 ## Before handover
-- **Set `RESEND_KEY`, or the contact form does not work.** Open the Resend
-  account using `sales@hariscarpets.co.uk` — its free test domain will only
-  deliver to the address the account was opened with, which is the one address
-  these need to reach, so no DNS is needed. Then
-  `npx wrangler secret put RESEND_KEY` **and redeploy**: a Worker cannot see a
-  secret added since its last deploy. Until it is set the form tells visitors it
-  is not switched on and offers them a `mailto:` and the phone number — it does
-  not pretend. See the enquiry section of `docs/admin.md`.
+- **Check the Enquiries tab.** Nothing is emailed out when somebody sends the
+  form: the enquiry lands in the admin, on the first tab, with a count of the
+  unread ones on the tab itself. Nothing tells the shop it is there, so it needs
+  looking at daily. There is no secret to set and no account to open — see the
+  enquiry section of `docs/admin.md`, including how to add an emailed copy later
+  if the tab alone turns out not to be enough.
 - **Rotate the R2 API key pair.** The credentials were pasted into a chat
   transcript, so treat them as burned. Cloudflare dashboard → R2 → Manage API
   tokens. Then update `~/.config/rclone/rclone.conf` and any local env vars.

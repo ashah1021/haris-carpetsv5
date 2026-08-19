@@ -623,5 +623,71 @@ export async function adminRoutes(request, env, ctx) {
   if (pathname === "/api/admin/upload" && request.method === "POST") {
     return handleUpload(request, env);
   }
+  /* The enquiry inbox. Every one of these is behind identify() by construction
+     — they sit below the check above — because each is somebody's name, email
+     and phone number. There is deliberately no public route to any of it. */
+  if (pathname === "/api/admin/enquiries") {
+    if (request.method === "GET") return handleListEnquiries(env);
+    if (request.method === "POST") return handleMarkEnquiry(request, env);
+    if (request.method === "DELETE") return handleDeleteEnquiry(request, env);
+  }
   return json({ error: "not found" }, 404);
+}
+
+/* Where the enquiry route puts them. The same string in two files would drift;
+   this one is the reader and worker-enquiry.js is the writer. */
+const INBOX_PREFIX = "admin/enquiries/";
+
+/* An enquiry's own key, checked before it is used to read or delete anything.
+   Without this, "?id=../site.json" would delete the shop's entire content. */
+const INBOX_KEY = /^[0-9A-Za-z-]{1,80}\.json$/;
+const inboxKey = (url) => {
+  const id = new URL(url).searchParams.get("id") || "";
+  return INBOX_KEY.test(id) ? INBOX_PREFIX + id : "";
+};
+
+async function handleListEnquiries(env) {
+  let objects = [];
+  try {
+    const out = await env.PHOTOS.list({ prefix: INBOX_PREFIX, limit: 200 });
+    objects = out?.objects || [];
+  } catch { return json({ enquiries: [] }); }
+
+  /* Newest first — an enquiry from this morning matters more than one from
+     last month, and the keys sort by time because they start with one. */
+  objects.sort((a, b) => (a.key < b.key ? 1 : -1));
+
+  const enquiries = [];
+  for (const obj of objects) {
+    try {
+      const got = await env.PHOTOS.get(obj.key);
+      if (!got) continue;
+      const e = JSON.parse(await got.text());
+      enquiries.push({ ...e, id: obj.key.slice(INBOX_PREFIX.length) });
+    } catch { /* one unreadable enquiry must not hide the rest */ }
+  }
+  return json({ enquiries, unread: enquiries.filter((e) => !e.read).length });
+}
+
+async function handleMarkEnquiry(request, env) {
+  const key = inboxKey(request.url);
+  if (!key) return json({ error: "not found" }, 404);
+  try {
+    const got = await env.PHOTOS.get(key);
+    if (!got) return json({ error: "not found" }, 404);
+    const e = JSON.parse(await got.text());
+    e.read = new URL(request.url).searchParams.get("read") !== "0";
+    await env.PHOTOS.put(key, JSON.stringify(e),
+      { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true, read: e.read });
+  } catch { return json({ error: "could not update that" }, 500); }
+}
+
+async function handleDeleteEnquiry(request, env) {
+  const key = inboxKey(request.url);
+  if (!key) return json({ error: "not found" }, 404);
+  try {
+    await env.PHOTOS.delete(key);
+    return json({ ok: true });
+  } catch { return json({ error: "could not delete that" }, 500); }
 }

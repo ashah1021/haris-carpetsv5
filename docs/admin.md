@@ -46,10 +46,11 @@ Everything written on the site, and every photograph. By tab:
 
 | Tab | What is in it |
 |---|---|
+| Enquiries | everything sent through the contact form, newest first, with a Reply button — and the form's own wording |
 | Shop details | hours, phone, email, address, areas covered, the line under the logo, the footer paragraph, an optional notice across the home page, the Google Maps link, the map embed, and the four social media pages |
 | About us | the small label, the opening line and the body, split into paragraphs on blank lines |
 | Home page | every word on the front page — the banner heading, paragraph and both buttons, all four claims in the strip, every section heading, small label, paragraph and button, the four service cards, Google reviews and Instagram |
-| Other pages | headings, paragraphs and buttons on Collections, Visit us and Contact us, the enquiry form's heading and send button, plus the description under each flooring type |
+| Other pages | headings, paragraphs and buttons on Collections, Visit us and Contact us, plus the description under each flooring type |
 | Portfolio | the wording on that page, and the jobs themselves — a photograph, a heading and a description each |
 | Collections | hide, rename, the collection's own description, and its shades |
 | Photos | every picture, and a caption for each — including the three that make up the home page banner |
@@ -132,19 +133,23 @@ real shop's website are a lie to customers and very hard to walk back.
 
 ## The enquiry form
 
-Enquiries are emailed to whatever `ENQUIRY_TO` is set to in `wrangler.jsonc`,
-currently `sales@hariscarpets.co.uk`. The visitor's own address goes in
-`Reply-To`, so hitting Reply in the shop's mail client answers them directly.
+Everything sent through the form lands in the **Enquiries** tab, newest first,
+with an unread count on the tab itself. **Reply** opens the shop's own email
+already addressed to the customer, with what they wrote quoted underneath.
 
-**It needs one secret and will refuse to work without it:**
+Nothing is emailed out automatically, so the tab is worth a look each day.
+There is no notification and no third party: the enquiry goes straight into the
+shop's own R2 bucket and no one else's system ever sees the customer's details.
 
-    npx wrangler secret put RESEND_KEY
+**No secret to set and nothing to configure.** Writing the enquiry to the bucket
+*is* the delivery. If that write fails the visitor is told plainly that it did
+not send and is offered a `mailto:` and the phone number — it never pretends to
+have sent anything.
 
-then **redeploy** — a Worker cannot see a secret added since its last deploy.
-Until then the form says it is not switched on and offers the visitor a
-`mailto:` link and the phone number. It never pretends to have sent anything.
+The wording of the form — its heading, the send button and the thank-you — is
+edited on the same tab, under the enquiries.
 
-### Why Resend and not Cloudflare
+### Why there is no email provider
 
 Cloudflare's own email sending — both the `send_email` binding and the Email
 Service — requires the sending domain to be a zone in the Cloudflare account.
@@ -153,27 +158,25 @@ this project has hit that same wall: Cloudflare Access could not guard `/admin`
 for the same reason, and WAF rate-limiting rules are zone-scoped too. All three
 become available on the day the domain moves.
 
-Open the Resend account **using `sales@hariscarpets.co.uk`**. Resend's free
-test domain will only deliver to the address the account was opened with, which
-is exactly and only where these need to go, so nothing has to be set up in DNS.
+Every third-party alternative means a monthly account, a domain to verify, and a
+customer's name, email and phone number passing through somebody else's system.
+For a shop taking a handful of enquiries a week, a tab that carries a count is a
+smaller thing to own and a smaller thing to explain in the privacy notice.
 
-Once the domain is on Cloudflare: verify it in Resend, then change
-`ENQUIRY_FROM` in `wrangler.jsonc` to an address at that domain. No code
-changes. Until then, leave it on `onboarding@resend.dev` — putting the shop's
-own domain in `From:` while its SPF and DKIM live at Wix is the classic
-self-spoof pattern and the mail gets junked.
+**If a copy by email is wanted later**, set `RESEND_KEY` (and `ENQUIRY_TO` /
+`ENQUIRY_FROM` in `wrangler.jsonc`) and redeploy — a Worker cannot see a secret
+added since its last deploy. The Worker will then send a copy of each enquiry as
+well as storing it. A failed send changes nothing the visitor sees, because the
+enquiry is already where the shop reads it. Leave the key unset and no mail is
+attempted at all.
 
-> Careful with the two domains: the mailbox is `sales@hariscarpets.co.uk`, no
-> hyphen. The website is `haris-carpets.co.uk`, with one. Verifying one does not
-> authenticate the other.
+### How long they are kept
 
-### Nothing is lost if the email fails
-
-Every enquiry is written to R2 *before* it is sent. If Resend is unreachable the
-visitor is told plainly that it is queued, and a cron every half hour drains the
-backlog. Copies are deleted after 30 days (90 if they never sent) — they are
-names, emails and phone numbers belonging to members of the public, so the
-bucket is a safety net, not an archive. The shop's mailbox is the record.
+Enquiries are deleted twelve months after they arrive, by a cron in the Worker.
+They are names, emails, phone numbers and messages belonging to members of the
+public, and twelve months is what `public/privacy.html` promises — **if that
+number moves here, it has to move there too, or the privacy notice stops being
+true.** Deleting one from the tab deletes it immediately and for good.
 
 ## Instagram
 
@@ -420,6 +423,13 @@ need this — but it is the quickest way to be certain.
     node tools/stub-api.mjs 8896 anon &
     node tools/stub-api.mjs 8897 both &
     node tools/admin-e2e.mjs       # the page, and the shop when the API is down
+
+    python3 -m http.server 8899 -d public &
+    node tools/smoke-test.mjs      # the public pages, on a server with no API at all
+
+`smoke-test.mjs` wants a *plain* file server, not the stub: half of what it
+checks is what a visitor sees when nothing behind the site is answering, and the
+stub answers.
 
 `admin.test.mjs` generates a real RSA key pair and signs real tokens, so the
 verification path runs for real: a forged signature, an expired token, a token

@@ -83,29 +83,55 @@ console.log("\nenquiry form\n");
 
 console.log("A real enquiry reaches the shop:");
 {
-  const env = makeEnv();
+  const env = makeEnv({ key: null });   // no email set up: the normal state now
   const calls = resend();
   const res = await eq.enquiryRoute(post(GOOD), env, ctx);
   const body = await res.json();
-  check("the visitor is told it sent", res.status === 200 && body.ok === true && !body.queued);
-  check("exactly one email is sent", calls.length === 1, `${calls.length} calls`);
+  check("the visitor is thanked", res.status === 200 && body.ok === true);
+  check("with no third party involved", calls.length === 0, `${calls.length} calls`);
+  const keys = [...env.PHOTOS._store.keys()];
+  check("and it is in the shop's inbox", keys.length === 1 && keys[0].startsWith("admin/enquiries/"),
+    keys[0]);
+  const kept = JSON.parse(env.PHOTOS._store.get(keys[0]).body);
+  check("with their name", kept.name === "Jo Bloggs");
+  check("their email", kept.email === "jo@example.com");
+  check("their phone number", kept.phone === "07700 900123");
+  check("what they wrote", kept.message.includes("Stairs and landing"));
+  check("and marked unread, so it shows as new", kept.read === false);
+}
+
+console.log("\nIf the enquiry cannot be stored, nobody is thanked:");
+{
+  /* The write is the delivery now. Failing it means the enquiry reached nobody,
+     and saying "thanks" would be a lie. */
+  const env = makeEnv({ key: null, breakPut: true });
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  const body = await res.json();
+  check("the visitor is told it did not send", res.status === 502 && body.ok === false);
+  check("and offered another way through", body.fallback === true);
+}
+
+console.log("\nEmail is a copy, not the delivery:");
+{
+  const env = makeEnv();   // RESEND_KEY set
+  const calls = resend();
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("the visitor is thanked", (await res.json()).ok === true);
+  check("a copy is emailed too", calls.length === 1);
   check("to the shop", calls[0]?.body.to[0] === "sales@hariscarpets.co.uk");
-  check("from an address we are allowed to send from",
-    calls[0]?.body.from.includes("resend.dev"), calls[0]?.body.from);
-  check("replying goes back to the customer", calls[0]?.body.reply_to === "jo@example.com");
-  check("the subject says who and what",
-    /Carpets/.test(calls[0]?.body.subject) && /Jo Bloggs/.test(calls[0]?.body.subject),
-    calls[0]?.body.subject);
-  check("their message is in it", calls[0]?.body.text.includes("Stairs and landing"));
-  check("and their phone number", calls[0]?.body.text.includes("07700 900123"));
-  check("the key is sent as a bearer token",
-    calls[0]?.init.headers.authorization === "Bearer re_test_key");
-  check("and never comes back in the reply",
-    !JSON.stringify(body).includes("re_test_key"));
-  check("nothing is left in the pending queue",
-    [...env.PHOTOS._store.keys()].filter((k) => k.includes("pending")).length === 0);
-  check("a copy is kept in case the shop loses the email",
-    [...env.PHOTOS._store.keys()].some((k) => k.includes("sent/")));
+  check("replying reaches the customer", calls[0]?.body.reply_to === "jo@example.com");
+  check("and it is still in the inbox regardless",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+}
+
+console.log("\nA failed email copy is not the visitor's problem:");
+{
+  const env = makeEnv();
+  resend({ status: 500 });
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("they are still thanked", (await res.json()).ok === true);
+  check("because the enquiry is already where the shop reads it",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
 }
 
 console.log("\nSpam is dropped without telling it why:");
@@ -188,67 +214,18 @@ console.log("\nToo many, too fast:");
     (await eq.enquiryRoute(post(GOOD), budget, ctx)).status === 429);
 }
 
-console.log("\nWhen the email provider is down, nothing is lost:");
+console.log("\nEnquiries do not pile up for ever:");
 {
-  const env = makeEnv();
-  resend({ status: 500 });
-  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
-  const body = await res.json();
-  check("the visitor is told we have it", res.status === 200 && body.ok === true);
-  check("and told plainly that it is queued", body.queued === true);
-  const pending = [...env.PHOTOS._store.keys()].filter((k) => k.includes("pending/"));
-  check("the enquiry is in the bucket", pending.length === 1, pending[0]);
-
-  /* and the cron gets it out again */
-  const calls = resend({ status: 200 });
-  await eq.enquiryCron(env);
-  check("the retry sends it", calls.length === 1);
-  check("their message survived the round trip",
-    calls[0]?.body.text.includes("Stairs and landing"));
-  check("and it leaves the queue",
-    [...env.PHOTOS._store.keys()].filter((k) => k.includes("pending/")).length === 0);
-}
-
-console.log("\nWhen it can be neither sent nor stored:");
-{
-  const env = makeEnv({ breakPut: true });
-  resend({ throws: true });
-  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
-  const body = await res.json();
-  /* The one case where the visitor must not be thanked. */
-  check("the visitor is not thanked", res.status === 502 && body.ok === false);
-  check("and is offered another way through", body.fallback === true);
-}
-
-console.log("\nBefore the key is set:");
-{
-  const env = makeEnv({ key: null });
-  const calls = resend();
-  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
-  const body = await res.json();
-  check("it refuses rather than pretending", res.status === 503 && body.ok === false);
-  check("and says the form is not switched on", /switched on/i.test(body.error), body.error);
-  check("the visitor is offered another way through", body.fallback === true);
-  check("nothing was sent anywhere", calls.length === 0);
-  /* Deliberately not banked. A message filed in a bucket nobody has been told
-     to look in is a customer who thinks they have been in touch and has not. */
-  check("and nothing is quietly stored for nobody to read", env.PHOTOS._store.size === 0);
-}
-
-console.log("\nOld copies do not pile up:");
-{
-  const old = new Date(Date.now() - 40 * DAY);
-  const recent = new Date();
+  const DAY = 86400 * 1000;
   const env = makeEnv({ objects: {
-    "admin/enquiries/sent/old.json": { body: JSON.stringify(GOOD), uploaded: old },
-    "admin/enquiries/sent/new.json": { body: JSON.stringify(GOOD), uploaded: recent },
+    "admin/enquiries/old.json": { body: JSON.stringify(GOOD), uploaded: new Date(Date.now() - 400 * DAY) },
+    "admin/enquiries/recent.json": { body: JSON.stringify(GOOD), uploaded: new Date() },
   } });
-  resend();
   await eq.enquiryCron(env);
-  check("a sent copy past its keep-by is deleted",
-    !env.PHOTOS._store.has("admin/enquiries/sent/old.json"));
-  check("a recent one is left alone",
-    env.PHOTOS._store.has("admin/enquiries/sent/new.json"));
+  /* Twelve months is a promise made on the privacy page. If this number moves,
+     that page has to move with it or it stops being true. */
+  check("one past twelve months is deleted", !env.PHOTOS._store.has("admin/enquiries/old.json"));
+  check("a recent one is left alone", env.PHOTOS._store.has("admin/enquiries/recent.json"));
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

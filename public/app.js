@@ -1337,9 +1337,8 @@ function wireEnquiry() {
 
     if (ok) {
       form.innerHTML = `<h3 style="margin-bottom:8px">Thanks — we'll be in touch.</h3>
-        <p class="desc">${body.queued
-          ? "Your message is safely with us and on its way to the shop."
-          : "We've got your message. We usually come back the same day, or the next working day."}</p>`;
+        <p class="desc">${esc(say("formThanks",
+          "We've got your message. We usually come back the same day, or the next working day."))}</p>`;
       return;
     }
 

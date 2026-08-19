@@ -32,6 +32,7 @@
   let dirty = false;
   let tab = "shop";
   let openRange = null;   // which collection's shades are being edited
+  let INBOX = null;       // the enquiries, once fetched
 
   /* [key, label, current, big?, optional?]
      - `current` is what the site shows while the box is empty, so the faint
@@ -133,8 +134,15 @@
      () => "No pressure, no obligation", false, true],
     ["enquireHeading", "Contact us heading", () => "Get in touch", false, true],
     ["enquireText", "Contact us paragraph", () => PAGES.enquireText, true, true],
-    ["formHeading", "Enquiry form — heading", () => "Submit an enquiry"],
-    ["formCta", "Enquiry form — send button", () => "Send enquiry"],
+  ];
+
+  /* The form's own wording. Where enquiries go is not a box: they go to the
+     Enquiries tab, and that is the whole point of the arrangement. */
+  const FORM_FIELDS = [
+    ["formHeading", "Form heading", () => "Submit an enquiry"],
+    ["formCta", "Send button", () => "Send enquiry"],
+    ["formThanks", "What they see after sending",
+     () => "We've got your message. We usually come back the same day, or the next working day."],
   ];
 
   const PORTFOLIO_FIELDS = [
@@ -153,6 +161,7 @@
   ];
 
   const TABS = [
+    ["enquiries", "Enquiries"],
     ["shop", "Shop details"],
     ["about", "About us"],
     ["home", "Home page"],
@@ -604,13 +613,104 @@
     </div>`;
   }
 
+  /* ------------------------------------------------------------- enquiries */
+
+  const when = (iso) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+      + " at " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  /* Replying opens the shop's own mail client, addressed to the customer, with
+     what they wrote quoted underneath. No mail is sent from the website, so
+     there is nothing to configure and nothing to land in a spam folder. */
+  function replyLink(e) {
+    const subject = "Re: your enquiry — Hari's Carpets";
+    const body = "\n\n\n---\nYou wrote on " + when(e.at) + ":\n"
+      + String(e.message || "").split("\n").map((l) => "> " + l).join("\n");
+    return `mailto:${encodeURIComponent(e.email)}?subject=${encodeURIComponent(subject)}`
+      + `&body=${encodeURIComponent(body)}`;
+  }
+
+  function viewEnquiries() {
+    if (!INBOX) return `<h2>Enquiries</h2><p class="mg-loading">Loading…</p>`;
+    if (!INBOX.length) {
+      return `
+      <h2>Enquiries</h2>
+      <p class="mg-lede">Nothing yet. Everything sent through the Contact us form lands
+        here, newest first.</p>
+      ${fields(FORM_FIELDS)}`;
+    }
+    return `
+    <h2>Enquiries</h2>
+    <p class="mg-lede">Everything sent through the Contact us form, newest first.
+      <strong>Reply</strong> opens your own email with their address already in it.
+      Nothing is emailed to you automatically, so it is worth looking here daily.
+      Enquiries you leave are deleted after twelve months.</p>
+    <div class="mg-enq">
+      ${INBOX.map((e) => `
+        <article class="mg-enq-item${e.read ? "" : " unread"}">
+          <div class="mg-enq-head">
+            <b>${esc(e.name || "No name")}</b>
+            <span class="mg-meta">${esc(when(e.at))}</span>
+            ${e.topic ? `<span class="mg-badge">${esc(e.topic)}</span>` : ""}
+            ${e.read ? "" : `<span class="mg-badge new">New</span>`}
+          </div>
+          <div class="mg-enq-who">
+            <a href="mailto:${esc(e.email)}">${esc(e.email)}</a>
+            ${e.phone ? `<a href="tel:${esc(e.phone.replace(/[^\d+]/g, ""))}">${esc(e.phone)}</a>` : ""}
+          </div>
+          ${e.message ? `<p class="mg-enq-msg">${esc(e.message)}</p>`
+            : `<p class="mg-enq-msg mg-meta">(no message)</p>`}
+          <div class="mg-enq-acts">
+            <a class="btn btn-solid btn-sm" href="${esc(replyLink(e))}">Reply</a>
+            <button class="btn btn-ghost btn-sm" data-enqread="${esc(e.id)}"
+              >${e.read ? "Mark unread" : "Mark read"}</button>
+            <button class="linkish" data-enqdrop="${esc(e.id)}">Delete</button>
+          </div>
+        </article>`).join("")}
+    </div>
+
+    <h3 class="mg-photo-head">The form itself</h3>
+    ${fields(FORM_FIELDS)}`;
+  }
+
+  async function loadInbox() {
+    try {
+      const res = await fetch("../api/admin/enquiries", { headers: { accept: "application/json" } });
+      const body = await res.json();
+      INBOX = body.enquiries || [];
+    } catch { INBOX = []; }
+    paintUnread();
+    if (tab === "enquiries") render();
+  }
+
+  /* The count sits on the tab itself, on every screen. Nothing arrives to tell
+     the shop an enquiry is waiting — this is the only thing that does. */
+  function paintUnread() {
+    const n = (INBOX || []).filter((e) => !e.read).length;
+    const el = $("[data-tab='enquiries']");
+    if (!el) return;
+    el.innerHTML = "Enquiries" + (n ? ` <span class="mg-count">${n}</span>` : "");
+  }
+
+  async function enquiryAction(id, method, extra = "") {
+    try {
+      await fetch(`../api/admin/enquiries?id=${encodeURIComponent(id)}${extra}`, { method });
+    } catch { /* the reload below will show what actually happened */ }
+    await loadInbox();
+    render();
+  }
+
   /* ------------------------------------------------------------------ render */
 
   function render() {
     $("#tabs").innerHTML = TABS.map(([id, label]) =>
       `<button class="mg-tab${tab === id ? " on" : ""}" data-tab="${id}">${esc(label)}</button>`).join("");
     $("#panel").innerHTML =
-      tab === "shop" ? viewShop()
+      tab === "enquiries" ? viewEnquiries()
+      : tab === "shop" ? viewShop()
       : tab === "about" ? viewAbout()
       : tab === "pages" ? viewPages()
       : tab === "portfolio" ? viewPortfolio()
@@ -619,6 +719,8 @@
       : tab === "styles" ? viewStyles()
       : viewHome();
     if (tab === "home") showFeedStatus();
+    paintUnread();
+    if (INBOX === null) loadInbox();
   }
 
   /* Whether the live Instagram feed is actually working, in words, on the page
@@ -955,6 +1057,17 @@
       DOC.instagram.posts.splice(Number(drop.dataset.igdrop), 1);
       mark();
       return render();
+    }
+
+    const enqRead = t.closest("[data-enqread]");
+    if (enqRead) {
+      const e = (INBOX || []).find((x) => x.id === enqRead.dataset.enqread);
+      return enquiryAction(enqRead.dataset.enqread, "POST", e && e.read ? "&read=0" : "");
+    }
+    const enqDrop = t.closest("[data-enqdrop]");
+    if (enqDrop) {
+      if (!confirm("Delete this enquiry? It cannot be brought back.")) return;
+      return enquiryAction(enqDrop.dataset.enqdrop, "DELETE");
     }
 
     const folioDrop = t.closest("[data-foliodrop]");

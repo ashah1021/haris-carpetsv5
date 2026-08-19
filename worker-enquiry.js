@@ -1,53 +1,42 @@
 /**
- * Hari's Carpets — the enquiry form, actually delivered.
+ * Hari's Carpets — the enquiry form.
  *
- * Until this existed the form on the Contact us page printed "Demo form — not
- * connected yet" to real visitors and threw every submission away.
+ * Until this existed the form printed "Demo form — not connected yet" to real
+ * visitors and threw every submission away.
  *
- * WHY NOT CLOUDFLARE'S OWN EMAIL
- * This is the third time this repo has run into "Cloudflare's thing only works
- * on a zone you own", so it is worth writing down. Cloudflare Access could not
- * guard the admin because the site is on workers.dev; WAF rate-limiting rules
- * are zone-scoped for the same reason; and both the send_email binding and the
- * Email Service require the sending domain to be a zone in the account. The
- * shop's domain is on Wix. None of them are available until it moves, and all
- * three become available on the same day. MailChannels, which used to be the
- * free way out of this, ended its Workers integration in 2024.
+ * WHERE AN ENQUIRY GOES
+ * Into R2, and that copy is the record. The shop reads it in /admin, replies
+ * with the Reply button — which opens their own mail client addressed to the
+ * customer — and deletes it when they are done. No third party sees a customer's
+ * details on the way, there is no API key to leak or let lapse, and there is no
+ * deliverability problem because no mail is being sent to the shop at all.
  *
- * SO: RESEND
- * One fetch, one secret, no SDK — which matters because this repo deliberately
- * has no package.json. While the domain is elsewhere we send from Resend's own
- * onboarding@resend.dev, which is allowed to deliver to the address the Resend
- * account was opened with. That address is sales@hariscarpets.co.uk, which is
- * exactly and only where these need to go, so the restriction costs nothing.
- * When the domain moves, verify it in Resend and change ENQUIRY_FROM. No code.
+ * The cost of that is real and worth stating plainly: nothing arrives to tell
+ * the shop an enquiry is waiting. Somebody has to open /admin. The unread count
+ * is shown on every tab for exactly that reason.
  *
- * The From: header must NOT claim the shop's own domain while its SPF and DKIM
- * live somewhere else. Mail claiming to be from a domain, sent to that same
- * domain, with no authority to do so, is the self-spoof pattern and lands in
- * junk or is refused outright. The visitor's address goes in Reply-To, so
- * hitting Reply in the shop's mail client does the obvious thing.
- *
- * Careful with the two domains: the mailbox is sales@hariscarpets.co.uk with no
- * hyphen, the website is haris-carpets.co.uk with one. Verifying one does not
- * authenticate the other.
- *
- * NOTHING IS LOST
- * The enquiry is written to R2 before Resend is called. If Resend is down, or
- * the key is missing, or the account is over quota, the enquiry is already
- * durable and the cron drains the backlog later. The visitor is told the truth
- * either way and never shown a thank-you for a message that went nowhere.
+ * EMAIL, IF IT IS EVER WANTED
+ * Set RESEND_KEY and a copy is emailed as well, with the visitor's address in
+ * Reply-To. Not having it set is a normal state, not a fault — the enquiry is
+ * already safe in the bucket either way. Note Cloudflare cannot send this mail
+ * itself: the send_email binding and the Email Service both need the sending
+ * domain to be a zone in the account, and the shop's is on Wix. That is the
+ * third time this repo has hit that same wall, after Access and WAF rate
+ * limiting. MailChannels, the old free way out, ended its Workers integration
+ * in 2024.
  */
 
-const PENDING = "admin/enquiries/pending/";
-const SENT = "admin/enquiries/sent/";
+/* One folder. There were two — pending and sent — back when the bucket was a
+   safety net for an email that had already gone. It is the record now, so an
+   enquiry has one home and a `read` flag. */
+const INBOX = "admin/enquiries/";
 
-/* How long a copy is kept. These are names, emails and phone numbers belonging
-   to members of the public, so the bucket is a personal-data store and the
-   copies are a delivery safety net, not an archive — the shop's mailbox is the
-   record. Short by design. */
-const KEEP_SENT = 30 * 86400 * 1000;
-const KEEP_PENDING = 90 * 86400 * 1000;
+/* How long an enquiry is kept if nobody deletes it. These are names, emails and
+   phone numbers belonging to members of the public, so this is a personal-data
+   store and the limit is a promise made on the privacy page — change one and
+   change the other, or the page becomes a lie. Twelve months: long enough to
+   pick a conversation back up, short enough to be defensible. */
+const KEEP = 365 * 86400 * 1000;
 
 /* A form filled in and submitted inside three seconds was not filled in by a
    person. The timestamp comes from the page so it is forgeable — this is a
@@ -137,17 +126,6 @@ export async function enquiryRoute(request, env, ctx) {
   const length = Number(request.headers.get("content-length") || 0);
   if (length > MAX_BODY) return answer({ ok: false, error: "too long" }, 413);
 
-  /* Refused before anything is read, and refused loudly. Taking the message
-     and filing it in a bucket nobody has been told to look in would be a
-     backlog of customers who think they have been in touch — the same reasoning
-     as the admin API, which answers 503 rather than letting everyone in when it
-     has not been configured. Note a Worker cannot see a secret added after its
-     last deploy: if this fires with the key set, it needs redeploying. */
-  if (!env.RESEND_KEY) {
-    return answer({ ok: false, fallback: true,
-      error: "The contact form isn't switched on yet." }, 503);
-  }
-
   let input;
   try { input = await request.json(); } catch { input = null; }
   if (!input || typeof input !== "object") {
@@ -192,74 +170,42 @@ export async function enquiryRoute(request, env, ctx) {
     return answer({ ok: false, error: "Give us a moment before sending another." }, 429);
   }
 
-  /* Written down before it is sent, so a provider outage costs a delay rather
-     than an enquiry. */
-  const key = PENDING + e.at.replace(/[:.]/g, "-") + "-"
+  /* The write is the delivery. If this fails the enquiry has genuinely not
+     reached anybody, and the visitor is told so rather than thanked. */
+  e.read = false;
+  const key = INBOX + e.at.replace(/[:.]/g, "-") + "-"
     + Math.random().toString(16).slice(2, 10) + ".json";
-  let kept = false;
   try {
     await env.PHOTOS.put(key, JSON.stringify(e),
       { httpMetadata: { contentType: "application/json" } });
-    kept = true;
   } catch (err) {
     console.error("could not store enquiry:", err && err.message);
+    /* Nowhere for it to go. Hand the visitor another way through, with what
+       they typed still on screen. */
+    return answer({ ok: false, fallback: true,
+      error: "We couldn't send that just now." }, 502);
   }
 
-  let sent;
-  try { sent = await sendMail(env, e); }
-  catch (err) { sent = { ok: false, reason: err && err.message }; }
-
-  if (sent.ok) {
-    if (kept) ctx.waitUntil(fileAsSent(env, key, e));
-    return answer({ ok: true });
+  /* A copy by email as well, if the shop has set that up. Its failure is not
+     the visitor's problem — the enquiry is already where the shop reads it. */
+  if (env.RESEND_KEY) {
+    ctx.waitUntil(sendMail(env, e).catch(() => ({ ok: false })).then((r) => {
+      if (!r.ok) console.error("enquiry copy not emailed:", r.reason);
+    }));
   }
-
-  console.error("enquiry not sent:", sent.reason);
-  /* It is safely in the bucket and the cron will get it out — say so rather
-     than claiming it has arrived. */
-  if (kept) return answer({ ok: true, queued: true });
-
-  /* Neither sent nor stored. The only honest answer is to hand the visitor
-     another way through, with what they typed still on screen. */
-  return answer({ ok: false, fallback: true,
-    error: "We couldn't send that just now." }, 502);
-}
-
-async function fileAsSent(env, pendingKey, e) {
-  try {
-    await env.PHOTOS.put(SENT + pendingKey.slice(PENDING.length), JSON.stringify(e),
-      { httpMetadata: { contentType: "application/json" } });
-    await env.PHOTOS.delete(pendingKey);
-  } catch (err) {
-    console.error("could not file enquiry as sent:", err && err.message);
-  }
+  return answer({ ok: true });
 }
 
 /**
- * Drain anything the send failed on, and let old copies go.
+ * Let old enquiries go.
+ *
+ * The privacy page promises twelve months and this is what keeps that true, so
+ * the two move together or the promise stops being one.
  */
 export async function enquiryCron(env) {
   const now = Date.now();
-
-  const pending = await list(env, PENDING);
-  for (const obj of pending) {
-    const age = now - new Date(obj.uploaded || now).getTime();
-    if (age > KEEP_PENDING) { await drop(env, obj.key); continue; }
-    let e;
-    try {
-      const got = await env.PHOTOS.get(obj.key);
-      e = got ? JSON.parse(await got.text()) : null;
-    } catch { e = null; }
-    if (!e) continue;
-    let sent;
-    try { sent = await sendMail(env, e); }
-    catch { sent = { ok: false }; }
-    if (sent.ok) await fileAsSent(env, obj.key, e);
-  }
-
-  /* The shop's mailbox is the record; these are only the safety net. */
-  for (const obj of await list(env, SENT)) {
-    if (now - new Date(obj.uploaded || now).getTime() > KEEP_SENT) await drop(env, obj.key);
+  for (const obj of await list(env, INBOX)) {
+    if (now - new Date(obj.uploaded || now).getTime() > KEEP) await drop(env, obj.key);
   }
 }
 

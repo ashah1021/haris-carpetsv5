@@ -91,6 +91,14 @@ function makeEnv(opts = {}) {
         return { async text() { return val; }, body: val };
       },
       async put(key, value) { store.set(key, typeof value === "string" ? value : value); },
+      async delete(key) { store.delete(key); },
+      /* R2's list, as much of it as the inbox uses. Without this the endpoint's
+         own try/catch swallows a TypeError and answers "no enquiries", which is
+         indistinguishable from a working empty inbox. */
+      async list({ prefix = "" } = {}) {
+        return { objects: [...store.keys()].filter((k) => k.startsWith(prefix))
+          .map((key) => ({ key })) };
+      },
       _store: store,
     },
   };
@@ -608,6 +616,69 @@ console.log("\nOne save cannot leak into the next:");
   const cleared = await (await adminRoutes(req("/api/site"), a, ctx)).json();
   check("clearing a slot sticks", Object.keys(cleared.images).length === 0,
     JSON.stringify(cleared.images));
+}
+
+/* The enquiry inbox holds names, emails and phone numbers belonging to members
+   of the public. Everything about it is an auth question first. */
+console.log("\nThe enquiry inbox is not readable by anyone else:");
+{
+  const env = makeEnv({ objects: {
+    "admin/enquiries/2026-08-18T09-00-00-000Z-aaaa1111.json":
+      JSON.stringify({ name: "Jo Bloggs", email: "jo@example.com", message: "Stairs please",
+                       at: "2026-08-18T09:00:00.000Z", read: false }),
+    "admin/enquiries/2026-08-17T09-00-00-000Z-bbbb2222.json":
+      JSON.stringify({ name: "Older One", email: "old@example.com", message: "Hello",
+                       at: "2026-08-17T09:00:00.000Z", read: true }),
+  } });
+
+  const anon = await adminRoutes(req("/api/admin/enquiries"), env, ctx);
+  check("a stranger gets nothing", anon.status === 401);
+  const anonBody = await anon.json();
+  check("and not a hint of anybody's details",
+    !JSON.stringify(anonBody).includes("jo@example.com"));
+
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  const listed = await (await adminRoutes(req("/api/admin/enquiries", { headers }), env, ctx)).json();
+  check("signed in, they are all there", listed.enquiries.length === 2);
+  check("newest first", listed.enquiries[0].name === "Jo Bloggs", listed.enquiries[0].name);
+  check("with an unread count", listed.unread === 1);
+  check("and each one carries its id", Boolean(listed.enquiries[0].id));
+}
+
+console.log("\nReading and deleting an enquiry:");
+{
+  const key = "admin/enquiries/2026-08-18T09-00-00-000Z-aaaa1111.json";
+  const env = makeEnv({ objects: { [key]:
+    JSON.stringify({ name: "Jo", email: "jo@example.com", read: false }) } });
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  const id = "2026-08-18T09-00-00-000Z-aaaa1111.json";
+
+  await adminRoutes(req(`/api/admin/enquiries?id=${id}`, { method: "POST", headers }), env, ctx);
+  check("marking it read sticks",
+    JSON.parse(env.PHOTOS._store.get(key)).read === true);
+  await adminRoutes(req(`/api/admin/enquiries?id=${id}&read=0`, { method: "POST", headers }), env, ctx);
+  check("and marking it unread again does too",
+    JSON.parse(env.PHOTOS._store.get(key)).read === false);
+
+  await adminRoutes(req(`/api/admin/enquiries?id=${id}`, { method: "DELETE", headers }), env, ctx);
+  check("deleting removes it", !env.PHOTOS._store.has(key));
+}
+
+console.log("\nAn id cannot reach outside the inbox:");
+{
+  const env = makeEnv({ objects: { "admin/site.json": JSON.stringify({ version: 9 }) } });
+  const headers = { ...(await signedIn()), origin: ORIGIN };
+  /* Without the id check, "../site.json" here would delete everything the shop
+     has ever written. */
+  for (const evil of ["../site.json", "..%2Fsite.json", "a/b.json", "site.json", ""]) {
+    await adminRoutes(req(`/api/admin/enquiries?id=${encodeURIComponent(evil)}`,
+      { method: "DELETE", headers }), env, ctx);
+  }
+  check("the shop's content is untouched", env.PHOTOS._store.has("admin/site.json"),
+    [...env.PHOTOS._store.keys()].join(", "));
+  const res = await adminRoutes(req("/api/admin/enquiries?id=../site.json",
+    { method: "DELETE", headers }), env, ctx);
+  check("and a traversal is a 404, not a 500", res.status === 404);
 }
 
 console.log("\nThe public read is public, and read-only:");

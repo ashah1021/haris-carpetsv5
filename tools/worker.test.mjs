@@ -106,12 +106,12 @@ await check('an enquiry reaches the enquiry route, not the admin 404', async()=>
   cacheStore.clear();
   const r = await worker.fetch(req('/api/enquiry',{ method:'POST',
     headers:{ origin:'https://x.test', 'content-type':'application/json' },
-    body:'{}' }), makeEnv(), ctx);
+    body: JSON.stringify({ t: Date.now() - 20000 }) }), makeEnv(), ctx);
   const body = await r.json();
-  /* 503 because no RESEND_KEY is set in this env — the point is that the reply
-     came from worker-enquiry.js and not from adminRoutes' generic "not found" */
-  eq(r.status, 503, 'status');
-  eq(body.fallback, true, 'offers a fallback');
+  /* An empty body is refused for a missing name, and only worker-enquiry.js
+     knows the form has a name box — adminRoutes would have said "not found". */
+  eq(r.status, 400, 'status');
+  eq(body.field, 'name', 'names the box to fill in');
 });
 await check('and the Instagram feed still reaches its own route', async()=>{
   cacheStore.clear();

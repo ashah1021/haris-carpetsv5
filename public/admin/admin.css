@@ -221,3 +221,26 @@ body.admin { background: var(--off); }
 }
 .mg-feed.ok { border-color: #1f7a4d; background: #eaf6ef; color: #14532d; }
 .mg-feed.warn { border-color: #b06f00; background: #fdf3e0; color: #7a4a00; }
+
+/* ---- the enquiry inbox ----
+   Nothing arrives to say an enquiry is waiting, so the count on the tab is the
+   only prompt there is. It has to be visible from every screen. */
+.mg-count {
+  display: inline-block; min-width: 19px; padding: 1px 6px; margin-left: 5px;
+  border-radius: 10px; background: #b91c1c; color: #fff;
+  font-size: 11.5px; font-weight: 700; line-height: 1.5; text-align: center;
+}
+.mg-enq { display: grid; gap: 12px; max-width: 760px; margin-bottom: 34px; }
+.mg-enq-item {
+  background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--line);
+  padding: 15px 18px;
+}
+.mg-enq-item.unread { border-left-color: var(--yellow); }
+.mg-enq-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mg-enq-head b { font-family: var(--f-display); font-size: 16.5px; font-weight: 500; }
+.mg-badge.new { background: var(--yellow); color: var(--blue-ink); }
+.mg-enq-who { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 3px; font-size: 14px; }
+.mg-enq-who a { color: var(--blue); }
+/* white-space:pre-wrap — somebody's message keeps the line breaks they typed */
+.mg-enq-msg { margin: 11px 0 0; white-space: pre-wrap; color: var(--ink-soft); font-size: 15px; }
+.mg-enq-acts { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }

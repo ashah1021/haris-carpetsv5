@@ -302,7 +302,7 @@ console.log("\nThe feed is never served from a stale browser cache:");
    fetch instead. */
 console.log("\nThe wrong credential is recognised as the wrong credential:");
 {
-  const env = makeEnv({ token: "d5d1352c4c1e5320f5fcff8ed2a83ba3" });   // 32 hex = App Secret
+  const env = makeEnv({ token: "0123456789abcdef0123456789abcdef" });   // 32 hex = App Secret
   let calls = 0;
   globalThis.fetch = async () => { calls++; return new Response("{}", { status: 200 }); };
   const body = await (await ig.instagramRoute(req, env, ctx)).json();
@@ -313,7 +313,7 @@ console.log("\nThe wrong credential is recognised as the wrong credential:");
      put it in Meta's request logs once we can see what it is. */
   check("the secret is never sent to Instagram", calls === 0, `${calls} calls`);
   check("and never appears in the answer",
-    !JSON.stringify(body).includes("d5d1352c4c1e5320f5fcff8ed2a83ba3"));
+    !JSON.stringify(body).includes("0123456789abcdef0123456789abcdef"));
 }
 {
   const env = makeEnv({ token: "1050505044878400" });   // the App ID
@@ -389,7 +389,7 @@ console.log("\nThe account behind the feed:");
 console.log("\nCalls are signed when the app secret is configured:");
 {
   const env = makeEnv({ token: "IGAA" + "x".repeat(160) });
-  env.INSTAGRAM_APP_SECRET = "d5d1352c4c1e5320f5fcff8ed2a83ba3";
+  env.INSTAGRAM_APP_SECRET = "0123456789abcdef0123456789abcdef";
   let sent = "";
   globalThis.fetch = async (url) => { sent = String(url);
     return new Response(JSON.stringify({ data: [POST(1)] }), { status: 200 }); };
@@ -399,7 +399,7 @@ console.log("\nCalls are signed when the app secret is configured:");
     (sent.match(/appsecret_proof=\w{12}/) || ["absent"])[0] + "…");
   /* The proof is a signature, not the secret. Sending the secret itself would
      be handing it to anyone who could see the request. */
-  check("the secret itself is never in the URL", !sent.includes("d5d1352c4c1e5320f5fcff8ed2a83ba3"));
+  check("the secret itself is never in the URL", !sent.includes("0123456789abcdef0123456789abcdef"));
 }
 {
   const env = makeEnv({ token: "IGAA" + "x".repeat(160) });   // no app secret set

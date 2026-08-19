@@ -17,8 +17,9 @@ const BASE = process.argv[2] || "http://127.0.0.1:8890";
 const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing API
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
-/* Shop details, About us, Home page, Other pages, Portfolio, Collections, Photos, Styles */
-const TABS = 8;
+/* Enquiries, Shop details, About us, Home page, Other pages, Portfolio,
+   Collections, Photos, Styles */
+const TABS = 9;
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
@@ -720,18 +721,91 @@ console.log("\nAn enquiry gets as far as the wire:");
     (await page.locator('#enquiryNote a[href^="mailto:"]').count()) === 1);
   check("the send button works again", !(await page.locator("#enquirySend").isDisabled()));
 
-  /* queued rather than sent */
-  await fetch(`${BASE}/_enquiry?mode=slow`);
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForTimeout(1200);
-  await page.fill("#n", "Third Visitor");
-  await page.fill("#e", "third@example.com");
-  await page.waitForTimeout(3200);
-  await page.locator("#enquiry button[type=submit]").click();
-  await page.waitForTimeout(900);
-  check("a queued enquiry is confirmed, not oversold",
-    /safely with us/i.test(await page.evaluate(() => document.querySelector("#enquiry")?.innerText || "")));
+  /* There is no "queued" any more. Writing the enquiry to the bucket is the
+     delivery, so it either reached the shop's inbox or it did not, and the two
+     answers above are the only two the visitor can be given. */
   await fetch(`${BASE}/_enquiry?mode=ok`);
+}
+
+console.log("\nAn enquiry the visitor sent turns up in the shop's inbox:");
+{
+  /* The enquiry above was sent through the real form, in this browser, on the
+     mode the shop actually runs on. Nothing here plants it: if the round trip
+     from the page to the inbox is broken, the first assertion fails. */
+  await go(`${BASE}/admin/`);
+  const tab = page.locator("[data-tab='enquiries']");
+  check("Enquiries is the first tab", (await page.locator(".mg-tab").first().textContent())
+    .includes("Enquiries"));
+  check("carrying a count of the unread ones",
+    (await tab.locator(".mg-count").textContent()) === "2",
+    await tab.textContent());
+
+  await tab.click();
+  await page.waitForTimeout(400);
+  const items = page.locator(".mg-enq-item");
+  check("all three are listed", (await items.count()) === 3, `${await items.count()}`);
+  check("newest first", (await items.first().innerText()).includes("Test Visitor"),
+    (await items.first().innerText()).split("\n")[0]);
+  check("with what they wrote",
+    (await items.first().locator(".mg-enq-msg").innerText()).includes("ask about these shades"));
+  check("and their phone number to ring",
+    (await items.first().locator('a[href^="tel:"]').getAttribute("href")) === "tel:07700900000");
+
+  /* Reply is the whole delivery mechanism: no mail leaves the website, so if
+     this link is wrong the enquiry has effectively not been answerable. */
+  const reply = await items.first().locator('a:has-text("Reply")').getAttribute("href");
+  check("Reply opens an email to them", reply.startsWith("mailto:visitor%40example.com?"),
+    reply.slice(0, 60));
+  check("with what they wrote quoted underneath",
+    decodeURIComponent(reply).includes("> Hello, I'd like to ask about these shades")
+    || decodeURIComponent(reply).includes("ask about these shades"), decodeURIComponent(reply).slice(-80));
+
+  /* Marking read is what makes the count mean anything. */
+  await items.first().locator('button:has-text("Mark read")').click();
+  await page.waitForTimeout(600);
+  check("marking one read drops the count to one",
+    (await tab.locator(".mg-count").textContent()) === "1", await tab.textContent());
+  check("and it is still there, just not new", (await page.locator(".mg-enq-item").count()) === 3);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  check("which survives a reload",
+    (await page.locator("[data-tab='enquiries'] .mg-count").textContent()) === "1");
+}
+
+console.log("\nDeleting an enquiry, and the empty inbox:");
+{
+  await page.locator("[data-tab='enquiries']").click();
+  await page.waitForTimeout(400);
+  page.once("dialog", (d) => d.accept());
+  await page.locator(".mg-enq-item").first().locator('button:has-text("Delete")').click();
+  await page.waitForTimeout(700);
+  check("it goes", (await page.locator(".mg-enq-item").count()) === 2);
+  const left = await page.locator(".mg-enq").innerText();
+  check("and takes the customer's details with it", !left.includes("visitor@example.com"));
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.locator("[data-tab='enquiries']").click();
+  await page.waitForTimeout(400);
+  check("still gone after a reload", (await page.locator(".mg-enq-item").count()) === 2);
+
+  /* An inbox with nothing in it is the state the shop sees most days, so it
+     has to say what it is rather than look broken. */
+  await fetch(`${BASE}/_inbox?state=empty`);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.locator("[data-tab='enquiries']").click();
+  await page.waitForTimeout(400);
+  const empty = await page.locator("#panel").innerText();
+  check("an empty inbox says so", /Nothing yet/i.test(empty));
+  check("without a count on the tab",
+    (await page.locator("[data-tab='enquiries'] .mg-count").count()) === 0);
+  /* The form's own wording lives on this tab, so it is reachable even when
+     there is nothing to read. */
+  check("and the form's wording is still editable here",
+    (await page.locator('[data-content="formHeading"]').count()) === 1);
+  await fetch(`${BASE}/_inbox?state=seeded`);
 }
 
 /* Whether the live feed is working has to be readable by the shop, not by
