@@ -52,15 +52,28 @@ const HOME = {
     + " to a subcontractor who's never seen your house.",
   instaText: "Looking for inspiration? Follow us on Instagram @hariscarpets or"
     + " search #hariscarpets.",
+  /* The family block on the home page. It used to render the About page's
+     heading and first paragraph, so the two could never say different things
+     and neither had a box on the Home page tab. */
+  familyHeading: "Flooring Expertise, Built Over Generations.",
+  familyText: "Hari's Carpets has built a trusted reputation for quality flooring,"
+    + " knowledgeable advice and professional installation, serving homeowners, trade"
+    + " professionals and commercial clients across London and the Home Counties.",
 };
 
 const PAGES = {
   catalogueText: "Every floor we stock, by type. Tap any shade to see it close up, and save"
-    + " the ones you like to your list as you go.",
-  visitText: "Pop into the Hounslow showroom, or book a free home measure and we'll come to"
-    + " you across",   /* the area follows, and is its own box */
-  enquireText: "Tell us roughly what you're after and we'll come back to you. Home measures"
-    + " are free, and we'll bring samples to your door so you can see them in your own light.",
+    + " the ones you like to your favourites as you go.",
+  /* Written whole. The area covered used to be glued onto the end of this
+     sentence from a box on another tab, which is why it read as words that
+     could not be removed — it is a labelled line of its own now. */
+  visitText: "Explore our extensive collection of carpets, rugs and flooring in person, with"
+    + " our experienced team on hand to offer expert advice and help you find the perfect"
+    + " flooring for your space. We look forward to welcoming you to our showroom.",
+  enquireText: "Looking for new flooring? Get in touch with our team to discuss your"
+    + " requirements, request a quote or enquire about any of our products and collections."
+    + " From a single room to a full property or commercial project, we'll help you find the"
+    + " right flooring for your space.",
   portfolioText: "A few of the floors we've supplied and fitted recently, in real homes"
     + " across London and the Home Counties.",
 };
@@ -116,6 +129,9 @@ const IMG = {
   hero2:       P("velvet-living-room.jpg"),
   hero3:       P("wood-herringbone-kitchen.jpg"),
   showroom:    P("showroom.jpg"),
+  /* The About page ships with the showroom photograph and its own slot, so
+     replacing one page's picture no longer replaces the other's. */
+  about:       P("showroom.jpg"),
   fitting:     P("fitting-hands.jpg"),
   samples:     P("samples-counter.jpg"),
   stairs:      P("stairs-wool-twist.jpg"),
@@ -139,7 +155,8 @@ const IMG_SLOTS = [
   ["hero",     "Home page banner 1",     "First picture in the banner at the top of the home page"],
   ["hero2",    "Home page banner 2",     "Second picture the banner cycles to"],
   ["hero3",    "Home page banner 3",     "Third picture the banner cycles to"],
-  ["showroom", "The showroom",           "On the home page and About"],
+  ["showroom", "The showroom",           "On the Visit us page"],
+  ["about",    "About us",                "Beside the About us text — the showroom picture until you add one"],
   ["fitting",  "Fitting",                "Beside the fitting service"],
   ["stairs",   "Stairs and landings",    "Beside the stairs service"],
   ["samples",  "Samples on the counter", "Small inset on the home page"],
@@ -242,7 +259,7 @@ const TYPES = [
    ========================================================================= */
 const STYLES = {
   carpets: [
-    { id: "easy-clean", name: "Easy clean",
+    { id: "easy-clean", name: "Easy-Clean Carpets",
       blurb: "Stain-resistant synthetic piles that take a spill, a dog and a toddler without flinching.",
       ranges: [
         "cormar-carpets-apollo-elite",    /* [ask] polypropylene */
@@ -252,7 +269,7 @@ const STYLES = {
         "cormar-carpets-primo-ultra",     /* [ask] */
       ] },
 
-    { id: "wool-twist", name: "Wool twist pile",
+    { id: "wool-twist", name: "Wool Twist-Pile Carpets",
       blurb: "The classic British carpet. Springy, hard-wearing and it keeps its looks in a hallway.",
       ranges: [
         "westex-fine-westex-twist",       /* [name] */
@@ -264,7 +281,7 @@ const STYLES = {
         "cormar-carpets-pembroke",        /* [ask] */
       ] },
 
-    { id: "velvet", name: "Velvet & saxony",
+    { id: "velvet", name: "Velvet & Saxony Carpets",
       blurb: "A smooth, dense, flat pile with a sheen that shifts as you cross the room.",
       ranges: [
         "westex-fired-earth-wiske-velvet",/* [name] */
@@ -274,7 +291,7 @@ const STYLES = {
         "cormar-carpets-trinity",         /* [seen] plain smooth cut pile */
       ] },
 
-    { id: "loop", name: "Loop & textured",
+    { id: "loop", name: "Loop & Textured Carpets",
       blurb: "Uncut loops and fine ribs — a quieter, more textural floor that hides a footprint.",
       ranges: [
         "westex-boucle",                  /* [name] bouclé is a loop */
@@ -285,7 +302,7 @@ const STYLES = {
         "westex-barrington",              /* [seen] fine rib */
       ] },
 
-    { id: "natural", name: "Natural looks",
+    { id: "natural", name: "Natural-Look Carpets",
       blurb: "Sisal and seagrass effects in wool — the coastal look, without the scratch.",
       ranges: [
         "hugh-mackay-easisisal",          /* [name] */
@@ -298,7 +315,7 @@ const STYLES = {
        photography is unambiguously striped, and inventing one would put a
        claim on the site that the swatch book does not back. An empty style
        does not render. */
-    { id: "pattern", name: "Stripes & patterns",
+    { id: "pattern", name: "Striped & Patterned Carpets",
       blurb: "Stripes, borders and figured designs.",
       ranges: [] },
   ],
@@ -315,13 +332,13 @@ const STYLES = {
   ],
 
   lvt: [
-    { id: "wood-effect", name: "Wood effect",
+    { id: "wood-effect", name: "Wood Effect Flooring",
       blurb: "The look of a timber floor, in a tile that shrugs off water.",
       ranges: ["victoria-carpets-universal-plank"] },
-    { id: "stone-effect", name: "Stone & tile effect",
+    { id: "stone-effect", name: "Stone and Tile Effect Flooring",
       blurb: "Stone and slate looks, warm underfoot in a way the real thing is not.",
       ranges: ["victoria-carpets-universal-stone"] },
-    { id: "herringbone", name: "Herringbone & parquet",
+    { id: "herringbone", name: "Herringbone & Parquet Flooring",
       blurb: "Herringbone, fishbone and parquet, in a format that suits a kitchen.",
       ranges: ["victoria-carpets-universal-herringbone",
                "victoria-carpets-universal-fishbone",
@@ -336,11 +353,14 @@ const STYLES = {
 
 const ABOUT = {
   kicker: "Family run · Hounslow · Over 32 years",
-  lead: "Flooring is at the heart of every space — and getting it right matters.",
+  lead: "Welcome to Hari's Carpets",
   body: [
-    "For over 32 years, Hari's Carpets has been supplying and fitting quality flooring for homes, trade and commercial projects across London and the Home Counties.",
-    "We carry an extensive range from trusted British mills, so there's a floor for every room, every level of traffic and every budget. We take the time to understand what you actually need, then help you find the right one — no pressure, no guesswork.",
-    "When it comes to fitting, our own skilled team handles the whole job: measuring, planning, uplift of your old flooring and a clean, careful installation finished to a high standard.",
+    "For over 32 years, Hari's Carpets has been a trusted family-run flooring business, proudly serving residential, trade and commercial customers across London and the Home Counties.",
+    "We believe choosing the right flooring should be simple. From your initial enquiry through to installation, our experienced team provides a personal and professional service, including complimentary measuring and estimating, expert product advice and tailored recommendations for your space and budget.",
+    "Our skilled fitters provide a complete professional installation service, with careful attention to detail and quality workmanship throughout.",
+    "With an extensive collection of carpets, rugs, vinyl and flooring from leading brands, we offer options to suit every style and budget. Whether you're refreshing a single room, renovating your home or working on a larger commercial project, we're here to help you find the right flooring solution.",
+    "For more than three decades, our reputation has been built on quality, expertise and customer service.",
+    "Visit our showroom or get in touch today to find the perfect flooring for your space.",
   ],
 };
 

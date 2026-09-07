@@ -480,7 +480,7 @@ function openZoom(key) {
       <h3>${esc(sw.name)}</h3>
       <p class="zoom-sub"><a href="#/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.code)} · ${esc(sw.family)}</p>
       <div class="zoom-actions">
-        ${heart(sw.key)}<span class="zoom-favlabel">Save to my list</span>
+        ${heart(sw.key)}<span class="zoom-favlabel">Save to my favourites</span>
       </div>
       ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>` : ""}
       <a class="btn btn-ghost btn-sm" href="#/range/${esc(sw.rangeId)}" data-zoom-close>All ${esc(sw.range)} shades</a>
@@ -499,7 +499,11 @@ function rangeCard(r) {
     ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
     <div class="card-swatches">${r.colours.slice(0, 8).map((x) => `<span style="background:${x.hex}"></span>`).join("")}</div>
     <div class="card-body">
-      <span class="k">${esc(r.brand)} · ${esc(r.code)}</span>
+      ${/* The mill's own range code (CC-AE, VC-UP) used to sit here beside the
+            brand. It means nothing to a customer and reads like a fault on the
+            page; it stays in the catalogue data, where the shop can still
+            match a collection to a supplier's paperwork. */""}
+      <span class="k">${esc(r.brand)}</span>
       <h3>${esc(r.name)}</h3>
       <span class="desc">${esc(r.blurb)}</span>
       ${r.real ? "" : `<span class="tag-placeholder">Placeholder data</span>`}
@@ -743,11 +747,13 @@ function viewHome() {
     <div class="split">
       <div class="split-copy">
         <span class="rule"></span>${kicker("familyKicker", "Family-run for over 32 years")}
-        ${head("aboutLead", ABOUT.lead)}
-        ${/* the first paragraph of the About text, so the two pages cannot
-              disagree — no key of its own, or it would be a box that has to be
-              kept in step with another box by hand */
-          pWrap(esc(sayLines("aboutBody", ABOUT.body)[0] || ""), "margin-top:14px", "lede")}
+        ${/* Its own heading and paragraph. They used to be borrowed from the
+              About page — the same two keys rendered twice — which meant this
+              block had no boxes of its own on the Home page tab, and the shop
+              reported the front page as un-editable because the only way to
+              change it was on a tab about a different page. */
+          head("familyHeading", HOME.familyHeading)}
+        ${para("familyText", HOME.familyText, "lede", "margin-top:14px")}
         ${pWrap(cta("familyCta", "Discover our story →", "#/about", "btn btn-ghost"), "margin-top:22px")}
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), caption("stairs", "Wool twist carpet fitted to a staircase and landing"), "3-2")}</div>
@@ -797,6 +803,17 @@ const findStyle = (typeId, styleId) => stylesFor(typeId).find((s) => s.id === st
 
 const styleCount = (st) => st.list.reduce((n, r) => n + r.colours.length, 0);
 
+/* What a style is called, what it says, and which photograph it shows — all
+   three editable, all three in one place so the tile, the style's own page and
+   the admin cannot end up calling the same thing different names.
+
+   The key carries the floor type as well as the style: "herringbone" exists
+   under both Wood and LVT and they are not the same style. */
+const styleRef = (typeId, st) => typeId + "-" + st.id;
+const styleName = (typeId, st) => say("styleName-" + styleRef(typeId, st), st.name);
+const styleBlurb = (typeId, st) => say("styleText-" + styleRef(typeId, st), st.blurb);
+const styleSlot = (typeId, st) => "style-" + styleRef(typeId, st);
+
 /* Every picture a style could put on its tile, best first:
      1. a supplier roomset of a floor in this style — real, and the one place
         those orphaned room photographs are exactly what is wanted
@@ -834,15 +851,22 @@ function stylePhotos(styles) {
 
 function styleTile(st, typeId, photos) {
   const n = styleCount(st);
+  const name = styleName(typeId, st);
+  /* The borrowed photograph is only a fallback now. It is taken from the first
+     collection under the style that has one, which is why a style whose
+     collections have no photograph showed an empty frame and nothing in /admin
+     could fill it — there was no slot to upload to. There is one now. */
+  const pic = siteImage(styleSlot(typeId, st), photos[st.id]);
   return `<a class="style-tile" href="#/collections/${esc(typeId)}/${esc(st.id)}">
     <div class="style-ph">
-      <img src="${esc(photos[st.id])}" alt="${esc(st.name)}" loading="lazy" onerror="this.remove()">
+      ${pic ? `<img src="${esc(pic)}" alt="${esc(caption(styleSlot(typeId, st), name))}"
+        loading="lazy" onerror="this.remove()">` : ""}
       <span class="style-swatches">${st.list.flatMap((r) => r.colours).slice(0, 6)
         .map((x) => `<span style="background:${x.hex}"></span>`).join("")}</span>
     </div>
     <div class="style-cap">
-      <h3>${esc(st.name)}</h3>
-      <p>${esc(st.blurb)}</p>
+      <h3>${esc(name)}</h3>
+      <p>${esc(styleBlurb(typeId, st))}</p>
       <span class="style-n">${st.list.length} collection${st.list.length === 1 ? "" : "s"} · ${n} shade${n === 1 ? "" : "s"}</span>
     </div>
   </a>`;
@@ -858,11 +882,11 @@ function viewStyle(typeId, styleId) {
 
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> /
-    <a href="#/collections/${esc(typeId)}">${esc(type.name)}</a> / ${esc(st.name)}</p></div>
+    <a href="#/collections/${esc(typeId)}">${esc(type.name)}</a> / ${esc(styleName(typeId, st))}</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><p class="kicker">${esc(type.name)}</p>
-        <h2>${esc(st.name)}</h2><p>${esc(st.blurb)}</p></div>
+        <h2>${esc(styleName(typeId, st))}</h2><p>${esc(styleBlurb(typeId, st))}</p></div>
       ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
     </div>
 
@@ -891,7 +915,7 @@ function viewStyle(typeId, styleId) {
     ${others.length ? `<div class="style-more">
       <p class="kicker">Or try</p>
       <div class="style-chips">${others.map((s) =>
-        `<a class="chip" href="#/collections/${esc(typeId)}/${esc(s.id)}">${esc(s.name)}<span class="n">${styleCount(s)}</span></a>`).join("")}
+        `<a class="chip" href="#/collections/${esc(typeId)}/${esc(s.id)}">${esc(styleName(typeId, s))}<span class="n">${styleCount(s)}</span></a>`).join("")}
         <a class="chip" href="#/collections/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
     </div>` : ""}
   </div></section>`;
@@ -953,7 +977,10 @@ function viewCollections(typeId, styleId) {
     </div>
 
     ${styles.length ? `<div class="styles">
-      <h3 class="styles-head">What sort of ${esc(type.name.toLowerCase())} are you after?</h3>
+      ${/* One box per floor type, so "What sort of carpets are you after?" can be
+            reworded or switched off on the Carpets page without touching LVT. */
+        tag("h3", "styleHead-" + type.id,
+            `What sort of ${type.name.toLowerCase()} are you after?`, "styles-head")}
       <div class="style-grid">${((ph) => styles.map((s) => styleTile(s, type.id, ph)).join(""))(stylePhotos(styles))}</div>
       <p class="styles-alt">Or <button class="linkish" data-jump="filters">browse all ${all.length} shades</button>
          by brand and colour.</p>
@@ -1046,7 +1073,7 @@ function viewFavourites(keys) {
   if (keys) favFromKeys(keys);
   if (!FAVS.length) {
     return `
-    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My list</p></div>
+    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My Favourites</p></div>
     <section><div class="wrap">
       <span class="rule"></span><p class="kicker">Nothing saved yet</p>
       <h2>Your shortlist is empty</h2>
@@ -1060,15 +1087,15 @@ function viewFavourites(keys) {
   for (const f of FAVS) (byType[f.type] = byType[f.type] || []).push(f);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My list</p></div>
+  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My Favourites</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><p class="kicker">${FAVS.length} shade${FAVS.length === 1 ? "" : "s"} saved</p>
-        <h2>My list</h2>
+        <h2>My Favourites</h2>
         <p>Saved on this device. Send yourself the link to open it on another one, or bring it
            into the showroom and we'll get those books out.</p></div>
       <div class="fav-actions">
-        <button class="btn btn-ghost btn-sm" id="favShare">Copy link to my list</button>
+        <button class="btn btn-ghost btn-sm" id="favShare">Copy link to my favourites</button>
         <a class="btn btn-solid btn-sm" href="#/enquire" id="favEnquire">Ask us about these</a>
       </div>
     </div>
@@ -1080,36 +1107,53 @@ function viewFavourites(keys) {
       </div>`;
     }).join("")}
     <p class="form-note" style="margin-top:26px">
-      <button class="linkish" id="favClear">Clear my list</button>
+      <button class="linkish" id="favClear">Clear my favourites</button>
     </p>
   </div></section>`;
 }
 
 function viewAbout() {
+  /* The heading used to sit alone in one column of a split with the photograph
+     in the other, and every paragraph below both — so a two-line heading beside
+     a tall photograph left a hole the height of the picture before the text
+     started. The opening paragraphs come up into the column with the heading
+     now, and only what does not fit runs on underneath. */
+  const paras = sayLines("aboutBody", ABOUT.body);
+  const beside = paras.slice(0, 2), below = paras.slice(2);
+  const para_ = (t) => `<p>${esc(t)}</p>`;
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / About us</p></div>
   <section><div class="wrap">
-    <div class="split">
+    <div class="split split-top">
       <div class="split-copy"><span class="rule"></span>
         ${/* one key for the whole line. It used to be the literal "Family run ·
               Hounslow · " with say("since") stuck on the end, and since's own
               default starts "Hounslow ·" — so the page read "Family run ·
               Hounslow · Hounslow · Over 30 years". */
           kicker("aboutKicker", ABOUT.kicker)}
-        ${head("aboutLead", ABOUT.lead)}</div>
-      <div class="split-media">${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}</div>
+        ${head("aboutLead", ABOUT.lead)}
+        <div class="prose">${beside.map(para_).join("")}</div></div>
+      ${/* Its own slot. It shared "showroom" with the Visit us page, so changing
+            one changed the other; it ships with the same photograph, which is
+            why nothing looks different until somebody uploads one. */""}
+      <div class="split-media">${photo(siteImage("about", IMG.about),
+        caption("about", "Inside the Hari's Carpets showroom"), "3-2")}</div>
     </div>
-    <div class="prose" style="margin-top:clamp(30px,4vw,52px)">${sayLines("aboutBody", ABOUT.body).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+    ${below.length ? `<div class="prose" style="margin-top:clamp(24px,3vw,40px)">${
+      below.map(para_).join("")}</div>` : ""}
   </div></section>`;
 }
 
 function viewContact() {
   const map = say("mapEmbed", CONTACT.mapEmbed);
   const maps = say("mapsUrl", CONTACT.mapsUrl);
-  /* the area is its own box, so the sentence is written without it and the two
-     are joined here — that way changing the area does not mean retyping the lede */
-  const lede = [say("visitText", PAGES.visitText), say("area", CONTACT.area)]
-    .filter(Boolean).join(" ").trim();
+  const lede = say("visitText", PAGES.visitText);
+  /* The area covered used to be glued onto the end of that sentence. It read as
+     part of the paragraph, so switching it off in /admin looked like it had done
+     nothing to the words the shop was actually pointing at, and there was no
+     wording anywhere that said which box those words came from. As its own
+     labelled line it is plainly one thing, and the switch plainly removes it. */
+  const area = say("area", CONTACT.area);
   return `
   <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visit us</p></div>
   <section><div class="wrap">
@@ -1117,14 +1161,15 @@ function viewContact() {
       <div>
         <span class="rule"></span>
         ${kicker("visitKicker", "Come in, or we'll come to you")}
-        ${head("visitHeading", "Visit the showroom")}
-        ${pWrap(lede ? esc(lede.replace(/\s*\.?$/, ".")) : "", "margin-top:14px", "lede")}
+        ${head("visitHeading", "Visit Our Showroom")}
+        ${pWrap(lede ? esc(lede) : "", "margin-top:14px", "lede")}
         <div style="margin-top:24px">
           <div class="info-row"><span class="il">Showroom</span><span><a href="${esc(maps)}" target="_blank" rel="noopener">${
             addressLines(say("address", CONTACT.address)).map(esc).join("<br>")}</a></span></div>
           <div class="info-row"><span class="il">Phone</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
           <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
           <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
+          ${area ? `<div class="info-row"><span class="il">We cover</span><span>${esc(area)}</span></div>` : ""}
           ${socialRow()}
         </div>
         ${pWrap(cta("visitCta", "Send an enquiry", "#/enquire", "btn btn-solid"), "margin-top:26px")}
@@ -1156,7 +1201,7 @@ function viewEnquire() {
       <div>
         <span class="rule"></span>
         ${kicker("enquireKicker", "No pressure, no obligation")}
-        ${head("enquireHeading", "Get in touch")}
+        ${head("enquireHeading", "Get in Touch")}
         ${para("enquireText", PAGES.enquireText, "lede", "margin-top:14px")}
         <div style="margin-top:26px">
           <div class="info-row"><span class="il">Call</span><span><a href="${telHref(say("phone", CONTACT.phone))}">${esc(say("phone", CONTACT.phone))}</a></span></div>
@@ -1454,7 +1499,7 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "favShare") {
     const link = favLink();
     navigator.clipboard?.writeText(link).then(
-      () => { e.target.textContent = "Link copied ✓"; setTimeout(() => { e.target.textContent = "Copy link to my list"; }, 2200); },
+      () => { e.target.textContent = "Link copied ✓"; setTimeout(() => { e.target.textContent = "Copy link to my favourites"; }, 2200); },
       () => { prompt("Copy your list link:", link); });
     return;
   }

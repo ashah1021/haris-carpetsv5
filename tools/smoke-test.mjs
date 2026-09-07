@@ -71,6 +71,18 @@ const VISUALISER = /visualiser:\s*true/.test(
   (await import("node:fs")).readFileSync(new URL("../public/data.js", import.meta.url), "utf8"));
 
 const browser = await chromium.launch();
+
+/* Google Fonts is unreachable from the sandbox these tests run in, and a
+   request that never settles makes waitUntil:"networkidle" hang until the run
+   is killed — which is what an intermittent eight-minute "failure" here turned
+   out to be. The site is built to render in the fallback font (the footer rule
+   is sized in ems for exactly that reason), so the request is refused outright
+   and every run is deterministic. */
+const openPage = async (browserObj, opts) => {
+  const ctx = await browserObj.newContext(opts);
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  return ctx.newPage();
+};
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page = await ctx.newPage();
 
@@ -80,6 +92,7 @@ const page = await ctx.newPage();
    stubbed out; that the iframe is on the page with the right src is asserted
    below, which is the part that is ours to get right. */
 await ctx.route("**://*.google.com/**", (route) => route.abort());
+await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());
 
 const errors = [], badResponses = [];
 /* Set around a block that provokes a failure on purpose. A flag rather than
@@ -275,7 +288,7 @@ await page.goto(U("#/favourites"), { waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 check("list page shows the shade", (await page.locator(".swatch").count()) === 1);
 const link = await page.evaluate(() => favLink());
-const fresh = await (await browser.newContext()).newPage();
+const fresh = await openPage(browser);
 await fresh.goto(BASE + "/index.html" + link.split("#")[1] ? link : U("#/favourites"), { waitUntil: "networkidle" });
 await fresh.waitForTimeout(700);
 check("share link restores on a clean browser", (await fresh.locator(".swatch").count()) >= 1);
@@ -366,6 +379,101 @@ await page.waitForTimeout(900);
 check("the old catalogue link still lands somewhere",
   page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
+
+console.log("\nThe words the shop asked us to change:");
+{
+  /* Each of these is a line the owner sent back twice. A rename that only
+     half-lands — the header but not the footer, the page but not the
+     breadcrumb — is how it came back the second time. */
+  await page.goto(U("#/favourites"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  /* Case-insensitively: the header button is uppercased in CSS, so innerText
+     comes back shouting and an exact match would be testing the stylesheet. */
+  check("the header button says My Favourites",
+    /my favourites/i.test(await page.locator("#favBtn").innerText()),
+    (await page.locator("#favBtn").innerText()).replace(/\n/g, " "));
+  check("so does the footer link",
+    /^my favourites$/i.test((await page.locator('footer a[href="#/favourites"]').innerText()).trim()));
+  const anywhere = [];
+  for (const hash of ["#/", "#/favourites", "#/collections/carpets"]) {
+    await page.goto(U(hash), { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+    const t = await page.evaluate(() => document.body.innerText);
+    if (/my list/i.test(t)) anywhere.push(hash);
+  }
+  check("and nothing anywhere still says My list", anywhere.length === 0, anywhere.join(", "));
+
+  /* The mill's range code (CC-AE) read as a fault on the card. */
+  await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  await page.locator('[data-view="ranges"]').click();
+  await page.waitForTimeout(700);
+  const cardMeta = await page.evaluate(() =>
+    [...document.querySelectorAll(".card .k")].map((e) => e.textContent.trim()));
+  check("collection cards are shown", cardMeta.length > 5, `${cardMeta.length} cards`);
+  check("with no supplier code beside the brand",
+    cardMeta.every((t) => !/·/.test(t)), cardMeta.find((t) => /·/.test(t)) || "");
+
+  /* The style tiles: renamed, and every one carries a picture. */
+  const tileNames = await page.evaluate(() =>
+    [...document.querySelectorAll(".style-cap h3")].map((h) => h.textContent.trim()));
+  check("the style tiles use the new names",
+    tileNames.includes("Easy-Clean Carpets") && tileNames.includes("Wool Twist-Pile Carpets"),
+    tileNames.join(", "));
+
+  /* "London & the Home Counties" used to be glued onto the end of the Visit us
+     paragraph with no way to tell where it came from. */
+  await page.goto(U("#/contact"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll(".info-row .il")].map((e) => e.textContent.trim()));
+  check("the area covered is its own labelled line", rows.includes("We cover"), rows.join(", "));
+  const lede = await page.evaluate(() => document.querySelector(".contact-grid .lede")?.innerText || "");
+  check("and not stuck on the end of the paragraph", !/M25/.test(lede), lede.slice(-40));
+}
+
+console.log("\nThe About page reads as one column, not a heading and a hole:");
+{
+  await page.goto(U("#/about"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const gap = await page.evaluate(() => {
+    const h = document.querySelector(".split-copy h2");
+    const p = document.querySelector(".split-copy .prose p");
+    if (!h || !p) return null;
+    return Math.round(p.getBoundingClientRect().top - h.getBoundingClientRect().bottom);
+  });
+  /* The text used to start below the photograph, which on this viewport put
+     several hundred pixels of nothing between the title and the first word. */
+  check("the text starts under the title", gap !== null && gap < 80, `${gap}px below it`);
+  const both = await page.evaluate(() => {
+    const copy = document.querySelector(".split-copy")?.getBoundingClientRect();
+    const pic = document.querySelector(".split-media")?.getBoundingClientRect();
+    return copy && pic ? Math.round(Math.abs(copy.top - pic.top)) : null;
+  });
+  check("and the photograph starts level with it", both !== null && both < 40, `${both}px apart`);
+  check("the About photograph loads",
+    await page.evaluate(() => {
+      const i = document.querySelector(".split-media img");
+      return Boolean(i && i.naturalWidth > 0);
+    }));
+}
+
+console.log("\nThe privacy policy is a page Meta and Google can read:");
+{
+  const res = await page.goto(`${BASE}/privacy.html`, { waitUntil: "networkidle" });
+  check("it is served as a real page", res.status() === 200, String(res.status()));
+  check("titled Privacy Policy", (await page.title()).startsWith("Privacy Policy"), await page.title());
+  check("and headed the same", (await page.locator("h1").innerText()).trim() === "Privacy Policy");
+  const text = await page.evaluate(() => document.body.innerText);
+  check("it names who holds the data", /Cloudflare/.test(text));
+  check("says how long for", /twelve months/i.test(text));
+  /* No email provider is in the chain today. If one is ever switched on, this
+     page has to name it — and this assertion is what fails until it does. */
+  check("and names no email provider it does not use", !/Resend/i.test(text));
+  check("the wordmark has no stale 32-years line under it", !/Est\. 32/.test(text));
+  const del = await page.goto(`${BASE}/data-deletion.html`, { waitUntil: "networkidle" });
+  check("the deletion page Meta requires is still there", del.status() === 200);
+}
 
 console.log("\nThe portfolio page:");
 await page.goto(U("#/portfolio"), { waitUntil: "networkidle" });
@@ -462,7 +570,7 @@ check("the footer rule is exactly as wide as the wordmark",
   Math.abs(ruleFits.rule - ruleFits.text) <= 2, `text ${ruleFits.text} vs rule ${ruleFits.rule}`);
 
 console.log("\nMobile:");
-const mob = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+const mob = await openPage(browser, { viewport: { width: 390, height: 844 } });
 for (const hash of ["#/", "#/collections/carpets", "#/enquire"]) {
   await mob.goto(U(hash), { waitUntil: "networkidle" });
   await mob.waitForTimeout(700);

@@ -264,6 +264,12 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 /* --- editorial split: photo one side, copy the other --- */
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
 .split.flip .split-media { order: 2; }
+/* Centring is right for a short block beside a picture. Where the column
+   carries the heading *and* paragraphs — About — the two have to start on the
+   same line, or the text floats in the middle of the photograph. */
+.split.split-top { align-items: start; }
+.split-copy .prose { margin-top: 18px; }
+.split-copy .prose p:last-child { margin-bottom: 0; }
 .split-copy h2 { margin-bottom: 16px; }
 .split-copy p { color: var(--ink-soft); }
 /* a small photo tucked over the corner of the big one */

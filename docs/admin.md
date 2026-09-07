@@ -53,8 +53,8 @@ Everything written on the site, and every photograph. By tab:
 | Other pages | headings, paragraphs and buttons on Collections, Visit us and Contact us, plus the description under each flooring type |
 | Portfolio | the wording on that page, and the jobs themselves — a photograph, a heading and a description each |
 | Collections | hide, rename, the collection's own description, and its shades |
-| Photos | every picture, and a caption for each — including the three that make up the home page banner |
-| Styles | which collections sit under which style |
+| Photos | every picture, and a caption for each — the three that make up the home page banner, the About us photograph, and the big picture on each style tile |
+| Styles | which collections sit under which style, what each style is called, the line under its name, and the "What sort of carpet are you after?" heading above them |
 
 The faint grey text in an empty box is what the site is showing now, so the
 form doubles as a view of the current wording, and clearing a box restores that
@@ -112,9 +112,29 @@ Changing the phone number changes the header button, the footer and the
 contact page together, and the dial link is rebuilt from whatever was typed:
 `020 8570 6502` becomes `tel:+442085706502`.
 
+**Areas covered** shows as its own line on the Visit us page, labelled *We
+cover*. It used to be glued onto the end of the paragraph above it, which is why
+those words looked like part of the wording and unremovable. The box is on Shop
+details and repeated on Other pages, beside the Visit us wording it sits under;
+untick "Show this on the website" and the line goes.
+
 Everything the shop can change goes through `say()` in app.js. Reading
 `CONTACT.hours` directly anywhere is a value the shop cannot change, and is how
 this tab came to save happily and alter nothing at all.
+
+## The style tiles
+
+"What sort of carpet are you after?" and the tiles under it are on the **Styles**
+tab: the heading (which can be switched off), and for each style its name and the
+line under it. The pictures are on the **Photos** tab, under *Style tiles*.
+
+Until a style has its own picture it borrows one from the first collection filed
+under it — which is why a style whose collections have no photograph showed an
+empty frame. Uploading one fixes it for good.
+
+A style with no collections ticked does not appear on the site at all, so the
+admin does not offer boxes for its wording either. Tick a collection and they
+appear.
 
 ## Google reviews
 

@@ -104,6 +104,8 @@
     ["serviceCta", "Fitting — button", () => "Discuss your project", false, true],
     ["familyKicker", "Family run — small label",
      () => "Family-run for over 32 years", false, true],
+    ["familyHeading", "Family run — heading", () => HOME.familyHeading, false, true],
+    ["familyText", "Family run — paragraph", () => HOME.familyText, true, true],
     ["familyCta", "Family run — button", () => "Discover our story →", false, true],
   ];
 
@@ -123,16 +125,20 @@
     ["catalogueText", "Collections paragraph", () => PAGES.catalogueText, true, true],
     ["visitKicker", "Visit us — small label",
      () => "Come in, or we'll come to you", false, true],
-    ["visitHeading", "Visit us heading", () => "Visit the showroom", false, true],
-    ["visitText", "Visit us paragraph (the areas you cover are added on the end)",
-     () => PAGES.visitText, true, true],
+    ["visitHeading", "Visit us heading", () => "Visit Our Showroom", false, true],
+    ["visitText", "Visit us paragraph", () => PAGES.visitText, true, true],
+    /* The same box as on Shop details, deliberately. The words appear on the
+       Visit us page, so the switch that removes them belongs on the tab for
+       that page as well as the one where the address lives. */
+    ["area", "Areas you cover — shown as its own line on Visit us",
+     () => CONTACT.area, false, true],
     ["visitCta", "Visit us — button", () => "Send an enquiry", false, true],
     ["mapHeading", "Map heading", () => "Find us", false, true],
     ["mapText", "Under the map heading",
      () => "Two minutes from Hounslow West, with parking on Hanworth Road.", false, true],
     ["enquireKicker", "Contact us — small label",
      () => "No pressure, no obligation", false, true],
-    ["enquireHeading", "Contact us heading", () => "Get in touch", false, true],
+    ["enquireHeading", "Contact us heading", () => "Get in Touch", false, true],
     ["enquireText", "Contact us paragraph", () => PAGES.enquireText, true, true],
   ];
 
@@ -257,6 +263,15 @@
   /* ------------------------------------------------------------------ views */
 
   const isOff = (key) => DOC.off?.[key] === true;
+
+  /* What the site is actually showing for a key right now — what the shop has
+     typed, or the shipped wording. The same rule as say() in app.js, so a
+     heading printed in the admin matches the heading on the page. */
+  const said = (key, fallback) => {
+    if (isOff(key)) return "";
+    const v = DOC.content?.[key];
+    return (typeof v === "string" && v.trim()) ? v.trim() : fallback;
+  };
 
   function fields(list) {
     return `<div class="mg-fields">
@@ -463,6 +478,23 @@
         photoCard(slot, title, note, "../" + IMG[slot], title)).join("")}
     </div>
 
+    <h3 class="mg-photo-head">Style tiles</h3>
+    <p class="mg-lede">The big pictures on "what sort of carpet are you after?". Until one is
+      uploaded a style borrows a photograph from the first collection under it — and a style
+      whose collections have no photograph shows an empty frame, which is what this fixes.</p>
+    <div class="mg-photos">
+      ${Object.keys(STYLES).filter((t) => STYLES[t].length).flatMap((type) =>
+        STYLES[type].map((st) => {
+          const borrowed = (allRanges().find((r) => (DOC.styles?.[type]?.[st.id] || st.ranges)
+            .includes(r.id) && r.photo) || {}).photo;
+          return photoCard(`style-${type}-${st.id}`,
+            said(`styleName-${type}-${st.id}`, st.name),
+            (TYPES.find((t) => t.id === type) || {}).name || type,
+            borrowed ? "../" + borrowed : "",
+            said(`styleName-${type}-${st.id}`, st.name));
+        })).join("")}
+    </div>
+
     <h3 class="mg-photo-head">Collections</h3>
     <p class="mg-lede">Most collections show a stand-in photograph because the mill didn't
       send one. A picture of that carpet fitted in a real room is worth far more.</p>
@@ -475,6 +507,14 @@
     </div>`;
   }
 
+  /* A style's own wording. The key carries the floor type as well as the style
+     because "herringbone" exists under both Wood and LVT, and renaming one of
+     them must not rename the other. Matches styleRef() in app.js. */
+  const styleFields = (type, st) => [
+    [`styleName-${type}-${st.id}`, "What this style is called", () => st.name],
+    [`styleText-${type}-${st.id}`, "The line under the name", () => st.blurb, 2],
+  ];
+
   function viewStyles() {
     const types = Object.keys(STYLES).filter((t) => STYLES[t].length);
     return `
@@ -482,15 +522,28 @@
     <p class="mg-lede">This is what customers see first — "what sort of carpet are you after?".
       Tick the collections that belong under each. A collection in no style still
       appears everywhere else on the site, so it's safe to untick one you're unsure of.</p>
+    ${BLANKING}
     ${types.map((type) => `
       <section class="mg-styleblock">
         <h3>${esc((TYPES.find((t) => t.id === type) || {}).name || type)}</h3>
+        ${fields([[`styleHead-${type}`, "Heading above these on the "
+          + ((TYPES.find((t) => t.id === type) || {}).name || type) + " page",
+          () => `What sort of ${((TYPES.find((t) => t.id === type) || {}).name || type).toLowerCase()} are you after?`,
+          false, true]])}
         ${STYLES[type].map((st) => {
           const chosen = DOC.styles?.[type]?.[st.id] || st.ranges;
           const options = allRanges().filter((r) => r.type === type);
-          return `<div class="mg-style">
-            <div class="mg-style-head"><b>${esc(st.name)}</b>
-              <span class="mg-meta">${esc(st.blurb)}</span></div>
+          /* A style with nothing filed under it does not appear on the site at
+             all — it would be a tile promising 0 shades. Its wording boxes are
+             left out rather than shown, because a box that cannot change
+             anything is the bug this whole tab came out of. */
+          const live = chosen.length > 0;
+          return `<div class="mg-style" data-style-block="${esc(type)}|${esc(st.id)}">
+            <div class="mg-style-head"><b>${esc(said(`styleName-${type}-${st.id}`, st.name))}</b>
+              <span class="mg-meta">${esc(said(`styleText-${type}-${st.id}`, st.blurb))}</span></div>
+            ${live ? fields(styleFields(type, st))
+              : `<p class="mg-lede">Nothing is filed under this one yet, so it is not on the
+                 site. Tick a collection below and its wording appears here.</p>`}
             <div class="mg-ticks">
               ${options.map((r) => `<label class="mg-tick">
                 <input type="checkbox" data-style="${esc(type)}|${esc(st.id)}" value="${esc(r.id)}"

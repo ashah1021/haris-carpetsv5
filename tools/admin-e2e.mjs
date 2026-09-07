@@ -34,7 +34,19 @@ const CONTACT_HOURS = (await import("node:fs")).readFileSync(
   .match(/hours: "([^"]+)"/)[1];
 
 const browser = await chromium.launch();
-const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+
+/* Google Fonts is unreachable from the sandbox these tests run in, and a
+   request that never settles makes waitUntil:"networkidle" hang until the run
+   is killed — which is what an intermittent eight-minute "failure" here turned
+   out to be. The site is built to render in the fallback font (the footer rule
+   is sized in ems for exactly that reason), so the request is refused outright
+   and every run is deterministic. */
+const openPage = async (browserObj, opts) => {
+  const ctx = await browserObj.newContext(opts);
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  return ctx.newPage();
+};
+const page = await openPage(browser, { viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 
@@ -293,7 +305,7 @@ console.log("\nAdding a collection and a shade from a photograph:");
 
 console.log("\nWhen the admin API is down the shop does not notice:");
 {
-  const p2 = await (await browser.newContext()).newPage();
+  const p2 = await openPage(browser);
   const errs = [];
   p2.on("pageerror", (e) => errs.push(e.message));
   await p2.goto(`${DOWN}/index.html#/collections/carpets`, { waitUntil: "networkidle" });
@@ -312,7 +324,7 @@ console.log("\nWhen the admin API is down the shop does not notice:");
 
 console.log("\nSomeone not signed in gets a door, not a form:");
 {
-  const p3 = await (await browser.newContext()).newPage();
+  const p3 = await openPage(browser);
   await p3.goto(`${ANON}/admin/`, { waitUntil: "networkidle" });
   await p3.waitForTimeout(700);
   check("the gate is shown", await p3.locator("#gate").isVisible());
@@ -325,7 +337,7 @@ console.log("\nSomeone not signed in gets a door, not a form:");
 console.log("\nSigning in with the site password:");
 {
   const PW = process.argv[6] || "http://127.0.0.1:8894";
-  const p4 = await (await browser.newContext()).newPage();
+  const p4 = await openPage(browser);
   await p4.goto(`${PW}/admin/`, { waitUntil: "networkidle" });
   await p4.waitForTimeout(700);
   check("a password box is offered", await p4.locator("#login").isVisible());
@@ -513,7 +525,11 @@ console.log("\nEvery text box in the admin changes something on the site:");
      one gets a unique marker typed into it, and then the pages are searched for
      those markers. Anything missing is named. */
   const MARK = "ZQ";
-  const tabs = ["shop", "about", "home", "pages", "portfolio"];
+  /* "styles" is in here because the style names and blurbs became boxes: the
+     tiles on "what sort of carpet are you after?" used to be wording nobody
+     could change, and a box nobody sweeps is a box that can go back to being
+     one. */
+  const tabs = ["shop", "about", "home", "pages", "portfolio", "styles"];
   const typed = new Map();
   /* Checked apart: the notice is off unless it has something in it, and the two
      URLs have to stay URLs or the page they are on cannot render them. */
@@ -537,6 +553,9 @@ console.log("\nEvery text box in the admin changes something on the site:");
 
   /* every page that could be showing any of them */
   const pages = ["#/", "#/about", "#/collections", "#/collections/carpets",
+                 /* Wood and LVT have styles of their own, and their names are
+                    separate boxes — "herringbone" exists under both. */
+                 "#/collections/wood", "#/collections/lvt",
                  "#/portfolio", "#/contact", "#/enquire"];
   let seen = "";
   for (const hash of pages) {
@@ -660,6 +679,76 @@ console.log("\nThe portfolio:");
   await page.waitForTimeout(900);
   await go(`${BASE}/index.html#/portfolio`, 1600);
   check("an entry with no picture is dropped", (await page.locator(".folio-item").count()) === 1);
+}
+
+console.log("\nA style tile gets a picture of its own:");
+{
+  /* The tile picture used to be borrowed from the first collection under the
+     style, with nothing in /admin able to change it — so "Striped & patterned",
+     whose collections have no photograph, showed an empty frame and there was
+     nowhere to fix it. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='photos']").click();
+  await page.waitForTimeout(700);
+  const slot = "style-carpets-wool-twist";
+  check("style tiles are listed as photographs",
+    (await page.locator(`[data-slot="${slot}"]`).count()) === 1);
+
+  await page.locator(`[data-slot="${slot}"]`).setInputFiles(shot);
+  await page.waitForTimeout(1500);
+  await page.locator(`[data-caption="${slot}"]`).fill("Wool twist fitted in a bay window");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/collections/carpets`, 1600);
+  const tile = await page.evaluate(() => {
+    const a = [...document.querySelectorAll(".style-tile")]
+      .find((t) => /wool-twist$/.test(t.getAttribute("href")));
+    const img = a && a.querySelector("img");
+    return { src: img?.getAttribute("src") || "", alt: img?.getAttribute("alt") || "",
+             painted: Boolean(img && img.naturalWidth > 0) };
+  });
+  check("the tile shows the uploaded picture",
+    tile.src.includes(`assets/uploads/${slot}-`), tile.src);
+  check("and it actually loads", tile.painted);
+  check("described in the shop's own words",
+    tile.alt === "Wool twist fitted in a bay window", tile.alt);
+}
+
+console.log("\nA style with nothing in it says so rather than offering dead boxes:");
+{
+  /* Sets its own state rather than relying on what the site ships with: the
+     sweep above has already been through this tab, and a stub kept running
+     between runs holds whatever the last one saved. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='styles']").click();
+  await page.waitForTimeout(600);
+  const block = page.locator('[data-style-block="carpets|pattern"]');
+  for (const box of await block.locator("input[type=checkbox]:checked").all()) await box.uncheck();
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await page.locator("[data-tab='styles']").click();
+  await page.waitForTimeout(600);
+
+  check("a style with no collections has no wording boxes",
+    (await block.locator("[data-content]").count()) === 0);
+  check("and says why instead", /Nothing is filed under this one/.test(await block.innerText()));
+
+  await go(`${BASE}/index.html#/collections/carpets`, 1500);
+  check("it is not on the site either",
+    (await page.locator('.style-tile[href$="/pattern"]').count()) === 0);
+
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='styles']").click();
+  await page.waitForTimeout(600);
+  await block.locator("input[type=checkbox]").first().check();
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await page.locator("[data-tab='styles']").click();
+  await page.waitForTimeout(600);
+  check("filing one collection under it brings its wording back",
+    (await block.locator("[data-content]").count()) === 2,
+    `${await block.locator("[data-content]").count()} boxes`);
 }
 
 console.log("\nAn enquiry gets as far as the wire:");
@@ -953,7 +1042,7 @@ console.log("\nWith Access and a password both configured — the live shape:");
 {
   /* This combination was never tested. Each was covered on its own, and the
      one that actually shipped was the pair. */
-  const p5 = await (await browser.newContext()).newPage();
+  const p5 = await openPage(browser);
   await p5.goto("http://127.0.0.1:8897/admin/", { waitUntil: "networkidle" });
   await p5.waitForTimeout(700);
   check("the form is shown", await p5.locator("#login").isVisible());
@@ -972,7 +1061,7 @@ console.log("\nWith Access and a password both configured — the live shape:");
   /* What a content blocker actually does — a cosmetic rule in the stylesheet,
      in place before any script runs. Injecting it afterwards would land after
      the page had already checked, and prove nothing. */
-  const blocked = await (await browser.newContext()).newPage();
+  const blocked = await openPage(browser);
   await blocked.route("**/admin.css", async (route) => {
     const res = await route.fetch();
     await route.fulfill({
@@ -992,7 +1081,7 @@ console.log("\nThe gate names the actual problem:");
 {
   /* Both of these produced the same unhelpful "check your Zero Trust path"
      message, which sent you after a setting that could never have worked. */
-  const stale = await (await browser.newContext()).newPage();
+  const stale = await openPage(browser);
   await stale.goto("http://127.0.0.1:8895/admin/", { waitUntil: "networkidle" });
   await stale.waitForTimeout(600);
   check("a Worker older than the page says to redeploy",
@@ -1003,7 +1092,7 @@ console.log("\nThe gate names the actual problem:");
   /* a browser that genuinely believes it is on workers.dev */
   const wd = await chromium.launch({
     args: ["--host-resolver-rules=MAP fake-haris.workers.dev 127.0.0.1"] });
-  const p = await (await wd.newContext()).newPage();
+  const p = await openPage(wd);
   await p.goto("http://fake-haris.workers.dev:8896/admin/", { waitUntil: "networkidle" });
   await p.waitForTimeout(600);
   const body = await p.locator("#gateBody").textContent();
@@ -1021,7 +1110,7 @@ console.log("\nNothing here is named like an advert:");
      every form field were hidden in a normal browser while passing every test
      here, because headless Chromium runs no extensions. The prefix is "mg-"
      now, and this keeps it that way. */
-  const p6 = await (await browser.newContext()).newPage();
+  const p6 = await openPage(browser);
   await p6.goto(`${BASE}/admin/`, { waitUntil: "networkidle" });
   await p6.waitForTimeout(900);
   const adish = await p6.evaluate(() => {
@@ -1037,7 +1126,7 @@ console.log("\nNothing here is named like an advert:");
   check("no class or id looks like an ad slot", adish.length === 0, adish.join(", "));
 
   /* and prove the page survives a blocker that hides the usual suspects */
-  const blocker = await (await browser.newContext()).newPage();
+  const blocker = await openPage(browser);
   await blocker.route("**/admin.css", async (route) => {
     const res = await route.fetch();
     await route.fulfill({ response: res, body: (await res.text())
