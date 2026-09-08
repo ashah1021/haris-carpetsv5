@@ -724,11 +724,17 @@ console.log("\nA style with nothing in it says so rather than offering dead boxe
   await page.locator("[data-tab='styles']").click();
   await page.waitForTimeout(600);
   const block = page.locator('[data-style-block="carpets|pattern"]');
-  for (const box of await block.locator("input[type=checkbox]:checked").all()) await box.uncheck();
-  await page.locator("#save").click();
-  await page.waitForTimeout(900);
-  await page.locator("[data-tab='styles']").click();
-  await page.waitForTimeout(600);
+  const ticked = await block.locator("input[type=checkbox]:checked").all();
+  for (const box of ticked) await box.uncheck();
+  /* Only if there was something to undo. Save is disabled until the document
+     changes, and clicking a disabled button waits for thirty seconds and then
+     fails the run — which is what a freshly started stub did here. */
+  if (ticked.length) {
+    await page.locator("#save").click();
+    await page.waitForTimeout(900);
+    await page.locator("[data-tab='styles']").click();
+    await page.waitForTimeout(600);
+  }
 
   check("a style with no collections has no wording boxes",
     (await block.locator("[data-content]").count()) === 0);

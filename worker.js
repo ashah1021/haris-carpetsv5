@@ -102,8 +102,8 @@ export default {
 
      The weekly one keeps the Instagram token alive and the feed warm — see
      worker-instagram.js, a token lapsing is the failure that whole arrangement
-     is built around. The half-hourly one drains any enquiry the send failed
-     on, and lets old copies go. */
+     is built around. The half-hourly one lets enquiries past twelve months
+     go. */
   async scheduled(event, env, ctx) {
     if (!env.PHOTOS) return;
     if (event.cron === "0 4 * * 1") ctx.waitUntil(instagramCron(env));

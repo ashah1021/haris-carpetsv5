@@ -1,5 +1,11 @@
 # Managing the site
 
+Reference for the admin: what everything does and why it works that way. For
+step-by-step procedures — how to answer an enquiry, how to replace a photograph
+— see [`work-instructions.md`](./work-instructions.md). For the code behind it,
+[`architecture.md`](./architecture.md). For moving the whole thing to another
+Cloudflare account, [`handover.md`](./handover.md).
+
 There are two catalogues, and knowing which is which explains everything else.
 
 The **generated catalogue** (`public/data.js`) is built from the suppliers' own

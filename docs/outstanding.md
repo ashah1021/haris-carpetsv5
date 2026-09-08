@@ -1,6 +1,7 @@
 # Outstanding
 
-Parked deliberately, not forgotten.
+Parked deliberately, not forgotten. The transfer checklist is separate — see
+[`handover.md`](./handover.md).
 
 ## Before handover
 - **Check the Enquiries tab.** Nothing is emailed out when somebody sends the
@@ -87,8 +88,9 @@ Parked deliberately, not forgotten.
   shade list.
 
 ## Content
-- Opening hours are still a `TODO` in `public/data.js`.
-- The enquiry form is a demo — wire it to Formspree or Netlify Forms.
+- Opening hours are still a `TODO` in `public/data.js` — "Mon–Sat · Sun by
+  appointment" is a guess. The shop can correct it on the Shop details tab
+  without a deploy, but the shipped default should be right too.
 - `FEATURES.samples` is off pending confirmation that Hari's offer a postal
   sample service.
 - No stairs scene in the visualiser: the supplier packs contain no staircase

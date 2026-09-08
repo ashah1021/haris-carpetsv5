@@ -29,10 +29,9 @@
   // Weekly: refreshes the Instagram token and the cached feed. Weekly because a
   // long-lived token lasts 60 days — five missed runs before anything breaks.
   //
-  // Half-hourly: retries any enquiry whose send failed, and deletes copies once
-  // they are past their keep-by. Enquiries are written to R2 before they are
-  // sent, so this is what turns a provider outage into a delay rather than a
-  // lost customer.
+  // Half-hourly: deletes enquiries once they are past twelve months. That
+  // number is a promise made on public/privacy.html — move one and you must
+  // move the other, or the privacy notice stops being true.
   "triggers": {
     "crons": ["0 4 * * 1", "*/30 * * * *"]
   },
