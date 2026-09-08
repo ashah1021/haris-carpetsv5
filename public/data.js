@@ -45,11 +45,11 @@ const BUSINESS = {
    means editing a template. */
 const HOME = {
   heroText: "A family-run flooring business with over 32 years of experience, supplying and"
-    + " fitting carpets, wood, LVT, vinyl and rugs across London and the Home Counties.",
+    + " installing carpets, wood, LVT, vinyl and rugs across London and the Home Counties.",
   typesText: "Discover our flooring collections, from carpets and rugs to wood, laminate,"
     + " LVT and vinyl.",
-  serviceText: "The same team measures the job and comes back to fit it. Nothing gets handed"
-    + " to a subcontractor who's never seen your house.",
+  serviceText: "The same team measures the job and comes back to install it. Nothing gets"
+    + " handed to a subcontractor who's never seen your house.",
   instaText: "Looking for inspiration? Follow us on Instagram @hariscarpets or"
     + " search #hariscarpets.",
   /* The family block on the home page. It used to render the About page's
@@ -74,7 +74,7 @@ const PAGES = {
     + " requirements, request a quote or enquire about any of our products and collections."
     + " From a single room to a full property or commercial project, we'll help you find the"
     + " right flooring for your space.",
-  portfolioText: "A few of the floors we've supplied and fitted recently, in real homes"
+  portfolioText: "A few of the floors we've supplied and installed recently, in real homes"
     + " across London and the Home Counties.",
 };
 
@@ -157,7 +157,7 @@ const IMG_SLOTS = [
   ["hero3",    "Home page banner 3",     "Third picture the banner cycles to"],
   ["showroom", "The showroom",           "On the Visit us page"],
   ["about",    "About us",                "Beside the About us text — the showroom picture until you add one"],
-  ["fitting",  "Fitting",                "Beside the fitting service"],
+  ["fitting",  "Installation",           "Beside the installation section"],
   ["stairs",   "Stairs and landings",    "Beside the stairs service"],
   ["samples",  "Samples on the counter", "Small inset on the home page"],
   ["velvet",   "Carpets",                "The Carpets tile in Collections"],
@@ -368,7 +368,7 @@ const SERVICES = [
   { title: "We arrange installation", body: "Our own skilled fitters handle the whole job, start to finish." },
   { title: "Free measuring & planning", body: "We measure up and plan the job at your home, at no cost and no obligation." },
   { title: "Uplift & removal service", body: "We lift and take away your old flooring so you don't have to." },
-  { title: "Wear guarantee", body: "Every floor we supply and fit comes with a wear guarantee." },
+  { title: "Wear guarantee", body: "Every floor we supply and install comes with a wear guarantee." },
 ];
 
 /* ============================================================================

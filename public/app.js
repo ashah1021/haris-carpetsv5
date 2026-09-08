@@ -734,7 +734,7 @@ function viewHome() {
       <div class="split-copy">
         <span class="rule on-dark"></span>
         ${kicker("serviceKicker", "How we work")}
-        ${head("serviceHeading", "Supplied and fitted, properly")}
+        ${head("serviceHeading", "Supplied and installed, properly")}
         ${para("serviceText", HOME.serviceText, "lede")}
         ${pWrap(cta("serviceCta", "Discuss your project", "#/enquire", "btn btn-yellow"), "margin-top:24px")}
       </div>
@@ -1252,19 +1252,19 @@ function viewPortfolio() {
   <section><div class="wrap">
     <div class="section-head"><div><span class="rule"></span>
       ${kicker("portfolioKicker", "Our work")}
-      ${head("portfolioHeading", "Recently fitted")}
+      ${head("portfolioHeading", "Recently installed")}
       ${para("portfolioText", PAGES.portfolioText)}</div>
       ${pWrap(cta("portfolioCta", "Discuss your project", "#/enquire", "btn btn-solid btn-sm"))}</div>
     ${items.length ? `<div class="folio">${items.map((p) => `
       <figure class="folio-item">
-        ${photo(P(p.image), p.caption || p.title || "A floor fitted by Hari's Carpets", "4-3")}
+        ${photo(P(p.image), p.caption || p.title || "A floor installed by Hari's Carpets", "4-3")}
         ${p.title || p.caption ? `<figcaption>
           ${p.title ? `<h3>${esc(p.title)}</h3>` : ""}
           ${p.caption ? `<p>${esc(p.caption)}</p>` : ""}
         </figcaption>` : ""}
       </figure>`).join("")}</div>`
     : `<p class="empty-note">We're putting this gallery together — in the meantime,
-         pop into the showroom and we'll show you what we've been fitting.</p>`}
+         pop into the showroom and we'll show you what we've been installing.</p>`}
   </div></section>`;
 }
 

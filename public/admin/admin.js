@@ -98,10 +98,10 @@
     ["instaKicker", "Instagram — small label", () => "On Instagram", false, true],
     ["instaHeading", "Instagram heading", () => "Recent work", false, true],
     ["instaText", "Instagram paragraph", () => HOME.instaText, true, true],
-    ["serviceKicker", "Fitting — small label", () => "How we work", false, true],
-    ["serviceHeading", "Fitting heading", () => "Supplied and fitted, properly", false, true],
-    ["serviceText", "Fitting paragraph", () => HOME.serviceText, true, true],
-    ["serviceCta", "Fitting — button", () => "Discuss your project", false, true],
+    ["serviceKicker", "Installation — small label", () => "How we work", false, true],
+    ["serviceHeading", "Installation heading", () => "Supplied and installed, properly", false, true],
+    ["serviceText", "Installation paragraph", () => HOME.serviceText, true, true],
+    ["serviceCta", "Installation — button", () => "Discuss your project", false, true],
     ["familyKicker", "Family run — small label",
      () => "Family-run for over 32 years", false, true],
     ["familyHeading", "Family run — heading", () => HOME.familyHeading, false, true],
@@ -153,7 +153,7 @@
 
   const PORTFOLIO_FIELDS = [
     ["portfolioKicker", "Portfolio — small label", () => "Our work", false, true],
-    ["portfolioHeading", "Portfolio heading", () => "Recently fitted", false, true],
+    ["portfolioHeading", "Portfolio heading", () => "Recently installed", false, true],
     ["portfolioText", "Portfolio paragraph", () => PAGES.portfolioText, true, true],
     ["portfolioCta", "Portfolio — button", () => "Discuss your project", false, true],
   ];
@@ -566,7 +566,7 @@
     ${fields(HOME_FIELDS)}
 
     <h3 class="mg-photo-head">The four service cards</h3>
-    <p class="mg-lede">The row under the fitting section. Clear a heading and that card
+    <p class="mg-lede">The row under the installation section. Clear a heading and that card
       comes off the row.</p>
     ${fields(SERVICE_FIELDS)}
 
@@ -636,7 +636,7 @@
     const items = DOC.portfolio || [];
     return `
     <h2>Portfolio</h2>
-    <p class="mg-lede">Your own photographs of floors you have fitted. Landscape works best,
+    <p class="mg-lede">Your own photographs of floors you have installed. Landscape works best,
       and big files are fine — they're shrunk here before uploading. Nothing is shipped with
       the site for this page, so what you put here is what is on it.</p>
     ${fields(PORTFOLIO_FIELDS)}
