@@ -244,3 +244,12 @@ body.admin { background: var(--off); }
 /* white-space:pre-wrap — somebody's message keeps the line breaks they typed */
 .mg-enq-msg { margin: 11px 0 0; white-space: pre-wrap; color: var(--ink-soft); font-size: 15px; }
 .mg-enq-acts { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+
+/* What the last save would not take. Loud on purpose: the bug this exists for
+   let the shop upload collections for weeks into a save that was binning them
+   and still saying "Saved". */
+.mg-dropped { background: #fff4f4; border: 1px solid #e7b9b9; border-left: 4px solid #a02020;
+  padding: 14px 18px; margin: 18px 0 0; font-size: 14px; color: #5c1a1a; }
+.mg-dropped ul { margin: 8px 0 8px 18px; padding: 0; }
+.mg-dropped li { margin: 3px 0; }
+.mg-dropped p { margin: 0; color: #7a3030; }

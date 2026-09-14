@@ -191,7 +191,10 @@ some point.
 - [ ] a shade opens in the lightbox
 - [ ] the ♥ saves a shade and **My Favourites** shows it
 - [ ] the Visit us map is there and the address is on four lines
-- [ ] `/privacy.html` and `/data-deletion.html` both load — **Meta checks these**
+- [ ] `/privacy.html` loads, and `/privacy.html#deleting` is the deletion
+      section — **Meta's app review checks a data deletion URL**
+- [ ] `/data-deletion.html` still loads and redirects there: the old URL is in
+      the Meta app and cannot 404
 - [ ] the Instagram grid has posts on it (or is absent, not broken images)
 
 **The admin**

@@ -44,6 +44,10 @@ let LIVE_FEED = { posts: [], live: false };
 const LIVE_PICS = ["hero-living-room.jpg", "showroom.jpg", "stairs-wool-twist.jpg",
   "velvet-living-room.jpg", "wood-herringbone-kitchen.jpg", "fitting-hands.jpg"];
 
+/* test hook: makes the next save report one casualty, so the admin's "this did
+   not save" path can be driven without posting a thousand collections. */
+let DROP_NEXT = "";
+
 let ENQUIRY_MODE = "ok";
 let LAST_ENQUIRY = null;
 
@@ -126,10 +130,14 @@ createServer(async (req, res) => {
       let body = ""; for await (const c of req) body += c;
       const input = JSON.parse(body);
       if (input.baseVersion !== DOC.version) return send(res, 409, '{"error":"stale"}');
-      DOC = clean(input);
+      /* The real clean(), and the real list of what it would not take — the
+         Worker hands this back so the admin can say what did not save. */
+      const lost = [];
+      DOC = clean(input, lost);
       DOC.version = input.baseVersion + 1;
       DOC.updated = new Date().toISOString();
-      return send(res, 200, JSON.stringify({ ok: true, version: DOC.version }));
+      if (DROP_NEXT) { lost.push(DROP_NEXT); DROP_NEXT = ""; }
+      return send(res, 200, JSON.stringify({ ok: true, version: DOC.version, dropped: lost }));
     }
     if (p === "/api/admin/photo") {
       for await (const _ of req) { /* drain the upload */ }
@@ -198,6 +206,11 @@ createServer(async (req, res) => {
     if (state === "empty") INBOX = new Map();
     else if (state === "seeded") INBOX = seedInbox();
     return send(res, 200, JSON.stringify({ count: INBOX.size }));
+  }
+
+  if (p === "/_drop") {
+    DROP_NEXT = url.searchParams.get("what") || "";
+    return send(res, 200, JSON.stringify({ next: DROP_NEXT }));
   }
 
   if (p === "/_enquiry") {

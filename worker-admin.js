@@ -42,7 +42,18 @@
  */
 
 const DOC_KEY = "admin/site.json";
-const MAX_DOC = 512 * 1024;        // the whole document
+
+/* The whole document. Was 512 KB, which sounded generous when the shop had
+   added nothing: a collection with twenty shades costs about 1.4 KB, so this
+   is room for well over a thousand of them. R2 does not care about an object
+   this size; the number exists so a bad client cannot post something absurd. */
+const MAX_DOC = 2 * 1024 * 1024;
+
+/* How many collections the shop can add. Was 200, and it was reached — at
+   which point every further collection was dropped here, silently, while the
+   admin reported "Saved". Ranges past the cap are now reported rather than
+   quietly binned, so hitting this again is visible the first time. */
+const MAX_RANGES = 1000;
 const MAX_PHOTO = 3 * 1024 * 1024; // one swatch photograph
 const JWKS_TTL = 3600;
 
@@ -291,8 +302,19 @@ async function readDoc(env) {
  * as untrusted even though only a signed-in admin can write it — a mistake in
  * the admin should not be able to produce a page that cannot be undone.
  */
-export function clean(input) {
+/**
+ * Validate the posted document into a safe one.
+ *
+ * `lost` is an optional array. Anything this function refuses is described
+ * into it, and the PUT hands that list back to the browser, because the bug
+ * that made this necessary was silence: 200 collections saved, the 201st was
+ * dropped on this line, and the admin said "Saved — live on the site within a
+ * minute". Whatever else changes here, a thing that does not survive must say
+ * so — validation may reject, but it may not lie.
+ */
+export function clean(input, lost = []) {
   const out = empty();
+  const drop = (what) => { if (lost.length < 50) lost.push(what); };
 
   /* one shade, from wherever it was posted */
   const colour = (c) => {
@@ -350,16 +372,32 @@ export function clean(input) {
   }
 
   if (Array.isArray(input.ranges)) {
-    for (const r of input.ranges.slice(0, 200)) {
-      if (!r || !isSlug(r.id) || !isSlug(r.type)) continue;
+    if (input.ranges.length > MAX_RANGES) {
+      drop(`${input.ranges.length - MAX_RANGES} collection(s) beyond the limit of ${MAX_RANGES}`);
+    }
+    for (const r of input.ranges.slice(0, MAX_RANGES)) {
+      /* The id is how a saved shortlist and a shared link find this collection,
+         so it has to be a slug — but the admin mints it from the brand and the
+         name, and a long pair of those used to make one too long to store. It
+         is shortened there now; this says so if one ever arrives anyway. */
+      if (!r || !isSlug(r.id) || !isSlug(r.type)) {
+        drop(`"${text((r && (r.name || r.id)) || "a collection", 60)}" — its name cannot be stored`);
+        continue;
+      }
+      const posted = Array.isArray(r.colours) ? r.colours : [];
+      if (posted.length > 400) {
+        drop(`${posted.length - 400} shade(s) beyond the limit of 400 on "${text(r.name, 60)}"`);
+      }
+      const colours = posted.slice(0, 400).map(colour).filter(Boolean);
+      const bad = Math.min(posted.length, 400) - colours.length;
+      if (bad > 0) drop(`${bad} shade(s) on "${text(r.name, 60)}" with no name or no colour`);
       out.ranges.push({
         id: r.id,
         type: r.type,
         brand: text(r.brand, 60) || "Hari's Carpets",
         name: text(r.name, 80) || r.id,
         blurb: text(r.blurb, 600),
-        colours: (Array.isArray(r.colours) ? r.colours : [])
-          .slice(0, 400).map(colour).filter(Boolean),
+        colours,
       });
     }
   }
@@ -434,7 +472,10 @@ export function clean(input) {
   if (input.extra && typeof input.extra === "object") {
     for (const [id, list] of Object.entries(input.extra)) {
       if (!isSlug(id) || !Array.isArray(list)) continue;
+      if (list.length > 400) drop(`${list.length - 400} shade(s) beyond the limit of 400 on one collection`);
       const cols = list.slice(0, 400).map(colour).filter(Boolean);
+      const bad = Math.min(list.length, 400) - cols.length;
+      if (bad > 0) drop(`${bad} shade(s) with no name or no colour`);
       if (cols.length) out.extra[id] = cols;
     }
   }
@@ -474,7 +515,8 @@ async function handlePutSite(request, env, ctx) {
     return json({ error: "changed since you loaded it", version: current.version }, 409);
   }
 
-  const doc = clean(input);
+  const lost = [];
+  const doc = clean(input, lost);
   doc.version = current.version + 1;
   doc.updated = new Date().toISOString();
 
@@ -484,7 +526,7 @@ async function handlePutSite(request, env, ctx) {
 
   // the public copy is cached; drop it so the change is live now
   ctx.waitUntil(caches.default.delete(new URL("/api/site", request.url).toString()));
-  return json({ ok: true, version: doc.version });
+  return json({ ok: true, version: doc.version, dropped: lost });
 }
 
 async function handleLogin(request, env) {

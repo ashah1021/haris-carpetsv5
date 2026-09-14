@@ -620,6 +620,64 @@ console.log("\nOne save cannot leak into the next:");
 
 /* The enquiry inbox holds names, emails and phone numbers belonging to members
    of the public. Everything about it is an auth question first. */
+/* The shop uploads collections for a living. This is the bug that let them do
+   it for weeks into a save that was throwing the work away. */
+console.log("\nA save that cannot take everything says so:");
+{
+  const env = makeEnv();
+  const headers = { ...(await signedIn()), origin: ORIGIN, "content-type": "application/json" };
+  const put = (body) => adminRoutes(req("/api/admin/site",
+    { method: "PUT", headers, body: JSON.stringify(body) }), env, ctx);
+
+  const many = (n) => Array.from({ length: n }, (_, i) => ({
+    id: "mill-" + i, type: "carpets", brand: "Mill", name: "Range " + i,
+    colours: [{ name: "Oatmeal", hex: "#ddccbb" }],
+  }));
+
+  /* 200 used to be the ceiling, and everything past it went in the bin with a
+     200 OK and the word "Saved". */
+  const ok = await put({ baseVersion: 0, ranges: many(260) });
+  const okBody = await ok.json();
+  check("260 collections is a normal save now", ok.status === 200 && okBody.ok === true);
+  check("with nothing lost", okBody.dropped.length === 0, JSON.stringify(okBody.dropped));
+  cacheStore = new Map();
+  const doc = await (await adminRoutes(req("/api/site"), env, ctx)).json();
+  check("and all of them are on the site", doc.ranges.length === 260, `${doc.ranges.length}`);
+  check("including the last one added",
+    doc.ranges.some((r) => r.id === "mill-259"));
+
+  /* There is still a ceiling. What must never happen again is reaching it
+     quietly. */
+  const over = await put({ baseVersion: okBody.version, ranges: many(1003) });
+  const overBody = await over.json();
+  check("past the limit it still saves what it can", overBody.ok === true);
+  check("but names what it would not take", overBody.dropped.length === 1, JSON.stringify(overBody.dropped));
+  check("and says how many", /3 collection/.test(overBody.dropped[0]), overBody.dropped[0]);
+
+  /* A name too long to store was the other way a collection vanished. */
+  const longName = "x".repeat(70);
+  const named = await put({ baseVersion: overBody.version,
+    ranges: [{ id: longName, type: "carpets", name: "Trade Winds", colours: [] }] });
+  const namedBody = await named.json();
+  check("a collection whose id cannot be stored is reported",
+    namedBody.dropped.length === 1 && /Trade Winds/.test(namedBody.dropped[0]),
+    JSON.stringify(namedBody.dropped));
+
+  /* And the shades inside one. */
+  const shades = await put({ baseVersion: namedBody.version,
+    ranges: [{ id: "fine", type: "carpets", name: "Fine", colours: [
+      { name: "Good", hex: "#aabbcc" }, { name: "", hex: "#aabbcc" }, { name: "No hex", hex: "red" }] }] });
+  const shadeBody = await shades.json();
+  check("shades that cannot be stored are counted",
+    shadeBody.dropped.length === 1 && /2 shade/.test(shadeBody.dropped[0]),
+    JSON.stringify(shadeBody.dropped));
+
+  /* A clean save must stay clean, or the warning becomes noise. */
+  const clean = await put({ baseVersion: shadeBody.version,
+    ranges: [{ id: "fine", type: "carpets", name: "Fine", colours: [{ name: "Good", hex: "#aabbcc" }] }] });
+  check("an ordinary save reports nothing", (await clean.json()).dropped.length === 0);
+}
+
 console.log("\nThe enquiry inbox is not readable by anyone else:");
 {
   const env = makeEnv({ objects: {

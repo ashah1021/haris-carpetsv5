@@ -138,6 +138,20 @@ shipped photograph back.
   change a picture is to point the slot at a new one, which is what **Replace**
   does.
 
+### If a red box appears after saving
+
+**"These did not save"** means the website took everything except what it lists.
+Nothing you typed has gone from the screen — fix what it names and press **Save
+changes** again. The two you are most likely to see:
+
+- *"N collection(s) beyond the limit of 1000"* — you have hit the ceiling. Tell
+  whoever looks after the site before adding more.
+- *"…its name cannot be stored"* — the collection's name and brand together are
+  too long. Shorten one and re-create it.
+
+A save with nothing in that box says **"Saved — live on the site within a
+minute"**, and that is the only message that means everything went through.
+
 ### The description box
 
 The box under each picture is what a blind visitor hears and what Google reads.
@@ -186,10 +200,17 @@ website but keeps the link working for anyone who saved it.
 | Give it its own description | the box under the name |
 | Add a shade the mill has just sent | open the collection → **Add a shade** → name it and pick its colour |
 | Add a whole new collection | **Add a collection** at the top |
+| See how many you have | the line at the top of the tab counts them |
 | Hide one shade | open the collection, tick **Hide** on that shade |
 
 A new collection or shade added here has no photograph until you add one on the
 **Photos** tab.
+
+**How much can go in.** A thousand collections added here, four hundred shades
+in any one of them, and no limit worth worrying about on how many photographs —
+each one is its own file in the shop's own storage. The top of the Collections
+tab tells you where you are against that. If a save ever refuses something, it
+says so in a red box rather than dropping it quietly.
 
 ---
 
@@ -259,7 +280,18 @@ needs a person when that renewal has failed for over a month.
 
 ---
 
-## 11. Opening hours, phone, address
+## 11. The WhatsApp button
+
+**Shop details** → **WhatsApp number**. Put the mobile the WhatsApp account is
+on — the showroom landline will not work — and a green chat button appears in
+the bottom corner of every page. Empty the box and it disappears completely.
+
+Tapping it opens WhatsApp with a new message to you. Nothing about the visitor
+reaches WhatsApp before they send it.
+
+---
+
+## 12. Opening hours, phone, address
 
 **Shop details** tab.
 

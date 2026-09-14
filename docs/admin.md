@@ -142,6 +142,28 @@ A style with no collections ticked does not appear on the site at all, so the
 admin does not offer boxes for its wording either. Tick a collection and they
 appear.
 
+## How much fits
+
+| | Limit | What happens at it |
+|---|---|---|
+| Collections added in /admin | **1,000** | the save reports what it would not take |
+| Shades in one collection | **400** | same |
+| The whole overlay document | **2 MB** | the save is refused with "too big" |
+| One photograph | 3 MB after the browser shrinks it | the upload is refused |
+| Photographs in total | no practical limit | each is its own object in R2 |
+
+These numbers are `MAX_RANGES`, `MAX_DOC` and `MAX_PHOTO` in `worker-admin.js`,
+and `MAX_RANGES` is repeated in `admin.js` for the count shown on the
+Collections tab. Change one and change the other.
+
+**The collections cap was 200 and it was reached.** Everything past the two
+hundredth was dropped in `clean()` — silently, while the admin reported "Saved —
+live on the site within a minute" — so the shop added collections for weeks into
+a save that was throwing them away. `clean()` takes a second argument now, an
+array it describes each casualty into; `handlePutSite` returns that list as
+`dropped`, and the admin puts it on the screen instead of claiming success.
+**Validation here may refuse something. It may not refuse it quietly.**
+
 ## Google reviews
 
 On the **Home page** tab: the rating, how many, a link to the listing, and up to

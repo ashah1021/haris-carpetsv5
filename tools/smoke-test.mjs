@@ -471,8 +471,17 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
      page has to name it — and this assertion is what fails until it does. */
   check("and names no email provider it does not use", !/Resend/i.test(text));
   check("the wordmark has no stale 32-years line under it", !/Est\. 32/.test(text));
-  const del = await page.goto(`${BASE}/data-deletion.html`, { waitUntil: "networkidle" });
-  check("the deletion page Meta requires is still there", del.status() === 200);
+  check("deleting your information is a section of it now",
+    (await page.locator("#deleting").count()) === 1);
+  check("and explains how to ask", /Delete my information/.test(text));
+
+  /* The old URL is in the Meta app's data deletion field and in anybody's
+     bookmarks. It has to keep resolving, and it has to still answer the
+     question for a checker that does not follow a redirect. */
+  const del = await page.goto(`${BASE}/data-deletion.html`, { waitUntil: "domcontentloaded" });
+  check("the old deletion URL still resolves", del.status() === 200);
+  check("and still answers the question on its own",
+    /Delete my information/.test(await page.evaluate(() => document.body.innerText)));
 }
 
 console.log("\nThe portfolio page:");

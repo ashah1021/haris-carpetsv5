@@ -296,6 +296,7 @@ const SOCIAL_ICON = {
   instagram: "M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM17.8 6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z",
   facebook: "M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.25-1.5 1.55-1.5h1.65V4.6A22 22 0 0 0 14.3 4.5c-2.4 0-4 1.45-4 4.13v2.28H7.6V14h2.7v8z",
   tiktok: "M16.5 2h-3v13.2a2.6 2.6 0 1 1-2-2.53V9.6a5.7 5.7 0 1 0 5 5.66V9.2a6.8 6.8 0 0 0 4 1.3V7.4a3.9 3.9 0 0 1-4-3.9z",
+  whatsapp: "M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 0 1 0 16 8 8 0 0 1-4.1-1.1l-.3-.2-2.5.7.7-2.4-.2-.3A8 8 0 0 1 12 4zm-3.4 4.2h.5c.1 0 .3 0 .5.4l.8 1.9v.5l-.3.5-.4.5c-.1.1-.2.2-.1.5a7.3 7.3 0 0 0 1.4 1.7 6.5 6.5 0 0 0 1.9 1.2c.2.1.4.1.5-.1l.8-1c.2-.2.4-.1.6-.1l1.7.9c.3.1.5.2.5.3.1.1.1.6-.1 1.2-.2.6-1.1 1.2-1.6 1.2-.4.1-.9.2-3-.6-2.6-1-4.2-3.6-4.3-3.8-.1-.1-1-1.4-1-2.6s.7-1.7.9-2.1c.2-.4.5-.4.7-.4z",
   twitter: "M17.5 3h3.2l-7 8 8.2 10h-6.4l-5-6.1-5.8 6.1H1.5l7.5-8.6L1.2 3h6.6l4.5 5.6zm-1.1 16.2h1.8L7.7 4.7H5.8z",
 };
 const socialIcon = (id) => SOCIAL_ICON[id]
@@ -319,6 +320,21 @@ function socialRow() {
     ? `<div class="info-row"><span class="il">Follow</span><span class="socials">${links}</span></div>`
     : "";
 }
+
+/* The WhatsApp number, as a wa.me link, or "" when the shop has not given one
+   — in which case nothing about WhatsApp appears anywhere on the site. wa.me
+   wants digits in international form, so a number typed the way it is said
+   ("07700 900123") is converted the same way the dial links are.
+
+   A landline will not do: WhatsApp needs the number the account is on. */
+const whatsappLink = () => {
+  const raw = String(say("whatsapp", "")).replace(/[^\d+]/g, "");
+  if (!raw) return "";
+  const digits = raw.startsWith("+") ? raw.slice(1)
+    : raw.startsWith("0") ? "44" + raw.slice(1)
+    : raw;
+  return digits.length < 10 ? "" : "https://wa.me/" + digits;
+};
 
 /* Wrap something in a <p> only if there is anything to wrap. Saves every
    caller from leaving an empty paragraph — and its margin — behind. */
@@ -376,6 +392,25 @@ function applyContentToChrome() {
     socials.innerHTML = socialsInUse().map((s) =>
       `<a href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="${esc(s.name)}"
           title="${esc(s.name)}">${socialIcon(s.id)}</a>`).join("");
+  }
+
+  /* The floating button. Lives outside the router's <main>, so it survives
+     every page change and is rendered once rather than by each view. */
+  const wa = whatsappLink();
+  let float = document.getElementById("waFloat");
+  if (wa && !float) {
+    float = document.createElement("a");
+    float.id = "waFloat";
+    float.className = "wa-float";
+    float.target = "_blank";
+    float.rel = "noopener";
+    float.setAttribute("aria-label", "Message us on WhatsApp");
+    float.innerHTML = socialIcon("whatsapp") + '<span>WhatsApp</span>';
+    document.body.appendChild(float);
+  }
+  if (float) {
+    float.href = wa;
+    float.hidden = !wa;
   }
 
   const mark = document.querySelector(".brand-mark small");

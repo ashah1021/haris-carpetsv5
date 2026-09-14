@@ -533,7 +533,7 @@ console.log("\nEvery text box in the admin changes something on the site:");
   const typed = new Map();
   /* Checked apart: the notice is off unless it has something in it, and the two
      URLs have to stay URLs or the page they are on cannot render them. */
-  const APART = new Set(["notice", "mapEmbed", "mapsUrl",
+  const APART = new Set(["notice", "mapEmbed", "mapsUrl", "whatsapp",
     "socialInstagram", "socialFacebook", "socialTiktok", "socialTwitter"]);
 
   await go(`${BASE}/admin/`);
@@ -567,8 +567,10 @@ console.log("\nEvery text box in the admin changes something on the site:");
   check(`all ${typed.size} text fields reach a page`, missing.length === 0,
     missing.length ? "not showing: " + missing.join(", ") : `${typed.size} checked`);
 
-  /* The URLs, which the sweep cannot fill with a marker. Each one is a box that
-     has to end up as an href — mapsUrl was one that did not, for months. */
+  /* The URLs and the phone number, which the sweep cannot fill with a marker:
+     they have to stay a URL or a number or the thing they drive cannot render.
+     Each is checked on its own — mapsUrl was a box that changed nothing for
+     months, and the WhatsApp button has its own block below. */
   await go(`${BASE}/admin/`);
   await page.locator("[data-tab='shop']").click();
   await page.waitForTimeout(500);
@@ -679,6 +681,75 @@ console.log("\nThe portfolio:");
   await page.waitForTimeout(900);
   await go(`${BASE}/index.html#/portfolio`, 1600);
   check("an entry with no picture is dropped", (await page.locator(".folio-item").count()) === 1);
+}
+
+console.log("\nThe WhatsApp button:");
+{
+  /* Nothing about WhatsApp is on the site until the shop puts a number in, so
+     the first assertion is that an empty box leaves no button behind. */
+  await go(`${BASE}/index.html#/`, 1200);
+  check("no number, no button", (await page.locator("#waFloat:visible").count()) === 0);
+
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-content="whatsapp"]').fill("07700 900123");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  await go(`${BASE}/index.html#/`, 1400);
+  const wa = page.locator("#waFloat");
+  check("with one, the button is there", await wa.isVisible());
+  check("dialling the number in international form",
+    (await wa.getAttribute("href")) === "https://wa.me/447700900123",
+    await wa.getAttribute("href"));
+  const box = await wa.boundingBox();
+  check("painted, bottom right", box.width > 40 && box.height > 30,
+    `${Math.round(box.width)}x${Math.round(box.height)}`);
+
+  /* It is fixed to the window, so it has to survive a page change rather than
+     be rendered by one view. */
+  await page.locator('.nav a[href="#/about"]').click();
+  await page.waitForTimeout(900);
+  check("and it survives moving to another page", await page.locator("#waFloat").isVisible());
+
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-content="whatsapp"]').fill("");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  await go(`${BASE}/index.html#/`, 1400);
+  check("emptying the box takes it away again",
+    (await page.locator("#waFloat:visible").count()) === 0);
+}
+
+console.log("\nA save that loses something does not say Saved:");
+{
+  /* The shop added collections for weeks into a save that was dropping
+     everything past the two hundredth and still reporting success. The Worker
+     names its casualties now; this is the half that puts them on the screen. */
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='shop']").click();
+  await page.waitForTimeout(400);
+  await page.locator('[data-content="hours"]').fill("Mon to Sat, 9 till 5");
+  await fetch(`${BASE}/_drop?what=${encodeURIComponent('"Trade Winds" — its name cannot be stored')}`);
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+
+  const state = await page.locator("#state").textContent();
+  check("the status line does not claim a clean save", !/^Saved — live/.test(state.trim()), state);
+  const banner = page.locator("#dropped");
+  check("what was lost is on the screen", await banner.isVisible());
+  check("named", /Trade Winds/.test(await banner.innerText()));
+  check("and it says the rest did save", /Everything else saved/.test(await banner.innerText()));
+
+  /* and a clean save afterwards clears it, or the warning becomes wallpaper */
+  await page.locator('[data-content="hours"]').fill("Mon to Sat, 9 till 5.30");
+  await page.locator("#save").click();
+  await page.waitForTimeout(900);
+  check("a clean save afterwards clears the warning", !(await banner.isVisible()));
+  check("and says so", /Saved/.test(await page.locator("#state").textContent()));
 }
 
 console.log("\nA style tile gets a picture of its own:");

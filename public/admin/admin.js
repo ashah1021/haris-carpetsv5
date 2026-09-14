@@ -27,6 +27,10 @@
     (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
   const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+  /* Must match MAX_RANGES in worker-admin.js. Shown on the Collections tab so
+     the ceiling is visible long before it is hit. */
+  const MAX_RANGES = 1000;
+
   /* the document we are editing */
   let DOC = null;
   let dirty = false;
@@ -62,6 +66,11 @@
     ["footerBlurb", "Footer paragraph", () => BUSINESS.blurbShort, true, true],
     ["notice",  "Notice across the top of the home page",
      () => "Leave empty for none — a bank holiday, a delivery delay"],
+    /* Empty means no WhatsApp button on the site at all. It has to be the
+       mobile number the WhatsApp account is on — the showroom landline will
+       not work. */
+    ["whatsapp", "WhatsApp number — shows a chat button on every page",
+     () => "Leave empty for none — e.g. 07700 900123"],
     ["mapsUrl", "Link to your Google Maps listing", () => CONTACT.mapsUrl],
     ["mapEmbed", "Map embed address (Google Maps → Share → Embed a map)",
      () => CONTACT.mapEmbed, 3, true],
@@ -342,10 +351,19 @@
   function viewCollections() {
     if (openRange) return viewShades(openRange);
     const list = allRanges();
+    const added = (DOC.ranges || []).length;
+    const shades = list.reduce((n, r) => n + shadesOf(r).length, 0);
     return `
     <h2>Collections</h2>
     <p class="mg-lede">Hiding a collection takes it off the website. Nothing is deleted, so
       anything a customer has saved keeps working, and you can put it back at any time.</p>
+    ${/* The ceiling, in view before it is reached. It was reached once with
+          nothing said, and every collection added after that was thrown away
+          on save while the admin reported success. */""}
+    <p class="mg-lede"><b>${list.length}</b> collections on the site, <b>${shades}</b> shades.
+      ${added} of them added here${added > MAX_RANGES * 0.8
+        ? ` — the limit is ${MAX_RANGES}. Tell whoever looks after the site before you reach it.`
+        : `. There is room for ${MAX_RANGES} added collections.`}</p>
     <button class="btn btn-solid btn-sm" id="addRange">Add a collection</button>
     <input class="mg-search" id="search" type="search" placeholder="Search collections…">
 
@@ -756,6 +774,21 @@
     render();
   }
 
+  /* What the last save refused, across the top of the page until it is dealt
+     with or the next clean save clears it. Not a line in the status area: that
+     is one line of small text beside a button, and this is work the shop has
+     lost. */
+  function showDropped(list) {
+    const box = $("#dropped");
+    if (!box) return;
+    if (!list.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = `<b>These did not save:</b><ul>${
+      list.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p>Everything else saved. Fix these and press Save changes again — nothing
+      you have typed has been lost from this screen.</p>`;
+  }
+
   /* ------------------------------------------------------------------ render */
 
   function render() {
@@ -835,6 +868,17 @@
       if (!res.ok) throw new Error(body.error || ("save failed (" + res.status + ")"));
       DOC.version = body.version;
       dirty = false;
+      /* Everything the Worker refused. It used to refuse silently — the 201st
+         collection went in the bin and this line still said "Saved" — so the
+         shop uploaded for weeks into something that was throwing the work
+         away. A save that lost something must never read as a clean one. */
+      if (Array.isArray(body.dropped) && body.dropped.length) {
+        $("#state").textContent = "Saved, but some of it did not go through";
+        $("#state").className = "mg-state warn";
+        showDropped(body.dropped);
+        return;
+      }
+      showDropped([]);
       $("#state").textContent = "Saved — live on the site within a minute";
       $("#state").className = "mg-state ok";
     } catch (err) {
@@ -1083,7 +1127,10 @@
     if (!name) { $("#nrErr").textContent = "Give the collection a name."; return; }
     if (!TYPES.some((t) => t.id === type)) { $("#nrErr").textContent = "Pick a flooring type."; return; }
 
-    let id = slugify(brand + "-" + name);
+    /* 64 characters, because that is what the Worker will store. A long brand
+       and a long range name together used to make a longer id than that, and
+       the collection was then dropped on every save with nothing said. */
+    let id = slugify(brand + "-" + name).slice(0, 58).replace(/-$/, "");
     if (!id) { $("#nrErr").textContent = "That name can't be used — try letters and numbers."; return; }
     /* ids are permanent: saved shortlists and shared links are built from them,
        so a new collection must never land on one already in use */

@@ -837,3 +837,27 @@ section { padding: clamp(42px, 6vw, 82px) 0; }
 
 .site-footer .fine-links { display: flex; gap: 18px; flex-wrap: wrap; }
 .site-footer .fine-links a { display: inline; padding: 0; text-decoration: underline; }
+
+/* =========================================================================
+   THE WHATSAPP BUTTON
+   Only on the page at all when the shop has put a number in /admin. Bottom
+   right, above everything, and out of the way of the footer links on a phone.
+   ========================================================================= */
+.wa-float {
+  position: fixed; right: 18px; bottom: 18px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 9px;
+  background: #25d366; color: #fff; text-decoration: none;
+  padding: 12px 18px 12px 15px; border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.28);
+  font-family: var(--f-display); font-size: 14px; letter-spacing: .04em;
+  transition: transform .18s, box-shadow .18s;
+}
+.wa-float:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.34); }
+.wa-float .si { width: 22px; height: 22px; }
+/* On a phone the label costs more room than it earns, and the thumb is aiming
+   at the mark anyway. */
+@media (max-width: 620px) {
+  .wa-float { padding: 14px; right: 14px; bottom: 14px; }
+  .wa-float span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) { .wa-float { transition: none; } }

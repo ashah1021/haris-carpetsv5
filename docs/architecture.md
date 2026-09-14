@@ -136,6 +136,13 @@ Content keys are camelCase names from the code. `isSlug` was applied to both, so
 on the way to R2. Neither regex allows a colon: colon is this document's
 compound-key separator (`range:<id>`, `shade:<range>:<colour>`).
 
+**Refusing is fine. Refusing quietly is not.** `clean(input, lost)` describes
+everything it rejects into `lost`, and the PUT returns it as `dropped` for the
+admin to display. This exists because the cap on added collections was 200, the
+shop reached it, and every collection after that went in the bin behind a
+"Saved" message. Any new rule added to `clean()` has to report its casualties
+the same way.
+
 **Nothing is ever deleted.** Saved shortlists and shared links reference a shade
 by key, so deleting one would silently empty somebody's saved list. The admin
 hides instead: the shade stops appearing, the link still resolves.
