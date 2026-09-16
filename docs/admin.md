@@ -247,6 +247,36 @@ What it cannot do is name a visitor or tell you a street. If anyone asks for
 that, the answer is that this site does not do it and would need a consent
 banner and a very different privacy policy before it could.
 
+### The wording to put on the privacy page
+
+Written and agreed in advance so switching it on is one commit rather than a
+conversation. In `public/privacy.html`, add this section straight after
+*How your information is handled*:
+
+```html
+    <h2>Counting visits</h2>
+    <p>We use <strong>Cloudflare Web Analytics</strong> to see how many people visit the
+      site and which pages they look at. It tells us the number of visits, which pages
+      were viewed, which site or search someone arrived from, the kind of device they
+      used, and the country they were in.</p>
+    <p>It <strong>sets no cookies</strong> and stores nothing on your device, it does not
+      follow you to other websites, and it does not tell us who you are. The country
+      comes from your IP address, which every website you visit can see. We cannot
+      identify you from any of it.</p>
+```
+
+and change the first bullet of *Cookies and saved preferences* from
+"does not intentionally use advertising or analytics cookies" to:
+
+```html
+      <li>The public website uses <strong>no advertising or analytics cookies</strong> —
+        the analytics described above work without them. The one cookie this site can set
+        is for shop staff signing in to update it, and it only exists after signing in.</li>
+```
+
+Both of those go in the same commit as the token, or `smoke-test.mjs` fails —
+which is the point of it.
+
 ## Instagram
 
 The grid sits high on the home page, under the flooring types. It fills itself
