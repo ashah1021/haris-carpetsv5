@@ -41,6 +41,8 @@
  *                       the password itself is never stored in the browser.
  */
 
+import { analyticsRoute } from "./worker-analytics.js";
+
 const DOC_KEY = "admin/site.json";
 
 /* The whole document. Was 512 KB, which sounded generous when the shop had
@@ -678,6 +680,12 @@ export async function adminRoutes(request, env, ctx) {
     if (request.method === "GET") return handleListEnquiries(env);
     if (request.method === "POST") return handleMarkEnquiry(request, env);
     if (request.method === "DELETE") return handleDeleteEnquiry(request, env);
+  }
+  /* Visitor numbers. Also below identify() on purpose: how the shop's website
+     is doing is the shop's business, not something to serve to anyone who
+     guesses the path. */
+  if (pathname === "/api/admin/visitors" && request.method === "GET") {
+    return analyticsRoute(request, env, ctx);
   }
   return json({ error: "not found" }, 404);
 }

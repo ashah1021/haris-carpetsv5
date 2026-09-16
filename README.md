@@ -36,6 +36,7 @@ worker.js          the Worker: photos from R2, four API routes, then static asse
 worker-admin.js      the admin API and the overlay document
 worker-enquiry.js    the contact form and the enquiry inbox
 worker-instagram.js  the live feed and its 60-day token
+worker-analytics.js  visitor numbers for the admin's Visitors tab
 tools/             the catalogue pipeline (Python) and the test suites (Node)
 docs/              the documents above
 wrangler.jsonc     bindings, crons, rate limits. Read the comments before editing
@@ -59,9 +60,10 @@ node tools/admin.test.mjs      # the admin API, with real signed tokens
 node tools/enquiry.test.mjs    # the enquiry form
 node tools/instagram.test.mjs  # the feed, and the token expiring
 node tools/worker.test.mjs     # routing and the R2 photo route
+node tools/analytics.test.mjs  # visitor numbers, and every way they can fail
 ```
 
-Those four need no server and no network. The two browser suites
+Those five need no server and no network. The two browser suites
 (`tools/admin-e2e.mjs`, `tools/smoke-test.mjs`) need Playwright and a couple of
 local servers — see the Tests section of [`docs/admin.md`](docs/admin.md).
 

@@ -253,3 +253,33 @@ body.admin { background: var(--off); }
 .mg-dropped ul { margin: 8px 0 8px 18px; padding: 0; }
 .mg-dropped li { margin: 3px 0; }
 .mg-dropped p { margin: 0; color: #7a3030; }
+
+/* --- Visitors -----------------------------------------------------------
+   No charting library. This admin has no dependencies at all, and a row of
+   divs with a height in percent is the whole of what "how was last week"
+   needs to be. */
+.mg-range { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+
+.mg-figures { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 22px; }
+.mg-figures div { background: var(--off, #f6f7f9); border: 1px solid var(--line, #e3e6ea);
+  padding: 14px 20px; min-width: 130px; }
+.mg-figures b { display: block; font-size: 30px; font-weight: 500; line-height: 1.1; }
+.mg-figures span { font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted, #6b7280); }
+
+.mg-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px;
+  border-bottom: 1px solid var(--line, #e3e6ea); padding-bottom: 2px; }
+.mg-bar { flex: 1 1 0; display: flex; align-items: flex-end; min-width: 3px; height: 100%; }
+.mg-bar i { display: block; width: 100%; background: var(--blue, #1e4174); min-height: 2px; }
+.mg-bar:hover i { background: var(--yellow, #f4d03f); }
+
+.mg-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px; margin-top: 26px; }
+@media (max-width: 760px) { .mg-stats { grid-template-columns: 1fr; } }
+.mg-stat-list h3 { margin: 0 0 4px; font-size: 16px; font-weight: 500; }
+.mg-stat-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 46px;
+  gap: 10px; align-items: center; padding: 5px 0; font-size: 14px; }
+.mg-stat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-stat-bar { background: var(--off, #f0f2f5); height: 8px; }
+.mg-stat-bar i { display: block; height: 100%; background: var(--blue, #1e4174); }
+.mg-stat-n { text-align: right; color: var(--muted, #6b7280); font-variant-numeric: tabular-nums; }

@@ -74,7 +74,16 @@
   // this Cloudflare account and verified with the sender. Putting the shop's
   // own domain here before then would be claiming a domain whose SPF and DKIM
   // live at Wix, and the mail would be junked. See worker-enquiry.js.
+  // Visitor numbers, read in the admin's Visitors tab. Neither of these is a
+  // credential: the account id is in the dashboard URL and the site tag is in
+  // the page source of every page. The API token that goes with them IS a
+  // secret and is set with `wrangler secret put CF_ANALYTICS_TOKEN`.
+  //
+  // Empty means the tab says which of the three is still to be set, rather
+  // than showing an empty page. See worker-analytics.js.
   "vars": {
+    "CF_ACCOUNT_ID": "",
+    "CF_SITE_TAG": "",
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
     "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c",
     "ENQUIRY_TO": "sales@hariscarpets.co.uk",

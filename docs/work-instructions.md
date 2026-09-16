@@ -291,7 +291,28 @@ reaches WhatsApp before they send it.
 
 ---
 
-## 12. Opening hours, phone, address
+## 12. Visitors
+
+**Visitors** tab: how many people came, which pages they looked at, where they
+were, and what brought them here — over the last 7, 30 or 90 days.
+
+- **Visits** is people arriving. **Page views** is pages looked at. One visit is
+  usually several page views, so the second number is always the bigger one.
+- **Where they were** is the **country**, worked out from the network, the same
+  way every website can. It is not a town, not an address, and not a person.
+- **How they got here** — "google.com" means they found you in a search.
+  Nothing listed means they typed the address in or used a bookmark.
+
+Nothing here can tell you who somebody is, and nothing follows a visitor
+between websites. That is why this site has no cookie banner: there are no
+tracking cookies to ask about.
+
+If the tab says it is not switched on, or that something is not working, it
+names the setting — pass that on to whoever looks after the site.
+
+---
+
+## 13. Opening hours, phone, address
 
 **Shop details** tab.
 
@@ -319,6 +340,8 @@ page together.
 - [ ] Clear the notice strip if what it says is over.
 
 **Every month**
+- [ ] Look at the **Visitors** tab — which pages people actually read is worth
+      knowing before deciding what to change.
 - [ ] Hide anything the mills have discontinued.
 - [ ] Copy across any new Google review worth showing.
 - [ ] Open the site on a phone and walk through it as a customer would.

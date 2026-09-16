@@ -129,6 +129,7 @@ with access to it.
 | `INSTAGRAM_TOKEN` | for the live feed | a long-lived Instagram Graph API token |
 | `INSTAGRAM_APP_SECRET` | optional | only if "Require app secret" is on in the Meta app |
 | `RESEND_KEY` | optional | only if you want enquiries emailed as well as stored |
+| `CF_ANALYTICS_TOKEN` | optional | only for the Visitors tab — an API token with Account Analytics: Read. `CF_ACCOUNT_ID` and `CF_SITE_TAG` go with it, and those two are vars in `wrangler.jsonc`, not secrets |
 
 > **A Worker cannot see a secret added since its last deploy.** Add them all,
 > then redeploy. This has cost real hours here more than once — twice with
@@ -200,6 +201,9 @@ some point.
 **The admin**
 - [ ] `/admin` asks for a password and lets you in with it
 - [ ] the **Enquiries** tab lists the enquiries copied from the old bucket
+- [ ] the **Visitors** tab shows numbers, or says exactly which setting is
+      missing — the account id and site tag are per-account and **will be
+      different in a new one**
 - [ ] change one word, save, and see it on the public page
 - [ ] the Instagram line on the Home page tab is green
 

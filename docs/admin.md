@@ -231,11 +231,40 @@ true.** Deleting one from the tab deletes it immediately and for good.
 Off. `ANALYTICS.token` in `public/data.js` is an empty string, nothing
 third-party loads, and `public/privacy.html` says so.
 
-To switch it on: create a site in Cloudflare → Analytics & Logs → Web
-Analytics, take the site token, put it in that constant **and add Cloudflare
-Web Analytics to the privacy page in the same commit**. `tools/smoke-test.mjs`
-fails if those two disagree in either direction — a token with no mention on
-the policy page, or a mention with no token.
+To switch it on there are **four** values, and the admin's Visitors tab names
+whichever is still missing rather than showing an empty page:
+
+| Where | What |
+|---|---|
+| `ANALYTICS.token` in `public/data.js` | the beacon that does the counting |
+| `CF_ACCOUNT_ID` var in `wrangler.jsonc` | which account — it is in the dashboard URL |
+| `CF_SITE_TAG` var in `wrangler.jsonc` | which site in Web Analytics: the same value as the beacon token |
+| `CF_ANALYTICS_TOKEN` **secret** | an API token with **Account Analytics: Read** |
+
+Only the last is a credential. Set it with `npx wrangler secret put
+CF_ANALYTICS_TOKEN` **and redeploy** — a Worker cannot see a secret added since
+its last deploy.
+
+Put the beacon token in **and add Cloudflare Web Analytics to the privacy page
+in the same commit**. `tools/smoke-test.mjs` fails if those two disagree in
+either direction — a token with no mention on the policy page, or a mention
+with no token.
+
+### The Visitors tab
+
+`/admin` → **Visitors**: visits, page views, a bar per day, the busiest pages,
+countries, where people came from and what they were on, over 7, 30 or 90 days.
+It exists so the shop does not need a second login to read its own numbers.
+
+The route is `/api/admin/visitors`, in `worker-analytics.js`, **below
+`identify()`** — how the shop's website is doing is the shop's business, not
+something to serve to anyone who guesses the path. Answers are cached for ten
+minutes per range.
+
+`QUERY` in that file is the thing most likely to need correcting: Cloudflare
+answers **200 with an `errors` array** when a field name is wrong, so a status
+check alone would show an empty tab and call it success. Whatever Cloudflare
+says comes through to the screen instead.
 
 Why Cloudflare Web Analytics rather than Google: it sets **no cookies**, stores
 nothing on the visitor's device and does not follow anyone between sites, so it
@@ -514,6 +543,7 @@ need this — but it is the quickest way to be certain.
     node tools/instagram.test.mjs  # the feed, and the token expiring
     node tools/enquiry.test.mjs    # the enquiry form, and what happens when it fails
     node tools/worker.test.mjs     # routing, and the R2 photo route
+    node tools/analytics.test.mjs  # visitor numbers, and every way they can fail
     node tools/stub-api.mjs 8890 signed-in &
     node tools/stub-api.mjs 8891 down &
     node tools/stub-api.mjs 8892 anon &

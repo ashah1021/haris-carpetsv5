@@ -15,26 +15,36 @@ import { readFileSync } from "node:fs";
 
 const read = (name) => readFileSync(new URL("../" + name, import.meta.url), "utf8");
 
-/* Every module worker.js pulls in has to be inlined the same way, so this is a
-   list rather than one special case — a new import that is not added here fails
-   loudly below instead of at some confusing point later. */
-const MODULES = ["worker-admin.js", "worker-instagram.js", "worker-enquiry.js"];
+/* Modules import each other — worker.js pulls in worker-admin.js, which pulls
+   in worker-analytics.js — so inlining is done by following the imports rather
+   than from a list that has to be kept in step by hand. A relative import that
+   cannot be read fails here, loudly, instead of at some confusing point later.
+
+   Each module is inlined once however many times it is imported: a second copy
+   would redeclare every one of its constants. */
+function bundle(name, seen = new Set(), entry = true) {
+  /* `export` is stripped from everything that gets inlined, turning each
+     module's declarations into plain top-level ones — which is what the import
+     statement would have bound anyway. The entry module keeps its own exports:
+     worker.js needs `export default` to still be a default export, and
+     loadAdmin() reads clean() and empty() off worker-admin.js. */
+  let source = read(name);
+  if (!entry) source = source.replace(/^export /gm, "");
+  for (const [line, dep] of [...source.matchAll(/^import \{[^}]*\} from "\.\/([\w.-]+)";$/gm)]) {
+    source = source.replace(line, seen.has(dep) ? "" : bundle(dep, seen.add(dep), false));
+  }
+  if (/^import .* from "\.\//m.test(source)) {
+    throw new Error(`a relative import in ${name} was not inlined — has the import line changed?`);
+  }
+  return source;
+}
 
 export async function loadWorker() {
-  let main = read("worker.js");
-  for (const name of MODULES) {
-    const source = read(name).replace(/^export /gm, "");
-    main = main.replace(
-      new RegExp(`^import \\{[^}]*\\} from "\\./${name.replace(".", "\\.")}";$`, "m"),
-      source);
-    if (main.includes(`"./${name}"`)) {
-      throw new Error(`the ${name} import was not inlined — has the import line changed?`);
-    }
-  }
+  const main = bundle("worker.js");
   return import("data:text/javascript;base64," + Buffer.from(main).toString("base64"));
 }
 
 export async function loadAdmin() {
-  const admin = read("worker-admin.js");
+  const admin = bundle("worker-admin.js");
   return import("data:text/javascript;base64," + Buffer.from(admin).toString("base64"));
 }

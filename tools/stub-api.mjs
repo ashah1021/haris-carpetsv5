@@ -48,6 +48,9 @@ const LIVE_PICS = ["hero-living-room.jpg", "showroom.jpg", "stairs-wool-twist.jp
    not save" path can be driven without posting a thousand collections. */
 let DROP_NEXT = "";
 
+/* ok | off | broken — what the Visitors tab is told. */
+let STATS_STATE = "ok";
+
 let ENQUIRY_MODE = "ok";
 let LAST_ENQUIRY = null;
 
@@ -143,6 +146,33 @@ createServer(async (req, res) => {
       for await (const _ of req) { /* drain the upload */ }
       return send(res, 200, JSON.stringify({ ok: true, file: url.searchParams.get("name") }));
     }
+    /* Visitor numbers. ?state= picks what Cloudflare is pretending to do, so
+       the tab's "not switched on" and "it broke" paths can be driven as well
+       as the happy one — they are the states a shop is most likely to meet. */
+    if (p === "/api/admin/visitors") {
+      const days = Number(url.searchParams.get("days") || 30);
+      if (STATS_STATE === "off") {
+        return send(res, 200, JSON.stringify({ configured: false,
+          needs: ["CF_ACCOUNT_ID", "CF_SITE_TAG", "CF_ANALYTICS_TOKEN"],
+          reason: "Visitor numbers are not switched on yet. Still to set: CF_ACCOUNT_ID, CF_SITE_TAG, CF_ANALYTICS_TOKEN." }));
+      }
+      if (STATS_STATE === "broken") {
+        return send(res, 200, JSON.stringify({ configured: true,
+          reason: "Cloudflare refused the request — unknown field 'nope'" }));
+      }
+      const daily = Array.from({ length: Math.min(days, 14) }, (_, i) => ({
+        date: new Date(Date.now() - (days - i) * 86400000).toISOString().slice(0, 10),
+        views: 20 + ((i * 7) % 40), visits: 8 + (i % 9),
+      }));
+      return send(res, 200, JSON.stringify({ configured: true, days,
+        views: daily.reduce((n, d) => n + d.views, 0),
+        visits: daily.reduce((n, d) => n + d.visits, 0),
+        daily,
+        pages: [{ name: "/", views: 210 }, { name: "/index.html#/collections", views: 88 }],
+        countries: [{ name: "United Kingdom", views: 280 }, { name: "Ireland", views: 9 }],
+        referers: [{ name: "google.com", views: 96 }],
+        devices: [{ name: "mobile", views: 190 }, { name: "desktop", views: 74 }] }));
+    }
     if (p === "/api/admin/enquiries") {
       const id = url.searchParams.get("id") || "";
       /* the Worker's own guard, so a traversal fails here the way it fails there */
@@ -206,6 +236,11 @@ createServer(async (req, res) => {
     if (state === "empty") INBOX = new Map();
     else if (state === "seeded") INBOX = seedInbox();
     return send(res, 200, JSON.stringify({ count: INBOX.size }));
+  }
+
+  if (p === "/_stats") {
+    STATS_STATE = url.searchParams.get("state") || STATS_STATE;
+    return send(res, 200, JSON.stringify({ state: STATS_STATE }));
   }
 
   if (p === "/_drop") {

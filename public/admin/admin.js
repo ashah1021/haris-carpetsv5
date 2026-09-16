@@ -37,6 +37,9 @@
   let tab = "shop";
   let openRange = null;   // which collection's shades are being edited
   let INBOX = null;       // the enquiries, once fetched
+  let STATS = null;       // visitor numbers, once fetched
+  let STATS_BUSY = false; // a request is already out for them
+  let STATS_DAYS = 30;    // which range the tab is showing
 
   /* [key, label, current, big?, optional?]
      - `current` is what the site shows while the box is empty, so the faint
@@ -185,6 +188,7 @@
     ["collections", "Collections"],
     ["photos", "Photos"],
     ["styles", "Styles"],
+    ["visitors", "Visitors"],
   ];
 
   /* How wide an uploaded photograph is kept. A swatch only ever shows as a
@@ -789,6 +793,98 @@
       you have typed has been lost from this screen.</p>`;
   }
 
+  /* ------------------------------------------------------------------ visitors */
+
+  /* A bar per day, drawn in CSS. No charting library: this admin has no
+     dependencies at all, and a row of divs with a height in percent is the
+     whole of what a "how was last week" chart needs to be. */
+  function chart(daily) {
+    if (!daily.length) return "";
+    const top = Math.max(...daily.map((d) => d.views), 1);
+    const day = (iso) => {
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB",
+        { day: "numeric", month: "short" });
+    };
+    return `<div class="mg-chart">${daily.map((d) => `
+      <div class="mg-bar" title="${esc(day(d.date))}: ${d.views} page views, ${d.visits} visits">
+        <i style="height:${Math.round((d.views / top) * 100)}%"></i>
+      </div>`).join("")}</div>
+      <p class="mg-meta">${esc(day(daily[0].date))} to ${esc(day(daily[daily.length - 1].date))}</p>`;
+  }
+
+  /* One list: pages, countries, whatever. Bars rather than bare numbers,
+     because "42" means nothing without the 310 next to it. */
+  function table(title, list, note) {
+    if (!list.length) return `<div class="mg-stat-list"><h3>${esc(title)}</h3>
+      <p class="mg-meta">Nothing yet.</p></div>`;
+    const top = Math.max(...list.map((r) => r.views), 1);
+    return `<div class="mg-stat-list">
+      <h3>${esc(title)}</h3>
+      ${note ? `<p class="mg-meta">${esc(note)}</p>` : ""}
+      ${list.map((r) => `<div class="mg-stat-row">
+        <span class="mg-stat-name">${esc(r.name)}</span>
+        <span class="mg-stat-bar"><i style="width:${Math.round((r.views / top) * 100)}%"></i></span>
+        <span class="mg-stat-n">${r.views}</span>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  function viewVisitors() {
+    const head = `<h2>Visitors</h2>
+      <div class="mg-range">
+        ${[7, 30, 90].map((n) => `<button class="mg-tab${STATS_DAYS === n ? " on" : ""}"
+          data-days="${n}">Last ${n} days</button>`).join("")}
+      </div>`;
+
+    if (!STATS) return `${head}<p class="mg-loading">Loading…</p>`;
+
+    if (!STATS.configured || STATS.reason) {
+      return `${head}
+      <div class="mg-dropped" style="display:block">
+        <b>${STATS.configured ? "Visitor numbers are not working" : "Not switched on yet"}</b>
+        <p>${esc(STATS.reason || "")}</p>
+        <p>See the "Counting visitors" section of docs/admin.md.</p>
+      </div>`;
+    }
+
+    return `${head}
+    <div class="mg-figures">
+      <div><b>${STATS.visits}</b><span>visits</span></div>
+      <div><b>${STATS.views}</b><span>page views</span></div>
+      <div><b>${STATS.daily.length ? Math.round(STATS.views / STATS.daily.length) : 0}</b>
+        <span>page views a day</span></div>
+    </div>
+    ${chart(STATS.daily)}
+    <div class="mg-stats">
+      ${table("Most looked at", STATS.pages)}
+      ${table("Where they were", STATS.countries, "Country only — from the network, not a location")}
+      ${table("How they got here", STATS.referers, "Blank means typed in or from a bookmark")}
+      ${table("On what", STATS.devices)}
+    </div>
+    <p class="mg-lede" style="margin-top:22px">Counted without cookies and without
+      following anyone between websites, which is why this site needs no cookie banner.
+      Nothing here identifies a person.</p>`;
+  }
+
+  /* The guard is load-bearing. render() asks for the numbers when it has none,
+     and this function ends by rendering — so without it, one visit to the tab
+     was render → load → render → load until the stack gave out. */
+  async function loadStats() {
+    if (STATS_BUSY) return;
+    STATS_BUSY = true;
+    try {
+      const res = await fetch(`../api/admin/visitors?days=${STATS_DAYS}`,
+        { headers: { accept: "application/json" } });
+      STATS = await res.json();
+    } catch {
+      STATS = { configured: true, reason: "Could not reach the website's own API." };
+    } finally {
+      STATS_BUSY = false;
+    }
+    if (tab === "visitors") render();
+  }
+
   /* ------------------------------------------------------------------ render */
 
   function render() {
@@ -803,8 +899,10 @@
       : tab === "collections" ? viewCollections()
       : tab === "photos" ? viewPhotos()
       : tab === "styles" ? viewStyles()
+      : tab === "visitors" ? viewVisitors()
       : viewHome();
     if (tab === "home") showFeedStatus();
+    if (tab === "visitors" && STATS === null && !STATS_BUSY) loadStats();
     paintUnread();
     if (INBOX === null) loadInbox();
   }
@@ -1145,6 +1243,13 @@
 
   document.addEventListener("click", (e) => {
     const t = e.target;
+    const days = t.closest("[data-days]");
+    if (days) {
+      STATS_DAYS = Number(days.dataset.days);
+      STATS = null;          // show "Loading…" rather than last week's figures
+      render();
+      return loadStats();
+    }
     const tabBtn = t.closest("[data-tab]");
     if (tabBtn) { tab = tabBtn.dataset.tab; openRange = null; return render(); }
 

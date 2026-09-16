@@ -18,8 +18,8 @@ const DOWN = process.argv[3] || "http://127.0.0.1:8891";   // same site, failing
 const ANON = process.argv[4] || "http://127.0.0.1:8892";   // not signed in
 
 /* Enquiries, Shop details, About us, Home page, Other pages, Portfolio,
-   Collections, Photos, Styles */
-const TABS = 9;
+   Collections, Photos, Styles, Visitors */
+const TABS = 10;
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = "") => {
@@ -681,6 +681,53 @@ console.log("\nThe portfolio:");
   await page.waitForTimeout(900);
   await go(`${BASE}/index.html#/portfolio`, 1600);
   check("an entry with no picture is dropped", (await page.locator(".folio-item").count()) === 1);
+}
+
+console.log("\nThe Visitors tab:");
+{
+  /* The client wanted to read visitor numbers without a second login, so they
+     come into the admin. Which means every state Cloudflare can leave it in
+     has to be legible here rather than showing an empty page. */
+  await fetch(`${BASE}/_stats?state=ok`);
+  await go(`${BASE}/admin/`);
+  await page.locator("[data-tab='visitors']").click();
+  await page.waitForTimeout(900);
+  const panel = page.locator("#panel");
+  check("the headline figures are there",
+    (await page.locator(".mg-figures div").count()) === 3);
+  check("visits and page views are both named",
+    /visits/i.test(await panel.innerText()) && /page views/i.test(await panel.innerText()));
+  check("there is a chart", (await page.locator(".mg-chart .mg-bar").count()) > 3,
+    `${await page.locator(".mg-chart .mg-bar").count()} bars`);
+  check("the bars are painted",
+    await page.evaluate(() => [...document.querySelectorAll(".mg-bar i")]
+      .every((b) => b.getBoundingClientRect().height > 0)));
+  check("the busiest pages are listed", /Most looked at/.test(await panel.innerText()));
+  check("and where people were", /United Kingdom/.test(await panel.innerText()));
+  check("it says the country is all it knows",
+    /not a location/i.test(await panel.innerText()));
+  check("and that there are no cookies", /no cookie banner/i.test(await panel.innerText()));
+
+  await page.locator("[data-days='7']").click();
+  await page.waitForTimeout(900);
+  check("a different range can be asked for",
+    await page.locator("[data-days='7']").evaluate((b) => b.classList.contains("on")));
+
+  /* Not switched on, and broken, are different sentences. */
+  await fetch(`${BASE}/_stats?state=off`);
+  await page.locator("[data-days='30']").click();
+  await page.waitForTimeout(900);
+  check("before it is set up, it says what is missing",
+    /CF_ANALYTICS_TOKEN/.test(await panel.innerText()));
+
+  await fetch(`${BASE}/_stats?state=broken`);
+  await page.locator("[data-days='7']").click();
+  await page.waitForTimeout(900);
+  check("and when Cloudflare refuses, it says so rather than showing nothing",
+    /refused the request/.test(await panel.innerText()));
+  check("named as not working rather than empty",
+    /not working/i.test(await panel.innerText()));
+  await fetch(`${BASE}/_stats?state=ok`);
 }
 
 console.log("\nThe WhatsApp button:");

@@ -200,6 +200,12 @@ token is written to R2 because *a Worker cannot write its own secrets*. The
 secret is only the starting point. Failure degrades: live feed → last cached
 feed → posts chosen by hand in `/admin` → the section does not render.
 
+### `/api/admin/visitors` — authenticated
+Cloudflare Web Analytics, read through their GraphQL API and rendered in the
+admin so the shop needs no second login. Behind `identify()` with the enquiry
+inbox. Off until four values are set, and it names the missing one rather than
+showing an empty page. See `worker-analytics.js`.
+
 ### `/api/enquiry` — public, rate-limited
 Writing the enquiry to `admin/enquiries/` **is** the delivery; it is then read on
 the Enquiries tab. No third party is involved and there is no secret to set. If
@@ -315,6 +321,7 @@ non-zero. `tools/load-worker.mjs` loads the Worker without a bundler.
 | `enquiry.test.mjs` | the enquiry route — mostly by counting outbound calls, because a spam submission that answers 200 *and stores it* looks identical from outside to one that answers 200 and drops it |
 | `instagram.test.mjs` | the feed, the token expiring, and that the token never appears in a response |
 | `worker.test.mjs` | routing and the R2 photo route |
+| `analytics.test.mjs` | visitor numbers, and every way they can fail — a refused query, an unreachable API, nothing configured |
 | `admin-e2e.mjs` | the admin in a real browser, against `tools/stub-api.mjs` |
 | `smoke-test.mjs` | the public site against a plain file server with **no API at all** |
 
