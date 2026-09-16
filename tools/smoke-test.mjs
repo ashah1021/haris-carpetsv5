@@ -462,6 +462,15 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
 {
   const res = await page.goto(`${BASE}/privacy.html`, { waitUntil: "networkidle" });
   check("it is served as a real page", res.status() === 200, String(res.status()));
+  /* One link in the footer, not two: deleting your information is a section of
+     this page, so a second link was two names for one document. */
+  const legal = await page.goto(`${BASE}/index.html#/`, { waitUntil: "networkidle" })
+    .then(() => page.waitForTimeout(700))
+    .then(() => page.evaluate(() =>
+      [...document.querySelectorAll(".fine-links a")].map((a) => a.textContent.trim())));
+  check("the footer offers one legal link", legal.length === 1, legal.join(", "));
+  check("and it is the Privacy Policy", legal[0] === "Privacy Policy", legal[0]);
+  await page.goto(`${BASE}/privacy.html`, { waitUntil: "networkidle" });
   check("titled Privacy Policy", (await page.title()).startsWith("Privacy Policy"), await page.title());
   check("and headed the same", (await page.locator("h1").innerText()).trim() === "Privacy Policy");
   const text = await page.evaluate(() => document.body.innerText);
