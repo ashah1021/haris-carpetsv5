@@ -1551,7 +1551,22 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeZoom(); });
 window.addEventListener("hashchange", () => { closeZoom(); render(); });
+/* Cloudflare Web Analytics, and only when a token has been set — see ANALYTICS
+   in data.js. Injected rather than written into index.html so that "no token,
+   no third-party request at all" is the default, and so the one place that
+   decides whether this site talks to anybody else is a single empty string. */
+function mountAnalytics() {
+  const token = typeof ANALYTICS !== "undefined" && ANALYTICS.token;
+  if (!token) return;
+  const beacon = document.createElement("script");
+  beacon.defer = true;
+  beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
+  beacon.setAttribute("data-cf-beacon", JSON.stringify({ token }));
+  document.head.appendChild(beacon);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+  mountAnalytics();
   if (!SAMPLES_ON) ["#trayBtn", "#tray", "#scrim"].forEach((s) => $(s)?.remove());
   favLoad();
   if (!VISUALISER_ON) {

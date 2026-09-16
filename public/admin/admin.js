@@ -29,7 +29,7 @@
 
   /* Must match MAX_RANGES in worker-admin.js. Shown on the Collections tab so
      the ceiling is visible long before it is hit. */
-  const MAX_RANGES = 1000;
+  const MAX_RANGES = 1200;
 
   /* the document we are editing */
   let DOC = null;

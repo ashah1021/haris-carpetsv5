@@ -144,7 +144,7 @@ shipped photograph back.
 Nothing you typed has gone from the screen — fix what it names and press **Save
 changes** again. The two you are most likely to see:
 
-- *"N collection(s) beyond the limit of 1000"* — you have hit the ceiling. Tell
+- *"N collection(s) beyond the limit of 1200"* — you have hit the ceiling. Tell
   whoever looks after the site before adding more.
 - *"…its name cannot be stored"* — the collection's name and brand together are
   too long. Shorten one and re-create it.
@@ -206,7 +206,7 @@ website but keeps the link working for anyone who saved it.
 A new collection or shade added here has no photograph until you add one on the
 **Photos** tab.
 
-**How much can go in.** A thousand collections added here, four hundred shades
+**How much can go in.** Twelve hundred collections added here, four hundred shades
 in any one of them, and no limit worth worrying about on how many photographs —
 each one is its own file in the shop's own storage. The top of the Collections
 tab tells you where you are against that. If a save ever refuses something, it

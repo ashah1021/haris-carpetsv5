@@ -648,7 +648,7 @@ console.log("\nA save that cannot take everything says so:");
 
   /* There is still a ceiling. What must never happen again is reaching it
      quietly. */
-  const over = await put({ baseVersion: okBody.version, ranges: many(1003) });
+  const over = await put({ baseVersion: okBody.version, ranges: many(1203) });
   const overBody = await over.json();
   check("past the limit it still saves what it can", overBody.ok === true);
   check("but names what it would not take", overBody.dropped.length === 1, JSON.stringify(overBody.dropped));

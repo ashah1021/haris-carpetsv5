@@ -280,6 +280,13 @@ label to keep in step with a swatch.
 | `public/admin/` | the admin, same style, no framework |
 | `public/privacy.html`, `public/data-deletion.html` | **real files at real paths** — Meta and Google fetch a privacy URL without running JavaScript, so a hash route would hand them an empty page |
 
+**The site makes no third-party request unless someone switches one on.** Fonts
+come from Google, the map is an iframe on one page, and that is the lot — until
+`ANALYTICS.token` in `data.js` is filled in, which loads the Cloudflare Web
+Analytics beacon. That constant and the privacy page are checked against each
+other in `smoke-test.mjs`: a token with no mention on the policy fails, and so
+does a mention with no token.
+
 Routing is hash-based (`#/collections/carpets`), which needs no server
 configuration and cannot 404 on refresh.
 

@@ -479,10 +479,34 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
   /* No email provider is in the chain today. If one is ever switched on, this
      page has to name it — and this assertion is what fails until it does. */
   check("and names no email provider it does not use", !/Resend/i.test(text));
+
+  /* Analytics and the policy, tied together in both directions. Switching the
+     beacon on without saying so here makes this page untrue on the day it
+     deploys; saying so without switching it on is a different kind of wrong.
+     Either mistake fails this. */
+  const token = (await import("node:fs")).readFileSync(
+    new URL("../public/data.js", import.meta.url), "utf8")
+    .match(/const ANALYTICS = \{ token: "([^"]*)" \}/)?.[1] ?? null;
+  check("the analytics switch is readable", token !== null);
+  const claims = /Cloudflare Web Analytics/i.test(text);
+  check(token ? "the policy names the analytics that are running"
+              : "the policy claims no analytics, and there are none",
+    token ? claims : !claims,
+    token ? `token set, policy mentions it: ${claims}` : "no token, no claim");
+
   check("the wordmark has no stale 32-years line under it", !/Est\. 32/.test(text));
   check("deleting your information is a section of it now",
     (await page.locator("#deleting").count()) === 1);
   check("and explains how to ask", /Delete my information/.test(text));
+
+  /* And the site itself must match the switch. Last in this block, because it
+     navigates away from the policy page. */
+  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  const beacons = await page.evaluate(() =>
+    document.querySelectorAll('script[src*="cloudflareinsights"]').length);
+  check(token ? "the beacon is on the page" : "no beacon on the page",
+    token ? beacons === 1 : beacons === 0, `${beacons} beacon(s)`);
 
   /* The old URL is in the Meta app's data deletion field and in anybody's
      bookmarks. It has to keep resolving, and it has to still answer the

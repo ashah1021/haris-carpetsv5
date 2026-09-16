@@ -44,16 +44,22 @@
 const DOC_KEY = "admin/site.json";
 
 /* The whole document. Was 512 KB, which sounded generous when the shop had
-   added nothing: a collection with twenty shades costs about 1.4 KB, so this
-   is room for well over a thousand of them. R2 does not care about an object
-   this size; the number exists so a bad client cannot post something absurd. */
-const MAX_DOC = 2 * 1024 * 1024;
+   added nothing.
+
+   This has to stay ahead of MAX_RANGES or it becomes the real limit and the
+   collection cap never gets a chance to speak: measured, MAX_RANGES
+   collections of twenty shades each — with a photograph and a caption for
+   every one of those shades — comes to just under 4 MB. 6 MB leaves room to
+   grow without anyone recalculating this. A Worker has 128 MB to parse it in
+   and R2 does not care about an object this size; the number exists so a bad
+   client cannot post something absurd. */
+const MAX_DOC = 6 * 1024 * 1024;
 
 /* How many collections the shop can add. Was 200, and it was reached — at
    which point every further collection was dropped here, silently, while the
    admin reported "Saved". Ranges past the cap are now reported rather than
    quietly binned, so hitting this again is visible the first time. */
-const MAX_RANGES = 1000;
+const MAX_RANGES = 1200;
 const MAX_PHOTO = 3 * 1024 * 1024; // one swatch photograph
 const JWKS_TTL = 3600;
 

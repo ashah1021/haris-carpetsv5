@@ -146,9 +146,9 @@ appear.
 
 | | Limit | What happens at it |
 |---|---|---|
-| Collections added in /admin | **1,000** | the save reports what it would not take |
+| Collections added in /admin | **1,200** | the save reports what it would not take |
 | Shades in one collection | **400** | same |
-| The whole overlay document | **2 MB** | the save is refused with "too big" |
+| The whole overlay document | **6 MB** | the save is refused with "too big" |
 | One photograph | 3 MB after the browser shrinks it | the upload is refused |
 | Photographs in total | no practical limit | each is its own object in R2 |
 
@@ -225,6 +225,27 @@ They are names, emails, phone numbers and messages belonging to members of the
 public, and twelve months is what `public/privacy.html` promises — **if that
 number moves here, it has to move there too, or the privacy notice stops being
 true.** Deleting one from the tab deletes it immediately and for good.
+
+## Counting visitors
+
+Off. `ANALYTICS.token` in `public/data.js` is an empty string, nothing
+third-party loads, and `public/privacy.html` says so.
+
+To switch it on: create a site in Cloudflare → Analytics & Logs → Web
+Analytics, take the site token, put it in that constant **and add Cloudflare
+Web Analytics to the privacy page in the same commit**. `tools/smoke-test.mjs`
+fails if those two disagree in either direction — a token with no mention on
+the policy page, or a mention with no token.
+
+Why Cloudflare Web Analytics rather than Google: it sets **no cookies**, stores
+nothing on the visitor's device and does not follow anyone between sites, so it
+needs no consent banner under PECR. It reports page views, which pages,
+referrers, device type and **country** — country from the IP address, the way
+every web server sees it, not a location in any finer sense.
+
+What it cannot do is name a visitor or tell you a street. If anyone asks for
+that, the answer is that this site does not do it and would need a consent
+banner and a very different privacy policy before it could.
 
 ## Instagram
 

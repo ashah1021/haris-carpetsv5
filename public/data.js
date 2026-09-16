@@ -21,6 +21,25 @@
    favourites shortlist, which is always on — favourites are a private list a
    customer builds while browsing, with nothing posted to anyone.
    -------------------------------------------------------------------------- */
+/* =========================================================================
+   VISITOR COUNTING
+   Empty means no analytics of any kind, which is the state this site shipped
+   in and what public/privacy.html currently promises.
+
+   Put a Cloudflare Web Analytics site token here and the beacon loads on every
+   page: page views, which pages, where people came from, and which country —
+   country-level only, from the IP address, the way every web server sees it.
+   It sets no cookies, stores nothing on the visitor's device and does not
+   follow anybody between sites, which is why it needs no consent banner under
+   PECR — and why it is this rather than Google Analytics.
+
+   THE TOKEN AND THE PRIVACY POLICY MOVE TOGETHER. Filling this in without
+   adding Cloudflare Web Analytics to public/privacy.html makes that page
+   untrue the moment it deploys. tools/smoke-test.mjs fails if they disagree,
+   in either direction.
+   ========================================================================= */
+const ANALYTICS = { token: "" };
+
 const FEATURES = {
   samples: false,
 
