@@ -380,6 +380,53 @@ check("the old catalogue link still lands somewhere",
   page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
 
+console.log("\nNo supplier codes anywhere a customer looks:");
+{
+  /* CC-AP on a collection page, ALU01 under a shade name. Both are how the
+     mill files it, neither is anything somebody choosing a carpet is picking
+     between, and both read like a fault on the page. Checked against the real
+     codes out of the catalogue rather than a pattern, so this cannot pass by
+     matching nothing. */
+  const codes = await page.evaluate(() => {
+    const ranges = CATALOGUE.filter((r) => r.type === "carpets").slice(0, 6);
+    return {
+      range: ranges.map((r) => r.code).filter(Boolean),
+      shade: ranges.flatMap((r) => r.colours.map((c) => c.code)).filter(Boolean),
+      id: ranges[0].id,
+    };
+  });
+  check("the catalogue does still carry the codes",
+    codes.range.length > 3 && codes.shade.length > 10,
+    `${codes.range.length} range, ${codes.shade.length} shade`);
+
+  const seen = [];
+  for (const hash of ["#/collections/carpets", `#/range/${codes.id}`, "#/favourites"]) {
+    await page.goto(U(hash), { waitUntil: "networkidle" });
+    await page.waitForTimeout(700);
+    const text = await page.evaluate(() => document.body.innerText);
+    for (const c of [...codes.range, ...codes.shade]) {
+      if (text.includes(c)) seen.push(`${hash}: ${c}`);
+    }
+  }
+  check("no supplier code on the collections page, a collection, or favourites",
+    seen.length === 0, seen.slice(0, 3).join(" | "));
+  check("and the words Range code are gone with them",
+    !/range code/i.test(await page.evaluate(() => document.body.innerText)));
+
+  /* The lightbox is its own render and had the shade code under the name. */
+  await page.goto(U(`#/range/${codes.id}`), { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  await page.locator(".swatch").first().click();
+  await page.waitForTimeout(600);
+  const zoom = await page.locator("#zoomBody").innerText();
+  check("the lightbox opens", zoom.length > 3);
+  check("and carries no code either",
+    ![...codes.shade].some((c) => zoom.includes(c)), zoom.replace(/\n/g, " ").slice(0, 60));
+  check("it still says the collection and the colour family",
+    (await page.locator(".zoom-sub").innerText()).includes("·"));
+  await page.keyboard.press("Escape");
+}
+
 console.log("\nThe words the shop asked us to change:");
 {
   /* Each of these is a line the owner sent back twice. A rename that only

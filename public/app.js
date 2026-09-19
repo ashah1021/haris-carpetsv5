@@ -513,7 +513,12 @@ function openZoom(key) {
     <div class="zoom-info">
       <p class="kicker">${esc(sw.brand)}</p>
       <h3>${esc(sw.name)}</h3>
-      <p class="zoom-sub"><a href="#/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.code)} · ${esc(sw.family)}</p>
+      ${/* The shade's supplier code used to sit between these two. It is the
+            mill's filing reference, it means nothing to somebody choosing a
+            carpet, and next to the shade's name it reads like a fault. Still
+            in the catalogue data for the shop's own lookups, just not on the
+            page. */""}
+      <p class="zoom-sub"><a href="#/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.family)}</p>
       <div class="zoom-actions">
         ${heart(sw.key)}<span class="zoom-favlabel">Save to my favourites</span>
       </div>
@@ -1071,9 +1076,11 @@ function viewRange(id) {
   const r = findRange(id);
   if (!r) return viewNotFound();
   const type = findType(r.type);
-  const spec = r.spec ? [["Brand", r.brand], ["Range code", r.code], ["Fibre", r.spec.fibre],
+  /* No range code. Same reasoning as the shade code above: CC-AP is how Cormar
+     files it, not anything a customer is choosing between. */
+  const spec = r.spec ? [["Brand", r.brand], ["Fibre", r.spec.fibre],
                         ["Pile", r.spec.pile], ["Widths", r.spec.widths], ["Suitability", r.spec.use]]
-                      : [["Brand", r.brand], ["Range code", r.code]];
+                      : [["Brand", r.brand]];
   /* From allSwatches rather than rebuilt here. The local copy this replaced had
      drifted: it never learned about tile filenames or room-only shades, so the
      range page asked for images by the wrong name and showed nothing. */
@@ -1541,7 +1548,7 @@ document.addEventListener("click", (e) => {
   if (e.target.id === "favEnquire") {
     sessionStorage.setItem("haris.enquiry.prefill",
       "I'd like to ask about these shades:\n" +
-      FAVS.map((f) => `• ${f.name} (${f.code}) — ${f.brand} ${f.range}`).join("\n"));
+      FAVS.map((f) => `• ${f.name} — ${f.brand} ${f.range}`).join("\n"));
     return;
   }
   if (e.target.id === "favClear") {
