@@ -10,9 +10,12 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   it drops; letting it go should be a decision rather than something that just
   happens. See the table at the top of [`go-live.md`](./go-live.md).
 - **Point `hariscarpets.co.uk` at the website**, once it is live and settled.
-  People will type it. It is the mailbox domain, so it needs its MX, SPF and
-  DKIM records inventoried and recreated before its nameservers move — a
-  careful job for a quiet week, not for go-live day.
+  People will type it. It is the mailbox domain and the shop's email is
+  **Microsoft 365** — MX, SPF, DMARC at `p=reject`, four DKIM records, an M365
+  verification string, autodiscover, and a SendGrid delegation. Moving it is an
+  M365 DNS migration, not a copy: its own afternoon with the Microsoft admin
+  open, nowhere near go-live day. The full inventory is in
+  [`go-live.md`](./go-live.md).
 - **Check the Enquiries tab.** Nothing is emailed out when somebody sends the
   form: the enquiry lands in the admin, on the first tab, with a count of the
   unread ones on the tab itself. Nothing tells the shop it is there, so it needs
