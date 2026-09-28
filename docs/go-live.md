@@ -11,6 +11,25 @@ switch-over.
 
 ---
 
+## Who holds what
+
+Three different companies, and knowing which does what is most of the job:
+
+| | Does | What changes |
+|---|---|---|
+| **123 Reg** | **registrar** — owns the registration and decides which nameservers the world is told to ask | **one setting: the nameservers** |
+| **Wix** | **DNS host** today — 123 Reg points at Wix's nameservers, so every record lives in the Wix dashboard | stops being consulted the moment the nameservers move |
+| **Cloudflare** | becomes the DNS host, and serves the site | everything moves here |
+
+So: **the records are copied out of Wix, and the one change is made at 123 Reg.**
+Nothing is typed into Wix at all.
+
+**You do not need to transfer the domain away from 123 Reg.** Registration can
+stay there indefinitely; only the nameservers move. Transferring is a separate,
+optional decision for another day.
+
+---
+
 ## Before the day
 
 **1. Know what the domain does today besides the website.**
@@ -28,6 +47,25 @@ matters most:
 
 Take a screenshot of the whole list. You cannot get it back from Wix once the
 nameservers have moved.
+
+> **The shop's mailbox is on a different domain.** `sales@hariscarpets.co.uk`
+> has no hyphen; the website is `haris-carpets.co.uk` with one. Moving the
+> website's domain does not touch that mailbox. Still check whether *anything*
+> at the hyphenated domain receives mail before you move it.
+
+**1b. Check whether DNSSEC is on. This one breaks the domain outright.**
+
+In 123 Reg, look for **DNSSEC** on the domain's management page. If it is on,
+**turn it off and wait an hour before changing the nameservers.**
+
+DNSSEC signs the answers Wix gives. Move the nameservers with it still on, and
+the world is told to expect Wix's signatures from Cloudflare's servers, does
+not get them, and stops resolving the domain **completely** — website and email
+both, with no partial failure to warn you. It is the single most common way a
+nameserver move goes badly wrong, and the fix takes hours to propagate.
+
+You can turn it back on from Cloudflare's side afterwards, once the zone is
+active, if you want it.
 
 **2. Check the current site still works.** The `workers.dev` address, right
 through the checklist in §6 of [`handover.md`](./handover.md). Moving a domain
@@ -48,14 +86,28 @@ Cloudflare scans the existing DNS and imports what it finds. **It will miss
 things.** Compare what it imported against the screenshot from step 1, record
 by record, and add anything missing **before** you change the nameservers.
 
-### 2. Change the nameservers at the registrar
+### 2. Change the nameservers — at 123 Reg, not at Wix
 
-Cloudflare gives you two nameservers. Put them in at the registrar, replacing
-Wix's.
+Cloudflare gives you two nameservers, something like `ana.ns.cloudflare.com`
+and `bob.ns.cloudflare.com`. They are specific to this account — use the ones
+on screen, not any you have seen elsewhere.
 
-This is the irreversible-feeling step, and it is the one that takes time:
-usually under an hour, occasionally 24. Cloudflare emails you when the zone
-goes active. Until then the old site keeps serving — nothing breaks in the gap.
+In **123 Reg**: log in → **Domains** → `haris-carpets.co.uk` → **Manage** →
+**Nameservers** (sometimes under "Advanced" or "DNS & Nameservers") → choose
+**use custom nameservers** → replace Wix's with Cloudflare's two → save.
+
+Two things people get wrong here:
+
+- **Not in Wix.** Wix's DNS editor is where the records are read *from*. It is
+  not where this change is made, and editing it now changes nothing.
+- **Not 123 Reg's own DNS records panel either.** 123 Reg has one, but it only
+  applies when the nameservers point at 123 Reg. You are pointing them at
+  Cloudflare, so that panel stays irrelevant.
+
+This is the irreversible-feeling step, and the one that takes time: usually
+under an hour, occasionally 24. Cloudflare emails you when the zone goes
+active. Until then the old site keeps serving — **nothing breaks in the gap**,
+because the world is still being told to ask Wix.
 
 ### 3. Point the domain at the Worker
 
@@ -187,6 +239,11 @@ screenshot in step 1 — this is why you took it.
 **Nobody can get into `/admin`.** Set `ADMIN_PASSWORD` again and redeploy; the
 password route works on any hostname and is the way back in.
 
-**Everything is wrong.** Point the nameservers back at Wix. The Worker and the
-bucket are untouched by any of this — the site itself is never at risk, only
-which address reaches it.
+**Everything is wrong.** Point the nameservers back at Wix, at 123 Reg, using
+the values you wrote down before you changed them. The Worker and the bucket
+are untouched by any of this — the site itself is never at risk, only which
+address reaches it.
+
+**The domain stops resolving at all**, website and email, nothing works. That
+is DNSSEC: it was still on when the nameservers moved. Turn it off at 123 Reg
+and wait — it can take a few hours to clear.
