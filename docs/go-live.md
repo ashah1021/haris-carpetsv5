@@ -461,3 +461,65 @@ address reaches it.
 **The domain stops resolving at all**, website and email, nothing works. That
 is DNSSEC: it was still on when the nameservers moved. Turn it off at 123 Reg
 and wait — it can take a few hours to clear.
+
+---
+
+## Which commit is actually live
+
+Cloudflare builds the site from GitHub, and the **Builds** list is noisier than
+it looks. Three states cause most of the confusion, and only one of them is a
+problem.
+
+**Queued.** Waiting for the build in front of it. Workers Builds runs one at a
+time, so pushing three commits in ten minutes gives you a short traffic jam.
+Nothing is wrong; give it a few minutes.
+
+**Cancelled.** Superseded — a newer commit for the same branch arrived while
+this one was still waiting, so Cloudflare dropped it in favour of the newer
+code. Also nothing wrong: the newer build includes everything the cancelled one
+carried.
+
+**Skipped.** Cloudflare decided not to run it at all. Two reasons matter:
+
+- *The branch is not built.* Once **Settings → Builds → Branch control** is set
+  to build `main` only, every push to a `claude/…` working branch shows as
+  Skipped. That is correct and expected — the working branch is not what gets
+  deployed. Before branch control is set, every push builds **twice**, once per
+  branch, which is where the queue comes from.
+- *The commit was superseded.* Same as Cancelled, recorded differently.
+
+A skipped build of a **working branch** is fine. A skipped build of **`main`**
+is the one to look at, because it means the newest code was never deployed.
+
+### Reading it off, not guessing
+
+The Builds list says what was *attempted*. The **Deployments** list says what is
+*serving*. The top row of Deployments is the live code — and the "Version ID"
+there is Cloudflare's own identifier, not a git commit, so do not try to match
+it against GitHub. Match the **commit hash** shown beside it instead, and
+compare that against the newest commit on `main`.
+
+### Never press Retry on an older build
+
+Retry re-runs *that commit* and deploys it. Retrying a build from an hour ago
+puts hour-old code over everything merged since — a time machine, not a
+refresh. If the newest commit needs building, push a commit; an empty one is
+enough:
+
+```
+git commit --allow-empty -m "Rebuild" && git push -u origin main
+```
+
+### Why it matters here
+
+Most commits only change files under `public/`, and a stale deployment just
+means an old page. Two do not:
+
+- the notification email lives in `worker-enquiry.js`. Deploy a commit from
+  before that was fixed and enquiries still land in the **Enquiries** tab —
+  nothing is lost — but no email is sent, and nothing on screen says so.
+- the Visitors tab reads `CF_ACCOUNT_ID` and `CF_SITE_TAG` out of
+  `wrangler.jsonc` at deploy time. An old deployment reads old values.
+
+So after any change to a Worker file, check Deployments and confirm the commit
+hash, rather than assuming a green build was the last word.
