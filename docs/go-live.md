@@ -120,24 +120,29 @@ domain at the new site before cancelling anything.
 
 ---
 
-## The website domain has a mailbox on it. This changes things.
+## The mailbox on the website domain — asked, and clear
 
-I said earlier that mail was lower-risk here because the shop's mailbox is on
-the other domain. **The inventory proves that wrong**, which is exactly what an
-inventory is for: `haris-carpets.co.uk` has its own MX records, pointing at
-123 Reg's mail servers. Something at `@haris-carpets.co.uk` can receive mail.
+`haris-carpets.co.uk` has MX records pointing at 123 Reg, so something at
+`@haris-carpets.co.uk` *could* be receiving mail. **Checked with Hari on
+28/09/2026: nobody uses an address on that domain.** The shop's email is
+`sales@hariscarpets.co.uk` — the other domain, on Microsoft 365, not moving.
 
-**So, before anything else, answer this: does anybody actually use an email
-address at `@haris-carpets.co.uk`?** Check the 123 Reg mailbox list. Ask Hari.
-The answer decides the next step and nothing else does.
+That settles the only branch in this runbook. Cloudflare may take that domain's
+mail over, which is what step 5 does:
 
-### If nobody uses it
+> Turning on Cloudflare Email Routing publishes Cloudflare's own MX records for
+> the zone — that is how it receives mail, and it means the 123 Reg records
+> stop being used. **Here that is fine, because nothing is behind them.** On a
+> domain with a live mailbox it would have diverted it.
 
-Easy. Copy the MX records across anyway — it costs nothing and keeps the door
-open — and carry on. Cloudflare can take over that domain's mail later without
-anybody noticing.
+So let Cloudflare import the 123 Reg MX records and let Email Routing replace
+them at step 5. Nothing to preserve, nothing to copy by hand.
 
-### Either way: give the sending domain an SPF record
+**Ask again before you enable it**, though. It is one question, and this note
+is older than the day you are reading it. If a mailbox has appeared on that
+domain since, stop: both ways out are written up in this file's git history.
+
+### Still do this: give the sending domain an SPF record
 
 `haris-carpets.co.uk` has **no TXT records at all** today, so nothing vouches
 for mail sent from it. The notification goes to a Microsoft 365 mailbox, and
@@ -159,30 +164,15 @@ it is the only `v=spf1` record on the domain, because two is the same as none.
 **Do not copy the other domain's DMARC record across.** It is `p=reject` and
 points its reports at Wix.
 
-### If somebody does use it
+### And a free one worth taking
 
-Then there is a conflict worth knowing about **before** you hit a button:
+With Email Routing on, `info@haris-carpets.co.uk` — or anything else at that
+domain — can forward straight into `sales@hariscarpets.co.uk` for nothing. Not
+needed, but it is two minutes while you are already in there, and it means the
+address on the website's own domain is not a dead end.
 
-> **Turning on Cloudflare Email Routing publishes Cloudflare's own MX records
-> for the zone.** That is how it receives mail — and it means mail for that
-> domain stops going to 123 Reg. Step 5 of this runbook asks you to enable
-> Email Routing, so doing it on a domain with a live 123 Reg mailbox diverts
-> that mailbox.
-
-Two honest ways out, and it is a decision for Hari, not a technical one:
-
-- **Keep the 123 Reg mailbox.** Copy the MX records to Cloudflare, do **not**
-  enable Email Routing on this zone, and send the enquiry notification through
-  Resend instead (`RESEND_KEY`). Costs a third party in the privacy policy.
-- **Move that mailbox to Cloudflare forwarding.** Email Routing forwards
-  `whatever@haris-carpets.co.uk` straight to `sales@hariscarpets.co.uk`, free,
-  and the Cloudflare sending in step 5 then works. The catch: it becomes
-  *forwarding*, not a mailbox — nobody can send **from** that address any more.
-  Fine if it only ever received; not fine if Hari sends from it.
-
-There is no rush on this. **The website can go live without touching mail at
-all**: copy the MX records across unchanged, skip step 5, and enquiries still
-land in the admin's Enquiries tab exactly as they do now.
+Note what it is: **forwarding, not a mailbox.** Mail arrives at `sales@`; you
+cannot send *from* the forwarded address.
 
 ---
 
@@ -208,10 +198,13 @@ nameservers have moved.
 > thing it found that matters is the pair of MX records pointing at 123 Reg.
 > Re-check them on the day in case anything has changed since.
 
-**1b. Check whether DNSSEC is on. This one breaks the domain outright.**
+**1b. DNSSEC — checked on 28/09/2026, and it is off.** One glance to confirm
+that is still true, then move on.
 
-In 123 Reg, look for **DNSSEC** on the domain's management page. If it is on,
-**turn it off and wait an hour before changing the nameservers.**
+In 123 Reg, look for **DNSSEC** on the domain's management page. It should say
+off, or not configured. **If it has been switched on since, turn it off and
+wait an hour before changing the nameservers.** The rest of this is why, and is
+worth reading once even though it does not apply today.
 
 DNSSEC signs the answers Wix gives. Move the nameservers with it still on, and
 the world is told to expect Wix's signatures from Cloudflare's servers, does
@@ -313,10 +306,11 @@ the `ENQUIRY_FROM_ADDRESS` setting exists:
 - **to** `sales@hariscarpets.co.uk` — the real mailbox, on the domain that
   never moved
 
-**Read the mailbox section at the top of this document first.** If anybody
-receives mail at `@haris-carpets.co.uk`, enabling Email Routing here diverts it
-away from 123 Reg. If that is unresolved, skip this whole step — the website
-does not need it, and enquiries land in the admin either way.
+**Nobody uses a mailbox on `@haris-carpets.co.uk` — asked and confirmed — so
+this is clear to do.** Ask once more anyway; if that has changed since, read
+the mailbox section at the top before going on. Skipping this whole step is
+always safe: the website does not need it, and enquiries land in the admin
+either way.
 
 1. Zone (`haris-carpets.co.uk`) → **Email** → **Email Routing** → enable
 2. **Destination addresses** → add `sales@hariscarpets.co.uk` → the shop clicks
@@ -399,10 +393,9 @@ Work through all of it, in a browser that has never seen the site.
 - [ ] send a test enquiry: it appears in the **Enquiries** tab **and** arrives
       by email, and **Reply** opens a message to the address you used
 - [ ] the **Visitors** tab shows numbers rather than naming a missing setting
-- [ ] **mail to `@haris-carpets.co.uk` still arrives** — send one to whatever
-      address 123 Reg has on that domain and watch for it. This is the one the
-      inventory turned up, and the only part of the move that can cost the shop
-      something on the day
+- [ ] the test notification arrived from `enquiries@haris-carpets.co.uk` — and
+      **look in Junk as well as the inbox**, because the SPF and DMARC records
+      above are the only things keeping it out of there
 - [ ] `sales@hariscarpets.co.uk` still works, in and out — it should be
       completely unaffected, since that domain never moved
 
