@@ -209,6 +209,29 @@ console.log("\nThe sending address is never guessed from the recipient:");
     `${sent.length} sent as ${sent[0]?.from}`);
 }
 
+/* The first live enquiry sent nothing and logged "no EmailMessage in this
+   runtime": the class comes from the cloudflare:email module, not the global
+   scope, and this file had assumed the global. Node has no such module, so
+   what is asserted here is the half that can be: with no global to fall back
+   on, it reaches for the module, fails to find one, and *reports* rather than
+   throwing into waitUntil where nobody would ever see it. */
+console.log("\nWhen the mail runtime is not there, it says so:");
+{
+  const saved = globalThis.EmailMessage;
+  delete globalThis.EmailMessage;
+  const env = makeEnv({ key: null });
+  env.ENQUIRY_FROM_ADDRESS = "enquiries@haris-carpets.co.uk";
+  let asked = false;
+  env.SEND_EMAIL = { async send() { asked = true; } };
+
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("the visitor is thanked anyway", (await res.json()).ok === true);
+  check("the enquiry is in the inbox, which is the delivery",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+  check("and nothing was half-sent", asked === false);
+  if (saved) globalThis.EmailMessage = saved;
+}
+
 console.log("\nA failed notification is never the visitor's problem:");
 {
   const env = makeEnv({ key: null });

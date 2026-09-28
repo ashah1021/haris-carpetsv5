@@ -162,13 +162,21 @@ async function sendViaCloudflare(env, e) {
   }
 
   try {
-    /* EmailMessage is a global in the Workers runtime when the binding exists.
-       Guarded so a misconfigured deploy reports rather than throwing into the
-       waitUntil and vanishing. */
-    if (typeof EmailMessage !== "function") {
-      return { ok: false, reason: "no EmailMessage in this runtime" };
-    }
-    await env.SEND_EMAIL.send(new EmailMessage(from, to, mime(env, e, from)));
+    /* EmailMessage comes from the "cloudflare:email" module, not from the
+       global scope — which is what this got wrong first time round, and why
+       the first live enquiry logged "no EmailMessage in this runtime" and sent
+       nothing. The guard that reported it is the only reason that was a
+       two-minute diagnosis rather than a silent failure.
+
+       Imported here rather than at the top of the file for two reasons: the
+       module only exists in the Workers runtime, so a static import would stop
+       this file loading in Node at all, and there is no reason to reach for it
+       until an enquiry is actually being sent. The global is checked first so
+       the tests can hand in their own. */
+    const Message = typeof EmailMessage === "function"
+      ? EmailMessage
+      : (await import("cloudflare:email")).EmailMessage;
+    await env.SEND_EMAIL.send(new Message(from, to, mime(env, e, from)));
     return { ok: true, how: "cloudflare" };
   } catch (err) {
     /* The message names the destination address when it is not verified, which
