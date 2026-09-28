@@ -270,6 +270,29 @@ Only the last is a credential. Set it with `npx wrangler secret put
 CF_ANALYTICS_TOKEN` **and redeploy** — a Worker cannot see a secret added since
 its last deploy.
 
+#### If the tab still says `CF_ANALYTICS_TOKEN`
+
+It names each missing value separately, so a message listing **only** the token
+means the other two arrived — the deployment is current and the fault is the
+secret alone. Four things it is, in the order worth checking:
+
+1. **The wrong Worker.** It must be on `haris-carpetsv5`, the name in
+   `wrangler.jsonc`. An older Worker of a similar name will take the secret
+   quite happily and never serve the site.
+2. **Added as Text rather than Secret.** This is the one that looks like it
+   worked. In **Settings → Variables and Secrets** the type matters: a
+   plaintext variable is *erased by the next deploy*, because `wrangler deploy`
+   replaces the whole `vars` block with whatever is in `wrangler.jsonc`, and
+   the token is deliberately not in there. Secrets are left alone. So a token
+   added as Text works until the next push and then quietly disappears.
+3. **The name.** Exactly `CF_ANALYTICS_TOKEN` — no prefix, no trailing space.
+4. **Not deployed.** The dashboard needs the **Deploy** button after adding;
+   `wrangler secret put` does it for you.
+
+What this message is *not* is a wrong or under-permissioned token. If the token
+is present but lacks **Account Analytics: Read**, Cloudflare's own error comes
+through to the screen instead — see `QUERY` below.
+
 Put the beacon token in **and add Cloudflare Web Analytics to the privacy page
 in the same commit**. `tools/smoke-test.mjs` fails if those two disagree in
 either direction — a token with no mention on the policy page, or a mention
