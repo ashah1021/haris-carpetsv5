@@ -247,8 +247,9 @@ and fix it **before** you change the nameservers. Specifically:
   `mx1.123-reg.co.uk` priority 20, and set to **DNS only**, not proxied.
   Cloudflare cannot proxy mail and will not try, but check the cloud is grey
 - the three `185.230.63.x` A records and the `www` CNAME **stay** for now; they
-  point at Wix, which is still the live site until you add the custom domain in
-  step 3. That step replaces them. Do not delete them here
+  point at Wix, which is still the live site until step 3. **Step 3 does not
+  replace them — it refuses to run until they are gone** (see there), so they
+  are deleted then, not now
 - **add nothing else yet.** SPF and DMARC come at step 5 with Email Routing,
   whose own setup offers to add an SPF record — and two `v=spf1` records on one
   domain is the same as none
@@ -284,14 +285,31 @@ because the world is still being told to ask Wix.
 
 ### 3. Point the domain at the Worker
 
-Worker → **Settings** → **Domains & Routes** → **Add** → Custom domain:
+**First delete the Wix records.** Cloudflare will not add a custom domain over
+the top of them — it refuses with *"Hostname already has externally managed DNS
+records (A, CNAME, etc). Delete them first"*. So, in **DNS → Records**, delete:
 
-- `haris-carpets.co.uk`
-- `www.haris-carpets.co.uk`
+- the three A records for the root, `185.230.63.107`, `.186` and `.171`
+- the `www` CNAME → `cdn3.wixdns.net`
 
-Cloudflare creates the DNS records and the certificate itself. Give it a few
-minutes, then open both in a browser. **This is the moment the public sees the
+**Keep both MX records.** They are the only ones that must survive this step.
+
+Then Worker → **Settings** → **Domains & Routes** → **Add** → Custom domain,
+twice:
+
+1. subdomain left **empty**, for the root `haris-carpets.co.uk`
+2. subdomain `www`
+
+Cloudflare writes the DNS records and issues the certificate itself. A
+certificate warning in the first minute or two is it still being issued, not a
+fault. Then open both in a browser. **This is the moment the public sees the
 new site.**
+
+> **There is a short gap here, so do the two halves back to back.** The moment
+> those A records are deleted the domain resolves to nothing, and it stays that
+> way until the custom domain is live — a couple of minutes if you go straight
+> through, plus a tail while caches expire. It is the only outage in this whole
+> move, and it is worth a couple of minutes rather than engineering around.
 
 ### 4. Switch the admin to Access, and retire the password
 
