@@ -4,6 +4,15 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
 [`handover.md`](./handover.md).
 
 ## Before handover
+- **Decide about `hariscarpets.uk`**, which expires **23/10/2026**. It is one of
+  three domains at 123 Reg and is not used by anything. Renewing is cheap and
+  stops a name that looks like the shop's being picked up by somebody else once
+  it drops; letting it go should be a decision rather than something that just
+  happens. See the table at the top of [`go-live.md`](./go-live.md).
+- **Point `hariscarpets.co.uk` at the website**, once it is live and settled.
+  People will type it. It is the mailbox domain, so it needs its MX, SPF and
+  DKIM records inventoried and recreated before its nameservers move — a
+  careful job for a quiet week, not for go-live day.
 - **Check the Enquiries tab.** Nothing is emailed out when somebody sends the
   form: the enquiry lands in the admin, on the first tab, with a count of the
   unread ones on the tab itself. Nothing tells the shop it is there, so it needs

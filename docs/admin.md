@@ -233,7 +233,11 @@ Nothing is emailed by default — the Enquiries tab is the delivery. A copy can 
 emailed as well, and there are two ways:
 
 - **Cloudflare's own sending**, once `haris-carpets.co.uk` is a zone in the
-  account. Enable Email Routing, verify `sales@hariscarpets.co.uk` as a
+  account. Note the two domains: it sends **from** the website domain, which is
+  the zone Cloudflare runs, **to** the mailbox domain `hariscarpets.co.uk`,
+  which never moves. `ENQUIRY_FROM_ADDRESS` is that sender and is not guessed —
+  deriving it from the recipient would build an address on a domain Cloudflare
+  has nothing to do with, and the send would be refused. Enable Email Routing, verify `sales@hariscarpets.co.uk` as a
   destination, uncomment the `send_email` block in `wrangler.jsonc`, redeploy.
   No third party, no API key, and nothing new for the privacy policy to name —
   Cloudflare is already the one company on it. **This is the one to use.**

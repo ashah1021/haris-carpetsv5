@@ -142,6 +142,7 @@ console.log("\nCloudflare sends the notification once the domain is a zone:");
   const sent = [];
   globalThis.EmailMessage = class { constructor(from, to, raw) { Object.assign(this, { from, to, raw }); } };
   const env = makeEnv({ key: null });
+  env.ENQUIRY_FROM_ADDRESS = "enquiries@haris-carpets.co.uk";
   env.SEND_EMAIL = { async send(msg) { sent.push(msg); } };
   const calls = resend();
 
@@ -152,6 +153,9 @@ console.log("\nCloudflare sends the notification once the domain is a zone:");
   check("to the shop's address", sent[0]?.to === "sales@hariscarpets.co.uk", sent[0]?.to);
   check("and it is still in the inbox regardless",
     [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+
+  check("sent from the website's domain, not the mailbox's",
+    sent[0]?.from === "enquiries@haris-carpets.co.uk", sent[0]?.from);
 
   const raw = sent[0]?.raw || "";
   check("replying reaches the customer",
@@ -180,6 +184,7 @@ console.log("\nWith both set up, Cloudflare is preferred:");
 {
   const sent = [];
   const env = makeEnv();                      // RESEND_KEY set
+  env.ENQUIRY_FROM_ADDRESS = "enquiries@haris-carpets.co.uk";
   env.SEND_EMAIL = { async send(m) { sent.push(m); } };
   const calls = resend();
   await eq.enquiryRoute(post(GOOD), env, ctx);
@@ -187,9 +192,27 @@ console.log("\nWith both set up, Cloudflare is preferred:");
   check("and the third party is not used at all", calls.length === 0, `${calls.length} calls`);
 }
 
+/* The shop owns three domains and they are not interchangeable. The mail goes
+   TO the mailbox domain and must be sent FROM the website one, because that is
+   the only zone Cloudflare will have. Guessing the sender from the recipient
+   would build an address on a domain Cloudflare has nothing to do with. */
+console.log("\nThe sending address is never guessed from the recipient:");
+{
+  const sent = [];
+  const env = makeEnv({ key: null });   // no ENQUIRY_FROM_ADDRESS on purpose
+  env.SEND_EMAIL = { async send(m) { sent.push(m); } };
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("the visitor is still thanked", (await res.json()).ok === true);
+  check("and the enquiry is still in the inbox",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+  check("but nothing is sent from a domain nobody configured", sent.length === 0,
+    `${sent.length} sent as ${sent[0]?.from}`);
+}
+
 console.log("\nA failed notification is never the visitor's problem:");
 {
   const env = makeEnv({ key: null });
+  env.ENQUIRY_FROM_ADDRESS = "enquiries@haris-carpets.co.uk";
   env.SEND_EMAIL = { async send() { throw new Error("destination address not verified"); } };
   const res = await eq.enquiryRoute(post(GOOD), env, ctx);
   check("they are still thanked", (await res.json()).ok === true);

@@ -80,9 +80,19 @@
   //
   // Where a notification goes, and who it comes from.
   //
-  // ENQUIRY_TO is the shop's mailbox. ENQUIRY_FROM_ADDRESS is used by the
-  // Cloudflare sender; leave it empty and it sends from enquiries@ at the same
-  // domain as ENQUIRY_TO, which is what you want once that domain is the zone.
+  // ENQUIRY_TO is the shop's mailbox. ENQUIRY_FROM_ADDRESS is who the
+  // Cloudflare sender sends AS, and the two are deliberately on different
+  // domains, because the shop owns three and they do different jobs:
+  //
+  //   haris-carpets.co.uk   the website. The zone moving to Cloudflare, so
+  //                         this is the only one Cloudflare may send from
+  //   hariscarpets.co.uk    the mailbox, sales@. Stays where it is — moving
+  //                         its nameservers would take the shop's email down
+  //   hariscarpets.uk       a third, unused
+  //
+  // Nothing has to exist at the from address: it is a sender identity on a
+  // domain Cloudflare controls, not a mailbox. Replies go to the customer
+  // anyway, via Reply-To.
   //
   // ENQUIRY_FROM is only for the Resend fallback, and stays on resend.dev
   // until the domain moves: claiming a domain whose SPF and DKIM live at Wix,
@@ -101,7 +111,7 @@
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
     "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c",
     "ENQUIRY_TO": "sales@hariscarpets.co.uk",
-    "ENQUIRY_FROM_ADDRESS": "",
+    "ENQUIRY_FROM_ADDRESS": "enquiries@haris-carpets.co.uk",
     "ENQUIRY_FROM": "Hari's Carpets <onboarding@resend.dev>"
   }
 }

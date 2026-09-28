@@ -11,6 +11,43 @@ switch-over.
 
 ---
 
+## Three domains, and only one of them moves
+
+All three are registered at 123 Reg. They are **not** interchangeable, and the
+difference matters more than anything else on this page:
+
+| Domain | What it is | What happens to it |
+|---|---|---|
+| **haris-carpets.co.uk** | the website — the one Hari wants | **moves to Cloudflare** |
+| **hariscarpets.co.uk** | the **mailbox**: `sales@hariscarpets.co.uk` | **do not touch it** |
+| **hariscarpets.uk** | unused, expires 23/10/2026 | decide separately, below |
+
+> **Move only the hyphenated one.** `hariscarpets.co.uk` carries the shop's
+> email. Changing its nameservers means recreating its MX records correctly at
+> Cloudflare first, and getting that wrong takes the shop's email down — the
+> one failure in this whole project that costs real money the same day.
+> There is no reason to move it to put the website live. Leave it alone.
+
+The two never meet, and they do not need to: mail arrives at the mailbox domain
+exactly as it does today, and the website answers on the hyphenated one.
+
+### The other two, once the website is up and settled
+
+Neither is urgent, and neither should be done on go-live day.
+
+**`hariscarpets.uk` expires 23/10/2026.** Decide whether to renew. It is cheap,
+and a lapsed domain that looks like the shop's name can be registered by
+anybody once it drops. Renewing is the low-risk answer; letting it go is a
+decision, not an oversight.
+
+**People will type `hariscarpets.co.uk` into a browser** and get whatever is
+there now. Pointing it at the website is worth doing — but it is the mailbox
+domain, so it is a careful job for a quiet week: inventory its MX, SPF and DKIM
+records first, move it to Cloudflare with those recreated exactly, confirm mail
+still flows, and only then add the redirect. Not on the day the site goes live.
+
+---
+
 ## Who holds what
 
 Three different companies, and knowing which does what is most of the job:
@@ -48,10 +85,11 @@ matters most:
 Take a screenshot of the whole list. You cannot get it back from Wix once the
 nameservers have moved.
 
-> **The shop's mailbox is on a different domain.** `sales@hariscarpets.co.uk`
-> has no hyphen; the website is `haris-carpets.co.uk` with one. Moving the
-> website's domain does not touch that mailbox. Still check whether *anything*
-> at the hyphenated domain receives mail before you move it.
+> **The shop's mailbox is on a different domain**, and that domain is not
+> moving — see the table at the top. So mail is lower-risk here than in a usual
+> nameserver move. Still check whether *anything* at the **hyphenated** domain
+> receives mail before you move it: if `info@haris-carpets.co.uk` or similar
+> has ever been used, its MX records have to come across.
 
 **1b. Check whether DNSSEC is on. This one breaks the domain outright.**
 
@@ -92,7 +130,9 @@ Cloudflare gives you two nameservers, something like `ana.ns.cloudflare.com`
 and `bob.ns.cloudflare.com`. They are specific to this account — use the ones
 on screen, not any you have seen elsewhere.
 
-In **123 Reg**: log in → **Domains** → `haris-carpets.co.uk` → **Manage** →
+In **123 Reg**: log in → **Domains** → **`haris-carpets.co.uk`** — the one
+with the hyphen, and check it twice, the three names are a keystroke apart →
+**Manage** →
 **Nameservers** (sometimes under "Advanced" or "DNS & Nameservers") → choose
 **use custom nameservers** → replace Wix's with Cloudflare's two → save.
 
@@ -140,18 +180,31 @@ works locks everybody out of the admin, including you.
 
 The shop can now be emailed without a third party.
 
-1. Zone → **Email** → **Email Routing** → enable
+This crosses the two domains, and that is deliberate — it is the whole reason
+the `ENQUIRY_FROM_ADDRESS` setting exists:
+
+- **from** `enquiries@haris-carpets.co.uk` — the website domain, the zone
+  Cloudflare now runs. Nothing has to exist at that address; it is a sender
+  identity, not a mailbox
+- **to** `sales@hariscarpets.co.uk` — the real mailbox, on the domain that
+  never moved
+
+1. Zone (`haris-carpets.co.uk`) → **Email** → **Email Routing** → enable
 2. **Destination addresses** → add `sales@hariscarpets.co.uk` → the shop clicks
    the link in the confirmation email. Cloudflare will not send to an address
-   that has not confirmed it, which is what makes this safe to switch on
+   that has not confirmed it, which is what makes this safe to switch on.
+   **Confirming a destination does not change where that domain's mail goes** —
+   it only grants permission to be sent to
 3. Uncomment the `send_email` block in `wrangler.jsonc`
 4. Deploy
 5. Send a test enquiry through the contact form. It should arrive within a
    minute, with the customer's address in `Reply-To` so hitting Reply answers
    them
 
-If it does not arrive, the Worker's log says why — the usual cause is the
-destination address not being verified yet.
+If it does not arrive, the Worker's log says why. Two usual causes: the
+destination address has not been confirmed yet, or `ENQUIRY_FROM_ADDRESS` is
+empty — the Worker refuses to guess a sender rather than inventing one on a
+domain Cloudflare has nothing to do with.
 
 > Enquiries land in the admin's **Enquiries** tab either way. The email is a
 > copy, and a failed one changes nothing the visitor sees.

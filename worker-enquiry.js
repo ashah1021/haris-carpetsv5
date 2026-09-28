@@ -114,16 +114,15 @@ function compose(e) {
    refuses an email address containing CR or LF outright rather than tidying it
    up: this is the header it would be writing into. Belt and braces, every
    value that came from a visitor is flattened again here. */
-function mime(env, e) {
+function mime(env, e, from) {
   const to = env.ENQUIRY_TO || "sales@hariscarpets.co.uk";
-  const from = env.ENQUIRY_FROM_ADDRESS || `enquiries@${to.split("@")[1]}`;
   const body = compose(e);
   return [
     `From: Hari's Carpets website <${from}>`,
     `To: <${to}>`,
     `Reply-To: ${oneLine(e.name)} <${oneLine(e.email)}>`,
     `Subject: Website enquiry — ${oneLine(e.topic) || "general"} — ${oneLine(e.name)}`,
-    `Message-ID: <${crypto.randomUUID()}@${from.split("@")[1]}>`,
+    `Message-ID: <${crypto.randomUUID()}@${String(from).split("@")[1]}>`,
     `Date: ${new Date().toUTCString()}`,
     "MIME-Version: 1.0",
     'Content-Type: text/plain; charset="utf-8"',
@@ -143,6 +142,25 @@ function mime(env, e) {
    there is no binding and this does nothing. */
 async function sendViaCloudflare(env, e) {
   const to = env.ENQUIRY_TO || "sales@hariscarpets.co.uk";
+
+  /* The sending address has to be set, and it is not guessed from ENQUIRY_TO.
+     The shop owns three domains and they are not interchangeable:
+
+       haris-carpets.co.uk    the website — the one moving to Cloudflare
+       hariscarpets.co.uk     the mailbox, sales@ — staying where it is
+
+     Cloudflare will only send from a domain that is a zone in the account with
+     Email Routing switched on, and that is the *website* domain. Deriving the
+     sender from the address the mail is going to would build
+     enquiries@hariscarpets.co.uk — a domain Cloudflare has nothing to do with
+     — and be refused. Saying so is better than guessing wrong. */
+  const from = env.ENQUIRY_FROM_ADDRESS;
+  if (!from) {
+    return { ok: false,
+      reason: "ENQUIRY_FROM_ADDRESS is not set — it must be an address at the "
+        + "domain that is a Cloudflare zone with Email Routing on" };
+  }
+
   try {
     /* EmailMessage is a global in the Workers runtime when the binding exists.
        Guarded so a misconfigured deploy reports rather than throwing into the
@@ -150,8 +168,7 @@ async function sendViaCloudflare(env, e) {
     if (typeof EmailMessage !== "function") {
       return { ok: false, reason: "no EmailMessage in this runtime" };
     }
-    const from = env.ENQUIRY_FROM_ADDRESS || `enquiries@${to.split("@")[1]}`;
-    await env.SEND_EMAIL.send(new EmailMessage(from, to, mime(env, e)));
+    await env.SEND_EMAIL.send(new EmailMessage(from, to, mime(env, e, from)));
     return { ok: true, how: "cloudflare" };
   } catch (err) {
     /* The message names the destination address when it is not verified, which
