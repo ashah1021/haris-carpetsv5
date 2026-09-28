@@ -234,12 +234,28 @@ Cloudflare scans the existing DNS and imports what it finds. **It will miss
 things.** Compare what it imported against the table above, record by record,
 and fix it **before** you change the nameservers. Specifically:
 
+- **Turn the orange clouds grey on the A records and the `www` CNAME.** The
+  import arrives *Proxied*, and those records still point at Wix — so proxied
+  means Cloudflare terminating TLS in front of a Wix site that is not expecting
+  it, which gives a 525 or 526 and a broken site from the moment the zone goes
+  active until the custom domain is added at step 3. Grey ("DNS only") leaves
+  Cloudflare out of the path: Wix keeps serving exactly as before and the switch
+  happens when you choose it. Cloudflare flags these itself with a warning
+  triangle
+
 - **both MX records must be there** — `mx0.123-reg.co.uk` priority 10 and
   `mx1.123-reg.co.uk` priority 20, and set to **DNS only**, not proxied.
   Cloudflare cannot proxy mail and will not try, but check the cloud is grey
-- the three `185.230.63.x` A records and the `www` CNAME can stay for now; they
+- the three `185.230.63.x` A records and the `www` CNAME **stay** for now; they
   point at Wix, which is still the live site until you add the custom domain in
-  step 3. That step replaces them
+  step 3. That step replaces them. Do not delete them here
+- **add nothing else yet.** SPF and DMARC come at step 5 with Email Routing,
+  whose own setup offers to add an SPF record — and two `v=spf1` records on one
+  domain is the same as none
+
+**After activation, nothing visible should change.** The site still loads,
+still served by Wix, still identical. That is what success looks like at this
+point: DNS moved and nobody noticed. The visible switch is step 3.
 
 ### 2. Change the nameservers — at 123 Reg, not at Wix
 
