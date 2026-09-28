@@ -47,18 +47,21 @@
     { "name": "ENQUIRY_BUDGET", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }
   ],
 
-  // Enquiry notifications, once haris-carpets.co.uk is a zone in this account.
-  // Uncomment, put the verified destination address in, and redeploy: the
-  // Worker then emails the shop a copy of every enquiry itself, with no third
-  // party and nothing new to name in the privacy policy.
+  // Enquiry notifications. The Worker emails the shop a copy of every enquiry
+  // itself — no third party, no API key to rotate, and nothing new to name in
+  // the privacy policy, because Cloudflare is already the one company on it.
   //
-  // "destination_address" must already be verified under that zone's Email
-  // Routing — Cloudflare will only send to an address that has confirmed it.
-  // That restriction is the whole reason this is safe to switch on.
+  // "destination_address" must be verified under that zone's Email Routing, and
+  // a deploy fails if it is not. Cloudflare will only ever send to an address
+  // that has confirmed itself, which is the whole reason this is safe to have:
+  // the Worker cannot be made to mail anybody else, whatever it is asked to do.
   //
-  // "send_email": [
-  //   { "name": "SEND_EMAIL", "destination_address": "sales@hariscarpets.co.uk" }
-  // ],
+  // Verified 28/09/2026. The enquiry is stored in the admin's Enquiries tab
+  // first and a failed send changes nothing the visitor sees — see
+  // worker-enquiry.js.
+  "send_email": [
+    { "name": "SEND_EMAIL", "destination_address": "sales@hariscarpets.co.uk" }
+  ],
 
   "r2_buckets": [
     {
