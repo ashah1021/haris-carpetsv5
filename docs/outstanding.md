@@ -3,6 +3,32 @@
 Parked deliberately, not forgotten. The transfer checklist is separate — see
 [`handover.md`](./handover.md).
 
+## Search
+
+- **The pages are hash routes, so Google indexes one page.** `#/collections`,
+  `#/about` and the rest are all the same document to a crawler — everything
+  after the `#` is not part of the URL as far as indexing goes. Titles,
+  descriptions and the sitemap are all correct now, but they cannot change
+  that: the site competes in search as a single home page.
+
+  The fix is real paths — `/collections/carpets` instead of
+  `#/collections/carpets` — which needs three things: `history.pushState` in
+  the router, every internal link rewritten, and the Worker serving
+  `index.html` for any path it does not recognise so a refresh or a direct
+  visit works. Perhaps half a day including the test suites, and it turns one
+  indexable page into nine. Worth doing before spending anything on ads.
+
+- **Opening hours are not in the structured data**, deliberately: the hours in
+  `data.js` are still a placeholder, and hours are the one thing Google prints
+  as fact. Add `openingHoursSpecification` to the JSON-LD in `index.html` once
+  the real hours are confirmed — it is what puts "Open until 5:30" beside the
+  shop in a local result.
+
+- **Register the site in Google Search Console** and submit
+  `https://haris-carpets.co.uk/sitemap.xml`. It is also where you find out
+  whether Google has picked up the favicon and the structured data, rather
+  than guessing.
+
 ## Before handover
 - **Decide about `hariscarpets.uk`**, which expires **23/10/2026**. It is one of
   three domains at 123 Reg and is not used by anything. Renewing is cheap and

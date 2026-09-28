@@ -20,6 +20,52 @@
   <meta property="og:image" content="https://haris-carpets.co.uk/assets/hero-living-room.jpg">
   <meta property="og:image:alt" content="A living room carpeted in a soft grey twist">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://haris-carpets.co.uk/">
+
+  <!-- What Google needs to treat this as a shop in Hounslow rather than a page
+       that mentions Hounslow: the address, the phone number and the location,
+       in the form its local results are built from. Every value here is the
+       same one the site renders from data.js — if the shop changes its phone
+       number in /admin, this does NOT follow, so it is checked in the smoke
+       test against the shipped details.
+
+       Deliberately no openingHoursSpecification. The hours in data.js are
+       still a placeholder ("Mon–Sat · Sun by appointment"), and hours are the
+       one thing Google puts on screen as fact. Publishing a guess would send
+       somebody to a closed shop. Add it once the real hours are confirmed. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HomeAndConstructionBusiness",
+    "@id": "https://haris-carpets.co.uk/#shop",
+    "name": "Hari's Carpets",
+    "url": "https://haris-carpets.co.uk/",
+    "image": "https://haris-carpets.co.uk/assets/showroom.jpg",
+    "logo": "https://haris-carpets.co.uk/icon-512.png",
+    "telephone": "+442085706502",
+    "email": "sales@hariscarpets.co.uk",
+    "description": "Family-run flooring shop in Hounslow. Carpets, wood, laminate, LVT, vinyl and rugs, supplied and installed across London and the Home Counties.",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "267 Hanworth Road",
+      "addressLocality": "Hounslow",
+      "addressRegion": "Middlesex",
+      "postalCode": "TW3 3RZ",
+      "addressCountry": "GB"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 51.4624955,
+      "longitude": -0.3671699
+    },
+    "areaServed": "London and the Home Counties",
+    "sameAs": [
+      "https://www.instagram.com/hariscarpets/",
+      "https://www.facebook.com/HarisCarpetsUK/",
+      "https://www.tiktok.com/@hariscarpets"
+    ]
+  }
+  </script>
   <!-- The favicon. Without these Google shows a blank page-shape beside the
        result and the browser tab shows nothing at all. The SVG is what modern
        browsers use; the 48px PNG is what Google's crawler wants; the 180px one

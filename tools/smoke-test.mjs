@@ -380,6 +380,91 @@ check("the old catalogue link still lands somewhere",
   page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
 
+console.log("\nEvery page says what it is:");
+{
+  /* One <title> for nine pages is a browser tab, a bookmark and a shared link
+     all saying the same wrong thing. This does not make the hash routes
+     indexable — nothing can, short of real paths — it makes them legible. */
+  const seen = [];
+  for (const [hash, want] of [
+    ["#/", /Carpet & Flooring Showroom, Hounslow/],
+    ["#/collections", /^Collections —/],
+    ["#/collections/carpets", /^Carpets —/],
+    ["#/about", /^About us —/],
+    ["#/contact", /^Visit the showroom —/],
+    ["#/enquire", /^Get in touch —/],
+    ["#/portfolio", /^Our work —/],
+    ["#/favourites", /^My Favourites —/],
+  ]) {
+    await page.goto(U(hash), { waitUntil: "networkidle" });
+    await page.waitForTimeout(500);
+    const title = await page.title();
+    if (!want.test(title)) seen.push(`${hash}: ${title}`);
+  }
+  check("each page has its own title", seen.length === 0, seen.join(" | "));
+
+  await page.goto(U("#/about"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const meta = await page.evaluate(() => ({
+    description: document.querySelector('meta[name="description"]')?.content,
+    ogTitle: document.querySelector('meta[property="og:title"]')?.content,
+    ogDesc: document.querySelector('meta[property="og:description"]')?.content,
+    canonical: document.querySelector('link[rel="canonical"]')?.href,
+  }));
+  check("with a description to match", /family-run flooring business/i.test(meta.description),
+    meta.description);
+  check("and the sharing card follows it",
+    /^About us —/.test(meta.ogTitle) && meta.ogDesc === meta.description, meta.ogTitle);
+  /* Left at the site's own root on purpose — see nameThisPage() in app.js.
+     A share preview is fetched by somebody else's server, which does not run
+     this script, and every hash route is one document to a crawler anyway. */
+  check("the canonical stays absolute and at the root",
+    meta.canonical === "https://haris-carpets.co.uk/", meta.canonical);
+
+  /* A collection is the page somebody arrives on from a search for a range. */
+  await page.goto(U("#/range/westex-ultima"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  check("a collection page names the collection and the mill",
+    /Ultima/i.test(await page.title()) && /Westex/i.test(await page.title()),
+    await page.title());
+}
+
+console.log("\nWhat a search engine is given:");
+{
+  /* The structured data is what makes this a shop in Hounslow to Google
+     rather than a page that mentions Hounslow. */
+  const html = await (await page.request.get(`${BASE}/index.html`)).text();
+  const block = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  check("there is a structured-data block", Boolean(block));
+  let data = null;
+  try { data = JSON.parse(block[1]); } catch { /* reported below */ }
+  check("and it is valid JSON", data !== null);
+  check("describing a business", /Business|Store|LocalBusiness/.test(data?.["@type"] || ""),
+    data?.["@type"]);
+  check("at the shop's real address",
+    data?.address?.streetAddress === "267 Hanworth Road"
+    && data?.address?.postalCode === "TW3 3RZ", JSON.stringify(data?.address));
+  check("with the phone number the site shows",
+    (data?.telephone || "").replace(/\D/g, "") === "442085706502", data?.telephone);
+  check("and where it is on a map",
+    typeof data?.geo?.latitude === "number" && typeof data?.geo?.longitude === "number");
+  /* Hours are the one thing Google prints as fact, and the shipped hours are
+     still a placeholder. Publishing a guess sends somebody to a closed shop. */
+  check("but no opening hours, because they are not confirmed yet",
+    !("openingHoursSpecification" in (data || {})));
+
+  const robots = await page.request.get(`${BASE}/robots.txt`);
+  check("robots.txt is served", robots.ok());
+  const robotsText = await robots.text();
+  check("it keeps the admin out of search results", /Disallow: \/admin/.test(robotsText));
+  check("and points at the sitemap", /Sitemap: https:\/\//.test(robotsText));
+
+  const sitemap = await page.request.get(`${BASE}/sitemap.xml`);
+  check("the sitemap is served", sitemap.ok());
+  check("as XML a crawler will read",
+    /schemas\/sitemap\/0\.9/.test(await sitemap.text()));
+}
+
 console.log("\nThe site has an icon of its own:");
 {
   /* Without these Google shows a blank page-shape next to the result. Each

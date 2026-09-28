@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Three URLs, and that is not an oversight.
+
+  The shop's pages are hash routes — #/collections, #/about — and a search
+  engine does not treat a fragment as a separate page. Everything after the #
+  is, to Google, the same document as "/". So listing them here would be
+  listing one URL nine times.
+
+  Making those into real, indexable pages means moving off hash routing onto
+  real paths, which is a genuine piece of work rather than a line in a file.
+  See docs/outstanding.md.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://haris-carpets.co.uk/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://haris-carpets.co.uk/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://haris-carpets.co.uk/data-deletion.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.1</priority>
+  </url>
+</urlset>

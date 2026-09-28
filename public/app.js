@@ -1321,6 +1321,79 @@ function viewNotFound() {
 const VISUALISER_ON = typeof FEATURES !== "undefined" && FEATURES.visualiser && !!window.Visualiser;
 
 /* =========================================================================
+   WHAT THE PAGE CALLS ITSELF
+
+   One <title> for nine pages is what a hash-routed site gets by default, and
+   it is wrong in three places at once: the browser tab, the bookmark somebody
+   saves, and the name a link takes when it is shared.
+
+   What this does NOT fix is indexing. A search engine does not treat what
+   comes after the # as a separate page — "/#/about" and "/" are one document
+   to Google — so this makes the site *readable*, not more indexable. The fix
+   for that is real paths instead of hash routes; see docs/outstanding.md.
+   ========================================================================= */
+const SHOP = "Hari's Carpets";
+
+function describe(top, parts) {
+  const type = top === "collections" && parts[1] ? findType(parts[1]) : null;
+  const range = top === "range" && parts[1] ? findRange(parts[1]) : null;
+
+  if (range) {
+    return [`${range.name} by ${range.brand} — ${SHOP}`,
+      `${range.name}: ${range.colours.length} shades from ${range.brand}, in the `
+      + `Hounslow showroom. ${say("blurb", range.blurb) || ""}`.trim()];
+  }
+  if (type) {
+    return [`${type.name} — ${SHOP}, Hounslow`,
+      `${type.name} from ${SHOP} in Hounslow. ${type.blurb}`];
+  }
+  switch (top) {
+    case undefined: return [`${SHOP} — Carpet & Flooring Showroom, Hounslow`, null];
+    case "collections": return [`Collections — ${SHOP}`,
+      "Every floor we stock, by type: carpets, wood and laminate, LVT, vinyl and rugs."];
+    case "portfolio": return [`Our work — ${SHOP}`,
+      `Floors ${SHOP} has supplied and installed recently, in homes across London `
+      + "and the Home Counties."];
+    case "about": return [`About us — ${SHOP}`,
+      `${SHOP} has been a family-run flooring business in Hounslow for over 32 years.`];
+    case "contact": return [`Visit the showroom — ${SHOP}, Hounslow`,
+      `Find ${SHOP} at 267 Hanworth Road, Hounslow. Opening hours, directions and a map.`];
+    case "enquire": return [`Get in touch — ${SHOP}`,
+      `Ask ${SHOP} about flooring, request a quote, or book a free home measure.`];
+    case "favourites": return [`My Favourites — ${SHOP}`, null];
+    case "visualiser": return [`See it in a room — ${SHOP}`, null];
+    default: return [`Page not found — ${SHOP}`, null];
+  }
+}
+
+/* The shipped description, used wherever a page has nothing better to say. */
+const SITE_DESCRIPTION = document.querySelector('meta[name="description"]')?.content || "";
+
+function nameThisPage(top, parts) {
+  const [title, description] = describe(top, parts);
+  document.title = title;
+
+  const set = (selector, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute("content", value);
+  };
+  const desc = description || SITE_DESCRIPTION;
+  set('meta[name="description"]', desc);
+  set('meta[property="og:description"]', desc);
+  set('meta[property="og:title"]', title);
+
+  /* og:url and the canonical are deliberately left alone, pointing at the
+     site's own absolute root.
+
+     Rewriting them from location looked tidier and was wrong twice over. A
+     share preview is built by somebody else's server, which fetches the URL
+     and mostly does not run this script — so it reads whatever is in the file,
+     and the file should say the real address rather than whichever host the
+     page happened to be opened on. And every hash route *is* one document to a
+     crawler, so "/" is the honest canonical for all of them. */
+}
+
+/* =========================================================================
    ROUTER
    ========================================================================= */
 function render() {
@@ -1344,6 +1417,7 @@ function render() {
   }
   app().innerHTML = html;
   applyContentToChrome();
+  nameThisPage(top, parts);
 
   const hash = location.hash || "#/";
   document.querySelectorAll(".nav a").forEach((a) => {

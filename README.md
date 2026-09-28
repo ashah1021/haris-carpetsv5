@@ -33,6 +33,7 @@ public/            the website. Everything served to a visitor
   data.js            the generated catalogue and every shipped default
   admin/             the admin, same style, no framework
   privacy.html       real files at real paths — Meta fetches these without JS
+  robots.txt         and sitemap.xml, for crawlers
 worker.js          the Worker: photos from R2, four API routes, then static assets
 worker-admin.js      the admin API and the overlay document
 worker-enquiry.js    the contact form and the enquiry inbox
