@@ -47,6 +47,19 @@
     { "name": "ENQUIRY_BUDGET", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }
   ],
 
+  // Enquiry notifications, once haris-carpets.co.uk is a zone in this account.
+  // Uncomment, put the verified destination address in, and redeploy: the
+  // Worker then emails the shop a copy of every enquiry itself, with no third
+  // party and nothing new to name in the privacy policy.
+  //
+  // "destination_address" must already be verified under that zone's Email
+  // Routing — Cloudflare will only send to an address that has confirmed it.
+  // That restriction is the whole reason this is safe to switch on.
+  //
+  // "send_email": [
+  //   { "name": "SEND_EMAIL", "destination_address": "sales@hariscarpets.co.uk" }
+  // ],
+
   "r2_buckets": [
     {
       "binding": "PHOTOS",
@@ -65,15 +78,16 @@
   // is deliberate — an unconfigured admin must refuse everyone, never admit
   // everyone.
   //
-  // Enquiries are not emailed anywhere by default: they are written to the
-  // bucket and read in the admin's Enquiries tab, which is the delivery. These
-  // two addresses only come into play if RESEND_KEY is ever set, and then only
-  // for a copy — the enquiry is stored either way.
+  // Where a notification goes, and who it comes from.
   //
-  // ENQUIRY_FROM stays on resend.dev until haris-carpets.co.uk is a zone in
-  // this Cloudflare account and verified with the sender. Putting the shop's
-  // own domain here before then would be claiming a domain whose SPF and DKIM
-  // live at Wix, and the mail would be junked. See worker-enquiry.js.
+  // ENQUIRY_TO is the shop's mailbox. ENQUIRY_FROM_ADDRESS is used by the
+  // Cloudflare sender; leave it empty and it sends from enquiries@ at the same
+  // domain as ENQUIRY_TO, which is what you want once that domain is the zone.
+  //
+  // ENQUIRY_FROM is only for the Resend fallback, and stays on resend.dev
+  // until the domain moves: claiming a domain whose SPF and DKIM live at Wix,
+  // in mail sent to that same domain, is the self-spoof pattern and gets the
+  // mail junked. See worker-enquiry.js.
   // Visitor numbers, read in the admin's Visitors tab. Neither of these is a
   // credential: the account id is in the dashboard URL and the site tag is in
   // the page source of every page. The API token that goes with them IS a
@@ -87,6 +101,7 @@
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
     "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c",
     "ENQUIRY_TO": "sales@hariscarpets.co.uk",
+    "ENQUIRY_FROM_ADDRESS": "",
     "ENQUIRY_FROM": "Hari's Carpets <onboarding@resend.dev>"
   }
 }

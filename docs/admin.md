@@ -146,7 +146,8 @@ appear.
 
 | | Limit | What happens at it |
 |---|---|---|
-| Collections added in /admin | **1,200** | the save reports what it would not take |
+| Collections added in /admin | **1,200** |
+| Photographs on the Portfolio page | **200** | the save reports what it would not take |
 | Shades in one collection | **400** | same |
 | The whole overlay document | **6 MB** | the save is refused with "too big" |
 | One photograph | 3 MB after the browser shrinks it | the upload is refused |
@@ -225,6 +226,26 @@ They are names, emails, phone numbers and messages belonging to members of the
 public, and twelve months is what `public/privacy.html` promises — **if that
 number moves here, it has to move there too, or the privacy notice stops being
 true.** Deleting one from the tab deletes it immediately and for good.
+
+## The enquiry notification
+
+Nothing is emailed by default — the Enquiries tab is the delivery. A copy can be
+emailed as well, and there are two ways:
+
+- **Cloudflare's own sending**, once `haris-carpets.co.uk` is a zone in the
+  account. Enable Email Routing, verify `sales@hariscarpets.co.uk` as a
+  destination, uncomment the `send_email` block in `wrangler.jsonc`, redeploy.
+  No third party, no API key, and nothing new for the privacy policy to name —
+  Cloudflare is already the one company on it. **This is the one to use.**
+- **Resend**, via `RESEND_KEY`, which works today on `workers.dev`. A third
+  party, so the privacy page has to say so.
+
+The Worker prefers the binding when both exist. Either way the enquiry is
+stored first and a failed send changes nothing the visitor sees.
+
+Cloudflare will only send to an address that has confirmed itself as a
+destination in Email Routing. That restriction is the whole reason this is safe
+to switch on: the Worker cannot be made to mail anybody else.
 
 ## Counting visitors
 

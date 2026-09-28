@@ -62,6 +62,11 @@ const MAX_DOC = 6 * 1024 * 1024;
    admin reported "Saved". Ranges past the cap are now reported rather than
    quietly binned, so hitting this again is visible the first time. */
 const MAX_RANGES = 1200;
+
+/* Finished jobs on the Portfolio page. Was 24, which is six months for a shop
+   that fits something most weeks — and it is the page that does the most
+   selling, so running out of room on it is the wrong constraint to have. */
+const MAX_PORTFOLIO = 200;
 const MAX_PHOTO = 3 * 1024 * 1024; // one swatch photograph
 const JWKS_TTL = 3600;
 
@@ -436,7 +441,10 @@ export function clean(input, lost = []) {
      so an entry with no picture is not an entry — a portfolio of empty frames
      is worse than an empty portfolio. */
   if (Array.isArray(input.portfolio)) {
-    out.portfolio = input.portfolio.slice(0, 24)
+    if (input.portfolio.length > MAX_PORTFOLIO) {
+      drop(`${input.portfolio.length - MAX_PORTFOLIO} portfolio photo(s) beyond the limit of ${MAX_PORTFOLIO}`);
+    }
+    out.portfolio = input.portfolio.slice(0, MAX_PORTFOLIO)
       .map((p) => ({
         image: UPLOAD_PATH.test(p && p.image) ? p.image : "",
         title: text(p && p.title, 80).trim(),

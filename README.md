@@ -17,6 +17,7 @@ Assets with a small Worker in front, and one R2 bucket.
 | [`docs/work-instructions.md`](docs/work-instructions.md) | running the shop's website day to day |
 | [`docs/admin.md`](docs/admin.md) | after the detail behind those instructions |
 | [`docs/architecture.md`](docs/architecture.md) | picking up the code |
+| [`docs/go-live.md`](docs/go-live.md) | moving the domain off Wix onto this site |
 | [`docs/handover.md`](docs/handover.md) | taking over the Cloudflare account |
 | [`docs/photography.md`](docs/photography.md) | regenerating the catalogue from a supplier's photography |
 | [`docs/outstanding.md`](docs/outstanding.md) | wondering what is parked and why |

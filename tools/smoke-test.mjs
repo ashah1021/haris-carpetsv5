@@ -380,6 +380,54 @@ check("the old catalogue link still lands somewhere",
   page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
 
+console.log("\nThe site has an icon of its own:");
+{
+  /* Without these Google shows a blank page-shape next to the result. Each
+     file is fetched rather than just found in the markup: a <link> to a 404 is
+     the same as no icon at all, and worse because it looks done. */
+  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const links = await page.evaluate(() =>
+    [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')]
+      .map((l) => ({ rel: l.getAttribute("rel"), href: l.getAttribute("href"),
+                     sizes: l.getAttribute("sizes") })));
+  check("an SVG icon is declared",
+    links.some((l) => /icon\.svg$/.test(l.href)), JSON.stringify(links));
+  check("a PNG for Google, at the size it asks for",
+    links.some((l) => l.sizes === "48x48"), JSON.stringify(links.map((l) => l.sizes)));
+  check("and one for a phone's home screen",
+    links.some((l) => l.rel === "apple-touch-icon"));
+
+  const missing = [];
+  for (const l of links) {
+    const res = await page.request.get(new URL(l.href, `${BASE}/index.html`).toString());
+    if (!res.ok()) missing.push(`${l.href} → ${res.status()}`);
+  }
+  check("every one of them is actually there", missing.length === 0, missing.join(", "));
+
+  /* The icon is on the pages Google fetches on their own, not only the app.
+     Read as bytes rather than rendered: data-deletion.html redirects itself
+     with a meta refresh, so a rendered check races the navigation — and bytes
+     are what a crawler sees anyway. */
+  for (const file of ["privacy.html", "data-deletion.html"]) {
+    const html = await (await page.request.get(`${BASE}/${file}`)).text();
+    check(`${file} has it too`, /<link rel="icon"/.test(html));
+  }
+
+  /* And what a shared link looks like. */
+  await page.goto(U("#/"), { waitUntil: "domcontentloaded" });
+  const og = await page.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll("meta[property^='og:']")]
+      .map((m) => [m.getAttribute("property"), m.getAttribute("content")])));
+  check("a shared link has a title", Boolean(og["og:title"]));
+  check("a description", Boolean(og["og:description"]));
+  check("and a picture", /^https:\/\/.+\.jpg$/.test(og["og:image"] || ""), og["og:image"]);
+  /* A share preview is fetched by somebody else's server, so a relative URL
+     resolves against nothing. */
+  check("given absolutely, because someone else's server fetches it",
+    (og["og:image"] || "").startsWith("https://") && (og["og:url"] || "").startsWith("https://"));
+}
+
 console.log("\nNo supplier codes anywhere a customer looks:");
 {
   /* CC-AP on a collection page, ALU01 under a shade name. Both are how the

@@ -163,7 +163,8 @@ possible the day it moves**, so it is the highest-value item on the list:
 | rate-limit bindings, because WAF rules are zone-scoped | proper WAF rules |
 | enquiries read in the admin, because Cloudflare cannot send mail for a domain it does not host | Cloudflare can send the notification email itself, with no third party |
 
-**Roughly, and check each step against Cloudflare's current documentation:**
+**[`go-live.md`](./go-live.md) is the step-by-step for this**, including what
+to write down before you start and what to check afterwards. In outline:
 
 1. Add the site in Cloudflare → it reads the existing DNS.
 2. **Compare the imported records against what Wix actually has**, record by

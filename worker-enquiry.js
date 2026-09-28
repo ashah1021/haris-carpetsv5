@@ -16,7 +16,9 @@
  * is shown on every tab for exactly that reason.
  *
  * EMAIL, IF IT IS EVER WANTED
- * Set RESEND_KEY and a copy is emailed as well, with the visitor's address in
+ * A copy is emailed to the shop as well when there is a way to send one — the
+ * SEND_EMAIL binding once the domain is a Cloudflare zone, RESEND_KEY before
+ * then. Either way the visitor's address is in
  * Reply-To. Not having it set is a normal state, not a fault — the enquiry is
  * already safe in the bucket either way. Note Cloudflare cannot send this mail
  * itself: the send_email binding and the Email Service both need the sending
@@ -80,12 +82,22 @@ function fromOurSite(request) {
 }
 
 /** Everything the shop needs to read, as plain text. */
+/* A value that has to stay on one line — a header, or a labelled line in the
+   body. Flattened rather than refused: this is the second line of defence, and
+   the first is in the route above. */
+const oneLine = (v) => String(v || "").replace(/[\r\n]+/g, " ").trim();
+
 function compose(e) {
+  /* Every one of these is one line in a plain-text email. A newline in a name
+     does not forge a header — the header block is above and closed by a blank
+     line — but it does put a line of somebody's choosing at the left margin of
+     the message, which reads like part of the form. The message itself keeps
+     its line breaks, because those are what the visitor typed. */
   return [
-    `Name:    ${e.name}`,
-    `Email:   ${e.email}`,
-    e.phone ? `Phone:   ${e.phone}` : null,
-    `About:   ${e.topic || "not said"}`,
+    `Name:    ${oneLine(e.name)}`,
+    `Email:   ${oneLine(e.email)}`,
+    e.phone ? `Phone:   ${oneLine(e.phone)}` : null,
+    `About:   ${oneLine(e.topic) || "not said"}`,
     "",
     e.message || "(no message)",
     "",
@@ -93,6 +105,59 @@ function compose(e) {
     `Sent from the website${e.page ? " (" + e.page + ")" : ""} at ${e.at}.`,
     "Reply to this email and it goes straight back to them.",
   ].filter((l) => l !== null).join("\n");
+}
+
+/* One RFC 5322 message. Cloudflare's send_email binding takes a raw MIME
+   message rather than fields, so it is built here.
+
+   Every header value is a line in that message, which is why the enquiry route
+   refuses an email address containing CR or LF outright rather than tidying it
+   up: this is the header it would be writing into. Belt and braces, every
+   value that came from a visitor is flattened again here. */
+function mime(env, e) {
+  const to = env.ENQUIRY_TO || "sales@hariscarpets.co.uk";
+  const from = env.ENQUIRY_FROM_ADDRESS || `enquiries@${to.split("@")[1]}`;
+  const body = compose(e);
+  return [
+    `From: Hari's Carpets website <${from}>`,
+    `To: <${to}>`,
+    `Reply-To: ${oneLine(e.name)} <${oneLine(e.email)}>`,
+    `Subject: Website enquiry — ${oneLine(e.topic) || "general"} — ${oneLine(e.name)}`,
+    `Message-ID: <${crypto.randomUUID()}@${from.split("@")[1]}>`,
+    `Date: ${new Date().toUTCString()}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="utf-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    body,
+  ].join("\r\n");
+}
+
+/* Cloudflare's own sending, which is the right answer the day the shop's
+   domain becomes a zone in the Cloudflare account: no third party, no account
+   to keep, no API key to rotate, and nothing new to name in the privacy policy
+   — Cloudflare is already the one company on it.
+   
+   It only sends to an address verified as a destination in that zone's Email
+   Routing, which is exactly and only where these go. Before the domain moves
+   there is no binding and this does nothing. */
+async function sendViaCloudflare(env, e) {
+  const to = env.ENQUIRY_TO || "sales@hariscarpets.co.uk";
+  try {
+    /* EmailMessage is a global in the Workers runtime when the binding exists.
+       Guarded so a misconfigured deploy reports rather than throwing into the
+       waitUntil and vanishing. */
+    if (typeof EmailMessage !== "function") {
+      return { ok: false, reason: "no EmailMessage in this runtime" };
+    }
+    const from = env.ENQUIRY_FROM_ADDRESS || `enquiries@${to.split("@")[1]}`;
+    await env.SEND_EMAIL.send(new EmailMessage(from, to, mime(env, e)));
+    return { ok: true, how: "cloudflare" };
+  } catch (err) {
+    /* The message names the destination address when it is not verified, which
+       is the mistake everybody makes first. */
+    return { ok: false, reason: "cloudflare: " + (err && err.message) };
+  }
 }
 
 async function sendMail(env, e) {
@@ -187,11 +252,19 @@ export async function enquiryRoute(request, env, ctx) {
   }
 
   /* A copy by email as well, if the shop has set that up. Its failure is not
-     the visitor's problem — the enquiry is already where the shop reads it. */
-  if (env.RESEND_KEY) {
-    ctx.waitUntil(sendMail(env, e).catch(() => ({ ok: false })).then((r) => {
-      if (!r.ok) console.error("enquiry copy not emailed:", r.reason);
-    }));
+     the visitor's problem — the enquiry is already where the shop reads it.
+
+     Cloudflare's own sending is preferred when the binding is there: it keeps
+     every customer's details inside accounts the shop already controls. Resend
+     is the fallback for as long as the domain is somewhere else. */
+  const send = env.SEND_EMAIL ? sendViaCloudflare
+    : env.RESEND_KEY ? sendMail
+    : null;
+  if (send) {
+    ctx.waitUntil(send(env, e).catch((err) => ({ ok: false, reason: String(err) }))
+      .then((r) => {
+        if (!r.ok) console.error("enquiry copy not emailed:", r.reason);
+      }));
   }
   return answer({ ok: true });
 }

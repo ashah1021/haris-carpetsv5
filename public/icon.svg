@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"
+     aria-label="Hari's Carpets">
+  <!--
+    The shop's mark, cut down until it survives 16 pixels.
+
+    The full logo is the wordmark over two yellow rules over HOUNSLOW. At the
+    size a browser tab and a Google result actually use it, all of that is mush
+    — so this keeps the three things that carry the brand: the blue ground, the
+    H, and the pair of yellow rules under it. Everything here is a rectangle on
+    a whole pixel at 16, 32 and 48, so it stays sharp rather than blurring at
+    the size it is seen most.
+  -->
+  <rect width="64" height="64" rx="8" fill="#1e4174"/>
+  <!-- H: two stems and a crossbar -->
+  <rect x="16" y="12" width="7" height="28" fill="#ffffff"/>
+  <rect x="41" y="12" width="7" height="28" fill="#ffffff"/>
+  <rect x="16" y="22" width="32" height="7" fill="#ffffff"/>
+  <!-- the two rules, the part of the logo people recognise -->
+  <rect x="16" y="45" width="32" height="4" fill="#f2d64b"/>
+  <rect x="16" y="52" width="32" height="4" fill="#f2d64b"/>
+</svg>

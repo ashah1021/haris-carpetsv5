@@ -225,7 +225,8 @@ part of the site that is unmistakably *this* shop's work.
    fitted in a day").
 4. **Save changes**.
 
-**Remove** takes a job off. With no jobs added the page says so rather than
+There is room for **200** photographs, and the top of the tab says how many are
+on there. **Remove** takes a job off. With no jobs added the page says so rather than
 showing empty frames, so it is never embarrassing — but it is also not doing
 anything for you.
 

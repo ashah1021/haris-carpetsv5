@@ -134,6 +134,70 @@ console.log("\nA failed email copy is not the visitor's problem:");
     [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
 }
 
+console.log("\nCloudflare sends the notification once the domain is a zone:");
+{
+  /* The point of this path: the shop's customers' details never leave accounts
+     the shop already controls, and the privacy policy — which names Cloudflare
+     and nobody else — stays true. */
+  const sent = [];
+  globalThis.EmailMessage = class { constructor(from, to, raw) { Object.assign(this, { from, to, raw }); } };
+  const env = makeEnv({ key: null });
+  env.SEND_EMAIL = { async send(msg) { sent.push(msg); } };
+  const calls = resend();
+
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("the visitor is thanked", (await res.json()).ok === true);
+  check("the shop is emailed", sent.length === 1, `${sent.length} sent`);
+  check("by Cloudflare, not by anybody else", calls.length === 0, `${calls.length} outbound`);
+  check("to the shop's address", sent[0]?.to === "sales@hariscarpets.co.uk", sent[0]?.to);
+  check("and it is still in the inbox regardless",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+
+  const raw = sent[0]?.raw || "";
+  check("replying reaches the customer",
+    /^Reply-To: Jo Bloggs <jo@example\.com>$/m.test(raw), (raw.match(/Reply-To:.*/) || [])[0]);
+  check("the subject says who and what",
+    /^Subject: Website enquiry — Carpets — Jo Bloggs$/m.test(raw), (raw.match(/Subject:.*/) || [])[0]);
+  check("what they wrote is in it", raw.includes("Stairs and landing"));
+  check("headers are separated from the body properly", raw.includes("\r\n\r\n"));
+  check("and it carries a Message-ID", /^Message-ID: <.+@.+>$/m.test(raw));
+
+  /* The enquiry route refuses a CR/LF email address outright, so this is the
+     second line of defence on the header it would have been written into. */
+  sent.length = 0;
+  await eq.enquiryRoute(post({ ...GOOD, name: "Jo\r\nBcc: everyone@example.com" }), env, ctx);
+  const injected = sent[0]?.raw || "";
+  const headers = injected.split("\r\n\r\n")[0];
+  check("a newline in a name cannot add a header",
+    !/^Bcc:/mi.test(headers), (headers.match(/Reply-To:.*/) || [])[0]);
+  /* And it does not get a line of its own at the left margin of the message
+     either, where it would read as part of the form. */
+  check("nor a line of its own in the message",
+    !/^Bcc:/mi.test(injected), (injected.match(/^Bcc:.*/mi) || [])[0]);
+}
+
+console.log("\nWith both set up, Cloudflare is preferred:");
+{
+  const sent = [];
+  const env = makeEnv();                      // RESEND_KEY set
+  env.SEND_EMAIL = { async send(m) { sent.push(m); } };
+  const calls = resend();
+  await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("Cloudflare sends it", sent.length === 1);
+  check("and the third party is not used at all", calls.length === 0, `${calls.length} calls`);
+}
+
+console.log("\nA failed notification is never the visitor's problem:");
+{
+  const env = makeEnv({ key: null });
+  env.SEND_EMAIL = { async send() { throw new Error("destination address not verified"); } };
+  const res = await eq.enquiryRoute(post(GOOD), env, ctx);
+  check("they are still thanked", (await res.json()).ok === true);
+  check("because the enquiry is already where the shop reads it",
+    [...env.PHOTOS._store.keys()].some((k) => k.startsWith("admin/enquiries/")));
+  delete globalThis.EmailMessage;
+}
+
 console.log("\nSpam is dropped without telling it why:");
 {
   const env = makeEnv();

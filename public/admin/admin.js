@@ -30,6 +30,8 @@
   /* Must match MAX_RANGES in worker-admin.js. Shown on the Collections tab so
      the ceiling is visible long before it is hit. */
   const MAX_RANGES = 1200;
+  /* Must match MAX_PORTFOLIO in worker-admin.js. */
+  const MAX_PORTFOLIO = 200;
 
   /* the document we are editing */
   let DOC = null;
@@ -660,7 +662,9 @@
     <h2>Portfolio</h2>
     <p class="mg-lede">Your own photographs of floors you have installed. Landscape works best,
       and big files are fine — they're shrunk here before uploading. Nothing is shipped with
-      the site for this page, so what you put here is what is on it.</p>
+      the site for this page, so what you put here is what is on it.
+      <b>${items.length}</b> added${items.length > MAX_PORTFOLIO * 0.8
+        ? ` — the limit is ${MAX_PORTFOLIO}.` : `, and there is room for ${MAX_PORTFOLIO}.`}</p>
     ${fields(PORTFOLIO_FIELDS)}
 
     <h3 class="mg-photo-head">The pictures</h3>
