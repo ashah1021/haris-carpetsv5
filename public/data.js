@@ -38,7 +38,7 @@
    untrue the moment it deploys. tools/smoke-test.mjs fails if they disagree,
    in either direction.
    ========================================================================= */
-const ANALYTICS = { token: "" };
+const ANALYTICS = { token: "55df637f7e88441e85c0f264feb652d1" };
 
 const FEATURES = {
   samples: false,

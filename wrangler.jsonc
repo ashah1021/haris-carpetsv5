@@ -109,8 +109,8 @@
   // Empty means the tab says which of the three is still to be set, rather
   // than showing an empty page. See worker-analytics.js.
   "vars": {
-    "CF_ACCOUNT_ID": "",
-    "CF_SITE_TAG": "",
+    "CF_ACCOUNT_ID": "7876be11f4e20ce325457563957f468b",
+    "CF_SITE_TAG": "55df637f7e88441e85c0f264feb652d1",
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
     "ACCESS_AUD": "e92c87786ba2f3b9ea09d089a1ec2a73df59c19052763d46d6730b06b32ffc2c",
     "ENQUIRY_TO": "sales@hariscarpets.co.uk",
