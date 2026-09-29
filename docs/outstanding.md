@@ -48,12 +48,21 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   M365 DNS migration, not a copy: its own afternoon with the Microsoft admin
   open, nowhere near go-live day. The full inventory is in
   [`go-live.md`](./go-live.md).
-- **Check the Enquiries tab.** Nothing is emailed out when somebody sends the
-  form: the enquiry lands in the admin, on the first tab, with a count of the
-  unread ones on the tab itself. Nothing tells the shop it is there, so it needs
-  looking at daily. There is no secret to set and no account to open — see the
-  enquiry section of `docs/admin.md`, including how to add an emailed copy later
-  if the tab alone turns out not to be enough.
+- **Prove the enquiry email arrives.** Cloudflare now emails the shop a copy of
+  every enquiry as well as storing it (`send_email` in `wrangler.jsonc`,
+  `worker-enquiry.js`). Send a test one and confirm it reaches
+  `sales@hariscarpets.co.uk` — **and look in Junk**, because the SPF and DMARC
+  records below are still missing and they are what keeps first mail from a new
+  sending domain out of there. Until that is confirmed, treat the Enquiries tab
+  as the only delivery and check it daily; the tab is never affected by a failed
+  send.
+- **Add SPF and DMARC to the `haris-carpets.co.uk` zone.** Two TXT records, in
+  §"Still do this: give the sending domain an SPF record" of
+  [`go-live.md`](./go-live.md). Without them the notification is far more likely
+  to be junked.
+- **Set the Visitors tab's API token.** `CF_ANALYTICS_TOKEN`, as a **Secret**
+  rather than a plaintext variable — a plaintext one is erased by the next
+  deploy. See the "Counting visitors" section of [`admin.md`](./admin.md).
 - **Rotate the R2 API key pair.** The credentials were pasted into a chat
   transcript, so treat them as burned. Cloudflare dashboard → R2 → Manage API
   tokens. Then update `~/.config/rclone/rclone.conf` and any local env vars.
