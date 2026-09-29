@@ -9,7 +9,10 @@
  * That matters here specifically: the visualiser reads raw canvas pixels, and
  * cross-origin images taint the canvas unless CORS is exactly right.
  *
- * Everything else falls straight through to the static assets.
+ * It also answers the addresses: the old Wix paths, as 301s, and the site's
+ * own pages as real paths served with their own title and canonical — see
+ * worker-pages.js. Everything else falls straight through to the static
+ * assets.
  *
  * The copies committed in /assets stay as a fallback. If R2 is unreachable, or
  * an object is missing, the bundled file is served instead — so a bucket
@@ -20,6 +23,7 @@
 import { adminRoutes } from "./worker-admin.js";
 import { instagramRoute, instagramCron } from "./worker-instagram.js";
 import { enquiryRoute, enquiryCron } from "./worker-enquiry.js";
+import { pageRoute } from "./worker-pages.js";
 
 const PHOTO_DIR = "/assets/";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -81,6 +85,19 @@ export default {
         return new Response(JSON.stringify({ error: "admin unavailable" }),
           { status: 500, headers: { "content-type": "application/json" } });
       }
+    }
+
+    /* The old Wix addresses, and the site's own pages as real paths rather
+       than hash routes. Answers redirects and page requests; returns null for
+       a file, the admin or anything it does not recognise, which then falls
+       through to the photo route and the static assets exactly as before.
+       Never allowed to take the site down: a fault here serves the site the
+       old way rather than serving nothing. See worker-pages.js. */
+    try {
+      const page = await pageRoute(request, env, ctx);
+      if (page) return page;
+    } catch (err) {
+      console.error("page route failed:", err && err.message);
     }
 
     try {

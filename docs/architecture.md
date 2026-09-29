@@ -58,6 +58,10 @@ If a dependency ever becomes genuinely necessary, vendor the file into
                         │
     /assets/*.jpg   ────┼──▶ R2 bucket ──▶ (miss) ──▶ bundled copy
                         │
+    /about-us-1 …   ────┼──▶ worker-pages.js     ──▶ 301 to the page it became
+    /about /collections ┤        (old Wix paths, and the site's own pages)
+       /collections/lvt │   ──▶ index.html, head rewritten for that address
+                        │
     everything else ────┴──▶ env.ASSETS  (the files in public/)
 ```
 
@@ -293,8 +297,18 @@ Analytics beacon. That constant and the privacy page are checked against each
 other in `smoke-test.mjs`: a token with no mention on the policy fails, and so
 does a mention with no token.
 
-Routing is hash-based (`#/collections/carpets`), which needs no server
-configuration and cannot 404 on refresh.
+Routing is on real paths (`/collections/carpets`). The browser does it with
+`history.pushState`, and `worker-pages.js` answers a direct load or a refresh
+of any of them with the document and the right `<title>`, description and
+canonical already written in — which is the half a client-side router cannot
+do, and the half that decides whether Google sees one page or twelve. Old `#/`
+links still work: they are rewritten to real paths on arrival, in the browser,
+because a fragment never reaches the server. See [`seo.md`](./seo.md).
+
+The consequence to remember: the same document is served at `/`, `/about` and
+`/collections/lvt`, so **every URL in `index.html` and `data.js` is
+root-absolute**. `./app.js` would resolve against the folder in the address
+and 404 on any page below the top level.
 
 ### Two rules that are easy to break
 

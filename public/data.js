@@ -136,7 +136,11 @@ const SOCIALS = [
 
    Floor masks are never served from R2; they stay in /assets/masks.
    -------------------------------------------------------------------------- */
-const IMG_BASE = "";
+/* Root-absolute, and it has to be. The site is served at real paths now —
+   /collections/lvt, /range/westex-elysian — and "assets/hero.jpg" would
+   resolve against the folder the address happens to be in, so every photo on
+   every page below the top level would 404. One slash, one place. */
+const IMG_BASE = "/";
 
 const P = (f) => IMG_BASE + "assets/" + f;
 
@@ -201,14 +205,14 @@ const VIS_ROOMS = [
      living room was a rug on floorboards, which showed a rug changing colour
      rather than a fitted carpet — the wrong thing to be selling. */
   { id: "living-room", name: "Living room", photo: P("room-living-carpet.jpg"),
-    mask: "assets/masks/room-living-carpet.png",
+    mask: "/assets/masks/room-living-carpet.png",
     note: "Fitted wall to wall, north-facing room." },
   { id: "bedroom", name: "Bedroom", photo: P("room-bedroom-carpet.jpg"),
-    mask: "assets/masks/room-bedroom-carpet.png",
+    mask: "/assets/masks/room-bedroom-carpet.png",
     note: "Fitted bedroom carpet, evening light." },
-  { id: "kitchen", name: "Kitchen", photo: IMG.lvt, mask: "assets/masks/lvt-kitchen.png",
+  { id: "kitchen", name: "Kitchen", photo: IMG.lvt, mask: "/assets/masks/lvt-kitchen.png",
     note: "Open-plan kitchen-diner, large windows." },
-  { id: "utility", name: "Utility", photo: IMG.vinyl, mask: "assets/masks/vinyl-utility.png",
+  { id: "utility", name: "Utility", photo: IMG.vinyl, mask: "/assets/masks/vinyl-utility.png",
     note: "Utility room — the same floors suit a bathroom." },
 
   /* Not yet live, both blocked on assets rather than code:
@@ -223,27 +227,27 @@ const VIS_ROOMS = [
    `rooms` lists which visualiser scenes a type makes sense in.
    -------------------------------------------------------------------------- */
 const TYPES = [
-  { id: "carpets", name: "Carpets", route: "#/collections/carpets",
+  { id: "carpets", name: "Carpets", route: "/collections/carpets",
     photo: IMG.velvet, alt: "Wool velvet carpet in a panelled living room",
     blurb: "Wool-rich and synthetic carpets from Britain's leading mills. Browse by brand, range and colour.",
     rooms: ["living-room", "bedroom"] },
 
-  { id: "wood", name: "Wood & Laminate", route: "#/collections/wood",
+  { id: "wood", name: "Wood & Laminate", route: "/collections/wood",
     photo: IMG.wood, alt: "Engineered oak herringbone flooring in a kitchen-diner",
     blurb: "Engineered and solid wood, plus hard-wearing laminate — herringbone, chevron and plank formats.",
     rooms: ["kitchen", "utility"] },
 
-  { id: "lvt", name: "LVT", route: "#/collections/lvt",
+  { id: "lvt", name: "LVT", route: "/collections/lvt",
     photo: IMG.lvt, alt: "Stone-effect luxury vinyl tile flooring in a modern kitchen",
     blurb: "Luxury vinyl tile — the look of wood or stone with the durability for kitchens, bathrooms and busy family spaces.",
     rooms: ["kitchen", "utility"] },
 
-  { id: "vinyl", name: "Vinyl", route: "#/collections/vinyl",
+  { id: "vinyl", name: "Vinyl", route: "/collections/vinyl",
     photo: IMG.vinyl, alt: "Cushioned wood-effect sheet vinyl in a utility room",
     blurb: "Cushioned sheet vinyl — practical, comfortable underfoot and easy to keep clean.",
     rooms: ["utility", "kitchen"] },
 
-  { id: "rugs", name: "Luxury Rugs", route: "#/collections/rugs",
+  { id: "rugs", name: "Luxury Rugs", route: "/collections/rugs",
     photo: IMG.rug, alt: "Patterned woven luxury rug layered over wood flooring",
     blurb: "Luxury rugs, including Louis de Poortere, to finish and pull a room together.",
     rooms: ["living-room"] },

@@ -22,6 +22,9 @@
        is what iOS uses when somebody adds the site to their home screen. -->
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="icon" href="./icon-48.png" sizes="48x48" type="image/png">
+  <!-- Google fetches /favicon.ico by name, whatever the tags say, and shows a
+       grey letter beside the search result when it 404s. -->
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="apple-touch-icon" href="./icon-180.png">
   <link rel="stylesheet" href="./styles.css">
   <style>
@@ -34,7 +37,7 @@
 <body>
   <header class="site-header">
     <div class="wrap">
-      <a class="brand-mark" href="./index.html#/" aria-label="Hari's Carpets — home">
+      <a class="brand-mark" href="/" aria-label="Hari's Carpets — home">
         <span class="bn">Hari's Carpets</span>
         <span class="br" aria-hidden="true"></span>
       </a>

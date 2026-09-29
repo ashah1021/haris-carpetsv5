@@ -12,6 +12,9 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { loadAdmin } from "./load-worker.mjs";
+/* The real redirect table and the real head rewriting, not a copy: what the
+   browser is driven against here has to be what Cloudflare serves. */
+import { describePath, redirectFor, rewriteHead, PAGES } from "../worker-pages.js";
 
 const ROOT = new URL("../public/", import.meta.url).pathname;
 const PORT = Number(process.argv[2] || 8890);
@@ -256,6 +259,18 @@ createServer(async (req, res) => {
 
   if (UPLOADS.has(p)) {
     return res.writeHead(200, { "content-type": "image/jpeg" }).end(UPLOADS.get(p));
+  }
+
+  /* An old Wix address, or one of the site's own pages as a real path. The
+     Worker does this in production; doing it here means a direct load of
+     /collections/lvt, and a refresh on it, are under test rather than assumed. */
+  const moved = redirectFor(p);
+  if (moved) return res.writeHead(301, { location: moved }).end();
+  const page = describePath(p);
+  if (page) {
+    const doc = await readFile(join(ROOT, "index.html"), "utf8");
+    return res.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+      .end(rewriteHead(doc, page, PAGES["/"].description));
   }
 
   const file = join(ROOT, normalize(p.endsWith("/") ? p + "index.html" : p));

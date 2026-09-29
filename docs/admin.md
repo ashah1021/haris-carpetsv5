@@ -601,12 +601,17 @@ need this — but it is the quickest way to be certain.
     node tools/stub-api.mjs 8897 both &
     node tools/admin-e2e.mjs       # the page, and the shop when the API is down
 
-    python3 -m http.server 8899 -d public &
-    node tools/smoke-test.mjs      # the public pages, on a server with no API at all
+    node tools/smoke-test.mjs http://127.0.0.1:8890   # the public pages
+    node tools/seo-report.mjs http://127.0.0.1:8890  # the addresses, one by one
 
-`smoke-test.mjs` wants a *plain* file server, not the stub: half of what it
-checks is what a visitor sees when nothing behind the site is answering, and the
-stub answers.
+`smoke-test.mjs` used to want a *plain* file server, and now cannot have one.
+The pages are real addresses — `/collections/lvt` is fetched, not a fragment —
+and answering that with the document is a thing `python3 -m http.server`
+cannot do. It runs against the stub on 8890, which does it out of the same
+`worker-pages.js` the Worker uses. Where the suite needs the far end to fail
+— the enquiry that cannot be delivered — it now asks the stub for that
+failure (`/_enquiry?mode=fail`) instead of relying on there being no API at
+all, which tests the refusal rather than the absence.
 
 `admin.test.mjs` generates a real RSA key pair and signs real tokens, so the
 verification path runs for real: a forged signature, an expired token, a token

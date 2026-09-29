@@ -70,21 +70,24 @@
        result and the browser tab shows nothing at all. The SVG is what modern
        browsers use; the 48px PNG is what Google's crawler wants; the 180px one
        is what iOS uses when somebody adds the site to their home screen. -->
-  <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="icon" href="./icon-48.png" sizes="48x48" type="image/png">
-  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-48.png" sizes="48x48" type="image/png">
+  <!-- Google fetches /favicon.ico by name, whatever the tags say, and shows a
+       grey letter beside the search result when it 404s. -->
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="/styles.css">
   <!-- optional add-on; delete this line and visualiser.css to ship without it -->
-  <link rel="stylesheet" href="./visualiser.css">
+  <link rel="stylesheet" href="/visualiser.css">
 </head>
 <body>
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand-mark" href="#/" aria-label="Hari's Carpets — home">
+      <a class="brand-mark" href="/" aria-label="Hari's Carpets — home">
         <span class="bn">Hari's Carpets</span>
         <span class="br" aria-hidden="true"></span>
         <!-- replaced at runtime from the "tagline" box in /admin -->
@@ -94,14 +97,14 @@
       <!-- Not one item per floor type: the Collections page carries its own
            type tabs, so listing them here only crowded the wordmark out. -->
       <nav class="nav">
-        <a href="#/collections">Collections</a>
-        <a href="#/portfolio">Portfolio</a>
-        <a href="#/visualiser">Visualiser</a>
-        <a href="#/about">About</a>
-        <a href="#/contact">Visit us</a>
-        <a href="#/enquire">Contact us</a>
+        <a href="/collections">Collections</a>
+        <a href="/portfolio">Portfolio</a>
+        <a href="/visualiser">Visualiser</a>
+        <a href="/about">About</a>
+        <a href="/contact">Visit us</a>
+        <a href="/enquire">Contact us</a>
       </nav>
-      <a class="fav-btn" id="favBtn" href="#/favourites" aria-label="My Favourites">
+      <a class="fav-btn" id="favBtn" href="/favourites" aria-label="My Favourites">
         <span aria-hidden="true">&#9829;</span> My Favourites <span class="count" id="favCount">0</span>
       </a>
       <a class="btn btn-solid btn-sm header-cta" href="tel:+442085706502">020 8570 6502</a>
@@ -131,14 +134,14 @@
       </div>
       <div>
         <h4>Shop</h4>
-        <a href="#/collections/carpets">Carpets</a>
-        <a href="#/collections/wood">Wood &amp; Laminate</a>
-        <a href="#/collections/lvt">LVT</a>
-        <a href="#/collections/vinyl">Vinyl</a>
-        <a href="#/collections/rugs">Rugs</a>
-        <a href="#/portfolio">Portfolio</a>
-        <a href="#/visualiser">Visualiser</a>
-        <a href="#/favourites">My Favourites</a>
+        <a href="/collections/carpets">Carpets</a>
+        <a href="/collections/wood">Wood &amp; Laminate</a>
+        <a href="/collections/lvt">LVT</a>
+        <a href="/collections/vinyl">Vinyl</a>
+        <a href="/collections/rugs">Rugs</a>
+        <a href="/portfolio">Portfolio</a>
+        <a href="/visualiser">Visualiser</a>
+        <a href="/favourites">My Favourites</a>
       </div>
       <div>
         <h4>Visit</h4>
@@ -154,16 +157,16 @@
         <span class="fine-links">
           <!-- One link. Deleting your information is a section of that page
                now, so a second link here pointed at the same document. -->
-          <a href="./privacy.html">Privacy Policy</a>
+          <a href="/privacy.html">Privacy Policy</a>
         </span>
       </div>
     </div>
   </footer>
 
-  <script src="./data.js"></script>
+  <script src="/data.js"></script>
   <!-- optional add-on; must load before app.js, which checks for it -->
-  <script src="./visualiser.js"></script>
-  <script src="./app.js"></script>
+  <script src="/visualiser.js"></script>
+  <script src="/app.js"></script>
   <script>document.getElementById("yr").textContent = new Date().getFullYear();</script>
 </body>
 </html>

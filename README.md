@@ -18,6 +18,7 @@ Assets with a small Worker in front, and one R2 bucket.
 | [`docs/admin.md`](docs/admin.md) | after the detail behind those instructions |
 | [`docs/architecture.md`](docs/architecture.md) | picking up the code |
 | [`docs/go-live.md`](docs/go-live.md) | moving the domain off Wix onto this site |
+| [`docs/seo.md`](docs/seo.md) | the page addresses, the old Wix ones, and what Google does with them |
 | [`docs/handover.md`](docs/handover.md) | taking over the Cloudflare account |
 | [`docs/photography.md`](docs/photography.md) | regenerating the catalogue from a supplier's photography |
 | [`docs/outstanding.md`](docs/outstanding.md) | wondering what is parked and why |
@@ -28,7 +29,7 @@ Assets with a small Worker in front, and one R2 bucket.
 
 ```
 public/            the website. Everything served to a visitor
-  index.html         the shell; routing is hash-based
+  index.html         the shell; routing is on real paths, served by worker-pages.js
   app.js             routing, rendering, the overlay merge, favourites, the form
   data.js            the generated catalogue and every shipped default
   admin/             the admin, same style, no framework
@@ -39,6 +40,7 @@ worker-admin.js      the admin API and the overlay document
 worker-enquiry.js    the contact form and the enquiry inbox
 worker-instagram.js  the live feed and its 60-day token
 worker-analytics.js  visitor numbers for the admin's Visitors tab
+worker-pages.js      real page addresses, and 301s from the old Wix ones
 tools/             the catalogue pipeline (Python) and the test suites (Node)
 docs/              the documents above
 wrangler.jsonc     bindings, crons, rate limits. Read the comments before editing
@@ -65,7 +67,18 @@ node tools/worker.test.mjs     # routing and the R2 photo route
 node tools/analytics.test.mjs  # visitor numbers, and every way they can fail
 ```
 
-Those five need no server and no network. The two browser suites
+Those five need no server and no network. One more needs the site running,
+and is the one to run after anything that touches addresses:
+
+```sh
+node tools/stub-api.mjs 8890 &
+node tools/seo-report.mjs http://127.0.0.1:8890        # what should happen
+node tools/seo-report.mjs https://haris-carpets.co.uk  # what does, after a deploy
+```
+
+It prints every old Wix path with its redirect status and destination, and
+every page with its status, title and canonical — see
+[`docs/seo.md`](docs/seo.md). The two browser suites
 (`tools/admin-e2e.mjs`, `tools/smoke-test.mjs`) need Playwright and a couple of
 local servers — see the Tests section of [`docs/admin.md`](docs/admin.md).
 

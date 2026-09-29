@@ -93,7 +93,7 @@ console.log("\nShop details reach the site:");
   await page.locator("#save").click();
   await page.waitForTimeout(800);
 
-  await go(`${BASE}/index.html#/contact`, 1600);
+  await go(`${BASE}/contact`, 1600);
   const contact = await page.evaluate(() => document.querySelector("#app").textContent);
   check("opening hours show", contact.includes(typed.hours), typed.hours);
   /* An address is written on lines, not run together, so it is compared line by
@@ -118,11 +118,11 @@ console.log("\nShop details reach the site:");
   check("and the footer address, on its own lines",
     footAddr.join("|") === "1 Test Street|Hounslow", footAddr.join("|"));
 
-  await go(`${BASE}/index.html#/`, 1500);
+  await go(`${BASE}/`, 1500);
   check("the notice shows on the home page",
     (await page.locator(".notice").textContent()).includes(typed.notice));
 
-  await go(`${BASE}/index.html#/about`, 1500);
+  await go(`${BASE}/about`, 1500);
   const about = await page.evaluate(() => document.querySelector("#app").textContent);
   check("the About opening line shows", about.includes("A test opening line."));
   check("both About paragraphs show",
@@ -139,9 +139,9 @@ console.log("\nShop details reach the site:");
   await page.locator('[data-content="hours"]').fill("");
   await page.locator("#save").click();
   await page.waitForTimeout(800);
-  await go(`${BASE}/index.html#/`, 1500);
+  await go(`${BASE}/`, 1500);
   check("clearing the notice removes the strip", (await page.locator(".notice").count()) === 0);
-  await go(`${BASE}/index.html#/contact`, 1500);
+  await go(`${BASE}/contact`, 1500);
   check("clearing a box restores the original wording",
     (await page.evaluate(() => document.querySelector("#app").textContent)).includes(CONTACT_HOURS),
     CONTACT_HOURS);
@@ -178,7 +178,7 @@ check("saved", (await page.locator("#state").textContent()).toLowerCase().includ
   await page.locator("#state").textContent());
 
 console.log("\n…takes it off the shop:");
-await go(`${BASE}/index.html#/collections/carpets`, 1500);
+await go(`${BASE}/collections/carpets`, 1500);
 const gone = await page.evaluate((id) => !RANGES.some((r) => r.id === id), rangeId);
 check("the collection is gone from the catalogue", gone, firstName);
 const stillInSource = await page.evaluate((id) => CATALOGUE.some((r) => r.id === id), rangeId);
@@ -200,7 +200,7 @@ await page.waitForTimeout(400);
 await page.locator(`[data-hide="${rangeId}"]`).click();
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/collections/carpets`, 1500);
+await go(`${BASE}/collections/carpets`, 1500);
 check("the collection is back", await page.evaluate((id) => RANGES.some((r) => r.id === id), rangeId));
 
 console.log("\nRenaming a shade reaches the shop:");
@@ -225,7 +225,7 @@ const renameKey = await page.locator("[data-rename]").first().getAttribute("data
 await page.locator("[data-rename]").first().fill("Renamed By Hari");
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/collections/carpets`, 1500);
+await go(`${BASE}/collections/carpets`, 1500);
 check("the new name is on the site",
   await page.evaluate(() => allSwatches().some((s) => s.name === "Renamed By Hari")), renameKey);
 
@@ -239,7 +239,7 @@ const wasChecked = await tick.isChecked();
 await tick.setChecked(!wasChecked);
 await page.locator("#save").click();
 await page.waitForTimeout(700);
-await go(`${BASE}/index.html#/collections/carpets/easy-clean`, 1500);
+await go(`${BASE}/collections/carpets/easy-clean`, 1500);
 const nowIn = await page.evaluate(() =>
   stylesFor("carpets").find((s) => s.id === "easy-clean")?.list.map((r) => r.id) || []);
 check("the style list followed the tick", nowIn.includes(tickedId) === !wasChecked,
@@ -295,7 +295,7 @@ console.log("\nAdding a collection and a shade from a photograph:");
 
   await page.locator("#save").click();
   await page.waitForTimeout(800);
-  await go(`${BASE}/index.html#/collections/carpets`, 1600);
+  await go(`${BASE}/collections/carpets`, 1600);
   const live = await page.evaluate(() =>
     allSwatches().find((s) => s.name === "Shop Oatmeal"));
   check("the new shade is on the shop", Boolean(live), live && `${live.range} · ${live.hex}`);
@@ -308,7 +308,7 @@ console.log("\nWhen the admin API is down the shop does not notice:");
   const p2 = await openPage(browser);
   const errs = [];
   p2.on("pageerror", (e) => errs.push(e.message));
-  await p2.goto(`${DOWN}/index.html#/collections/carpets`, { waitUntil: "networkidle" });
+  await p2.goto(`${DOWN}/collections/carpets`, { waitUntil: "networkidle" });
   await p2.waitForTimeout(1800);
   const n = await p2.locator(".swatch").count();
   check("the catalogue still renders in full", n > 100, `${n} shades`);
@@ -391,12 +391,12 @@ console.log("\nReplacing a photograph:");
   await page.waitForTimeout(900);
   check("saved", (await page.locator("#state").textContent()).toLowerCase().includes("saved"));
 
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   const heroSrc = await page.evaluate(() =>
     document.querySelector(".hero img")?.getAttribute("src") || "");
   check("the home page banner is the new photo", heroSrc.includes("assets/uploads/hero-"), heroSrc);
 
-  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  await go(`${BASE}/range/westex-ultima`, 1600);
   const rangeSrc = await page.evaluate(() =>
     document.querySelector(".range-hero img")?.getAttribute("src") || "");
   check("the collection photo followed too",
@@ -410,7 +410,7 @@ console.log("\nReplacing a photograph:");
   await page.waitForTimeout(400);
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   const back = await page.evaluate(() =>
     document.querySelector(".hero img")?.getAttribute("src") || "");
   check("'use the original' restores the shipped photo",
@@ -443,7 +443,7 @@ console.log("\nReviews and Instagram:");
     await page.waitForTimeout(900);
   }
 
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   check("neither section is there when nothing has been entered",
     (await page.locator(".reviews").count()) === 0
     && (await page.locator(".ig-wall").count()) === 0);
@@ -466,7 +466,7 @@ console.log("\nReviews and Instagram:");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
 
-  await go(`${BASE}/index.html#/`, 1700);
+  await go(`${BASE}/`, 1700);
   check("the rating shows", (await page.locator(".reviews-score").textContent()).includes("4.9"));
   check("the count shows", (await page.locator(".reviews-score").textContent()).includes("37"));
   check("the review shows",
@@ -552,14 +552,14 @@ console.log("\nEvery text box in the admin changes something on the site:");
   await page.waitForTimeout(1000);
 
   /* every page that could be showing any of them */
-  const pages = ["#/", "#/about", "#/collections", "#/collections/carpets",
+  const pages = ["/", "/about", "/collections", "/collections/carpets",
                  /* Wood and LVT have styles of their own, and their names are
                     separate boxes — "herringbone" exists under both. */
-                 "#/collections/wood", "#/collections/lvt",
-                 "#/portfolio", "#/contact", "#/enquire"];
+                 "/collections/wood", "/collections/lvt",
+                 "/portfolio", "/contact", "/enquire"];
   let seen = "";
   for (const hash of pages) {
-    await page.goto(`${BASE}/index.html${hash}`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE}${hash}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1300);
     seen += await page.evaluate(() => document.body.textContent);
   }
@@ -578,7 +578,7 @@ console.log("\nEvery text box in the admin changes something on the site:");
   await page.locator('[data-content="socialTiktok"]').fill("https://tiktok.example/haris");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/contact`, 1500);
+  await go(`${BASE}/contact`, 1500);
   check("the Google Maps link is really a link now",
     (await page.locator('a[href="https://maps.example/haris"]').count()) > 0);
   check("and a social link the shop typed is on the page",
@@ -613,7 +613,7 @@ console.log("\nSwitching a line off takes it off the page:");
 
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   const heads = await page.evaluate(() =>
     [...document.querySelectorAll(".ig-wall")].length
       ? [...document.querySelectorAll("section h2")].map((h) => h.textContent) : ["no grid"]);
@@ -633,7 +633,7 @@ console.log("\nSwitching a line off takes it off the page:");
   await page.locator('[data-off="instaHeading"]').check();
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   check("ticking it back on brings it back",
     /Recent work|ZQ-instaHeading/.test(await page.evaluate(() => document.body.innerText)));
 }
@@ -646,7 +646,7 @@ console.log("\nClearing a box is not the same as switching it off:");
   await page.locator('[data-content="typesHeading"]').fill("");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   check("an empty box puts the original wording back",
     /Every floor, one showroom/.test(await page.evaluate(() => document.body.innerText)));
 }
@@ -663,7 +663,7 @@ console.log("\nThe portfolio:");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
 
-  await go(`${BASE}/index.html#/portfolio`, 1600);
+  await go(`${BASE}/portfolio`, 1600);
   check("the job is on the page", (await page.locator(".folio-item").count()) === 1);
   check("with its heading", /Hounslow semi/.test(await page.evaluate(() => document.body.innerText)));
   check("and its description",
@@ -679,7 +679,7 @@ console.log("\nThe portfolio:");
   await page.locator('[data-folio="1"][data-part="title"]').fill("No picture for this one");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/portfolio`, 1600);
+  await go(`${BASE}/portfolio`, 1600);
   check("an entry with no picture is dropped", (await page.locator(".folio-item").count()) === 1);
 }
 
@@ -734,7 +734,7 @@ console.log("\nThe WhatsApp button:");
 {
   /* Nothing about WhatsApp is on the site until the shop puts a number in, so
      the first assertion is that an empty box leaves no button behind. */
-  await go(`${BASE}/index.html#/`, 1200);
+  await go(`${BASE}/`, 1200);
   check("no number, no button", (await page.locator("#waFloat:visible").count()) === 0);
 
   await go(`${BASE}/admin/`);
@@ -744,7 +744,7 @@ console.log("\nThe WhatsApp button:");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
 
-  await go(`${BASE}/index.html#/`, 1400);
+  await go(`${BASE}/`, 1400);
   const wa = page.locator("#waFloat");
   check("with one, the button is there", await wa.isVisible());
   check("dialling the number in international form",
@@ -756,7 +756,7 @@ console.log("\nThe WhatsApp button:");
 
   /* It is fixed to the window, so it has to survive a page change rather than
      be rendered by one view. */
-  await page.locator('.nav a[href="#/about"]').click();
+  await page.locator('.nav a[href="/about"]').click();
   await page.waitForTimeout(900);
   check("and it survives moving to another page", await page.locator("#waFloat").isVisible());
 
@@ -766,7 +766,7 @@ console.log("\nThe WhatsApp button:");
   await page.locator('[data-content="whatsapp"]').fill("");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/`, 1400);
+  await go(`${BASE}/`, 1400);
   check("emptying the box takes it away again",
     (await page.locator("#waFloat:visible").count()) === 0);
 }
@@ -818,7 +818,7 @@ console.log("\nA style tile gets a picture of its own:");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
 
-  await go(`${BASE}/index.html#/collections/carpets`, 1600);
+  await go(`${BASE}/collections/carpets`, 1600);
   const tile = await page.evaluate(() => {
     const a = [...document.querySelectorAll(".style-tile")]
       .find((t) => /wool-twist$/.test(t.getAttribute("href")));
@@ -858,7 +858,7 @@ console.log("\nA style with nothing in it says so rather than offering dead boxe
     (await block.locator("[data-content]").count()) === 0);
   check("and says why instead", /Nothing is filed under this one/.test(await block.innerText()));
 
-  await go(`${BASE}/index.html#/collections/carpets`, 1500);
+  await go(`${BASE}/collections/carpets`, 1500);
   check("it is not on the site either",
     (await page.locator('.style-tile[href$="/pattern"]').count()) === 0);
 
@@ -888,13 +888,13 @@ console.log("\nAn enquiry gets as far as the wire:");
      next run fail here for a reason that has nothing to do with the code. */
   await fetch(`${BASE}/_enquiry?mode=ok`);
 
-  await page.goto(`${BASE}/index.html#/collections/carpets`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/collections/carpets`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   await page.locator(".swatch .fav").first().click();
-  await go(`${BASE}/index.html#/favourites`, 1200);
+  await go(`${BASE}/favourites`, 1200);
   await page.locator("#favEnquire").click();
   await page.waitForTimeout(1200);
-  check("the shortlist takes you to the form", page.url().endsWith("#/enquire"));
+  check("the shortlist takes you to the form", new URL(page.url()).pathname === "/enquire");
   check("with the shades already written into it",
     (await page.inputValue("#m")).includes("ask about these shades"));
 
@@ -916,8 +916,9 @@ console.log("\nAn enquiry gets as far as the wire:");
   check("and the page said when the form was opened", typeof sent?.t === "number");
 
   /* The provider is down. Reloaded rather than navigated: the URL is already
-     #/enquire, and a goto that only differs by hash does not reload — the form
-     would still be showing the thank-you from the last one. */
+     /enquire already, and navigating to the address you are on does not
+     reload — the form would still be showing the thank-you from the last
+     one. */
   await fetch(`${BASE}/_enquiry?mode=fail`);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
@@ -1051,7 +1052,7 @@ console.log("\nThe admin says whether the Instagram feed is working:");
 console.log("\nThe Instagram wall:");
 {
   await fetch(`${BASE}/_feed?n=9`);
-  await go(`${BASE}/index.html#/`, 1800);
+  await go(`${BASE}/`, 1800);
   await page.evaluate(() => document.querySelector(".ig-wall")?.scrollIntoView({ block: "center" }));
   await page.waitForTimeout(700);
 
@@ -1108,7 +1109,7 @@ console.log("\nPhoto captions:");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
 
-  await go(`${BASE}/index.html#/`, 1600);
+  await go(`${BASE}/`, 1600);
   check("the banner picture is described",
     (await page.evaluate(() => document.querySelector(".hero img")?.getAttribute("alt")))
       === "A wool twist in a bay-window living room");
@@ -1117,7 +1118,7 @@ console.log("\nPhoto captions:");
   check("so is the one behind it",
     (await page.evaluate(() =>
       document.querySelectorAll(".hero-slide img")[1]?.getAttribute("alt"))) === "Velvet pile in a bay window");
-  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  await go(`${BASE}/range/westex-ultima`, 1600);
   check("so is a collection's",
     (await page.evaluate(() => document.querySelector(".range-hero img")?.getAttribute("alt")))
       === "Ultima fitted in a hallway");
@@ -1133,7 +1134,7 @@ console.log("\nA collection's own description:");
   await page.locator('[data-blurb="westex-ultima"]').fill("Our best-selling wool twist.");
   await page.locator("#save").click();
   await page.waitForTimeout(900);
-  await go(`${BASE}/index.html#/range/westex-ultima`, 1600);
+  await go(`${BASE}/range/westex-ultima`, 1600);
   check("shows on the collection page",
     (await page.evaluate(() => document.querySelector("#app").textContent))
       .includes("Our best-selling wool twist."));
@@ -1147,7 +1148,7 @@ console.log("\nA live Instagram feed replaces the chosen posts:");
 {
   /* the chosen posts from the block above are still in the stub */
   await page.goto(`${BASE}/_feed?n=4`, { waitUntil: "domcontentloaded" });
-  await go(`${BASE}/index.html#/`, 1800);
+  await go(`${BASE}/`, 1800);
   check("the live posts are used", (await page.locator(".ig-tile").count()) === 4,
     `${await page.locator(".ig-tile").count()} tiles`);
   const href = await page.evaluate(() =>
@@ -1156,7 +1157,7 @@ console.log("\nA live Instagram feed replaces the chosen posts:");
 
   /* a lapsed token, an outage, a Meta app someone deleted */
   await page.goto(`${BASE}/_feed?n=0`, { waitUntil: "domcontentloaded" });
-  await go(`${BASE}/index.html#/`, 1800);
+  await go(`${BASE}/`, 1800);
   check("without a feed it falls back to the chosen posts",
     (await page.locator(".ig-tile").count()) === 1,
     `${await page.locator(".ig-tile").count()} tiles`);

@@ -1,13 +1,17 @@
 /* =========================================================================
    HARI'S CARPETS — app (vanilla JS, no build step)
-   Routes:
-     #/                       home
-     #/collections              every flooring type
-     #/collections/<type>       one type, filterable by brand and colour
-     #/range/<id>             one range, all of its colours
-     #/favourites             the shortlist the visitor has saved
-     #/visualiser             see a colour on a real floor
-     #/about  #/contact
+   Routes — real paths, not fragments. /about is a page a search engine can
+   index and link to; /#/about was the home page with a bookmark on it, which
+   is why the whole site used to appear in Google as one result. The Worker
+   serves every one of these as a 200 with its own title and description; see
+   worker-pages.js.
+     /                        home
+     /collections             every flooring type
+     /collections/<type>      one type, filterable by brand and colour
+     /range/<id>              one range, all of its colours
+     /favourites              the shortlist the visitor has saved
+     /visualiser              see a colour on a real floor
+     /about  /contact  /enquire  /portfolio
 
    The sample tray is gated on FEATURES.samples. Favourites are separate and
    always on — a private shortlist, nothing posted to anyone.
@@ -66,7 +70,13 @@ function applyOverlay(site) {
    catalogue is a complete, working site on its own. */
 async function loadOverlay() {
   try {
-    const res = await fetch("api/site", { headers: { accept: "application/json" } });
+    /* Root-absolute. "api/site" resolved against the page's own folder, which
+       was harmless while every address was "/" with a fragment on it and is a
+       404 now: on /collections/lvt it asked for /collections/api/site, and the
+       shop's own edits silently stopped reaching the site below the top
+       level. BASE_PATH is "" everywhere real — it is only non-empty when
+       index.html is opened out of a subdirectory. */
+    const res = await fetch(BASE_PATH + "/api/site", { headers: { accept: "application/json" } });
     if (!res.ok) return false;
     const site = await res.json();
     if (!site || typeof site !== "object") return false;
@@ -201,7 +211,7 @@ function favToggle(key) {
     el.setAttribute("aria-pressed", on);
     el.title = on ? "Saved — click to remove" : "Save this shade";
   });
-  if (location.hash.startsWith("#/favourites")) render();
+  if (pathParts()[0] === "favourites") render();
 }
 
 function favSyncCount() {
@@ -213,7 +223,7 @@ function favSyncCount() {
 
 /* share link — keys are short, so the list rides in the URL itself */
 const favLink = () =>
-  location.origin + location.pathname + "#/favourites/" +
+  location.origin + BASE_PATH + "/favourites/" +
   encodeURIComponent(FAVS.map((f) => f.key).join(","));
 
 function favFromKeys(str) {
@@ -518,12 +528,12 @@ function openZoom(key) {
             carpet, and next to the shade's name it reads like a fault. Still
             in the catalogue data for the shop's own lookups, just not on the
             page. */""}
-      <p class="zoom-sub"><a href="#/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.family)}</p>
+      <p class="zoom-sub"><a href="/range/${esc(sw.rangeId)}">${esc(sw.range)}</a> · ${esc(sw.family)}</p>
       <div class="zoom-actions">
         ${heart(sw.key)}<span class="zoom-favlabel">Save to my favourites</span>
       </div>
-      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>` : ""}
-      <a class="btn btn-ghost btn-sm" href="#/range/${esc(sw.rangeId)}" data-zoom-close>All ${esc(sw.range)} shades</a>
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="/visualiser/${esc(sw.rangeId)}" data-zoom-close>See it in a room</a>` : ""}
+      <a class="btn btn-ghost btn-sm" href="/range/${esc(sw.rangeId)}" data-zoom-close>All ${esc(sw.range)} shades</a>
     </div>`;
   box.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -535,7 +545,7 @@ function closeZoom() {
 }
 
 function rangeCard(r) {
-  return `<a class="card" href="#/range/${esc(r.id)}">
+  return `<a class="card" href="/range/${esc(r.id)}">
     ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
     <div class="card-swatches">${r.colours.slice(0, 8).map((x) => `<span style="background:${x.hex}"></span>`).join("")}</div>
     <div class="card-body">
@@ -642,7 +652,7 @@ let IG_PROFILE = null;   /* handle and counts, when Instagram will give them */
 
 async function loadInstagram() {
   try {
-    const res = await fetch("api/instagram", { headers: { accept: "application/json" } });
+    const res = await fetch(BASE_PATH + "/api/instagram", { headers: { accept: "application/json" } });
     if (!res.ok) return false;
     const body = await res.json();
     if (!body?.posts?.length) return false;
@@ -740,8 +750,8 @@ function viewHome() {
       ${tag("h1", "heroTitle", "The flooring shop on Hanworth Road.")}
       ${para("heroText", HOME.heroText)}
       <div class="hero-cta">
-        ${cta("heroCta", "Make an enquiry", "#/enquire", "btn btn-yellow")}
-        ${cta("heroCta2", "Explore our collections", "#/collections", "btn btn-ghost on-dark")}
+        ${cta("heroCta", "Make an enquiry", "/enquire", "btn btn-yellow")}
+        ${cta("heroCta2", "Explore our collections", "/collections", "btn btn-ghost on-dark")}
       </div>
     </div>
     ${slides.length > 1 ? `<div class="hero-dots" id="heroDots"><div class="wrap">
@@ -761,7 +771,7 @@ function viewHome() {
     <div class="section-head">
       <div><span class="rule"></span>${head("typesHeading", "Every floor, one showroom")}
         ${para("typesText", HOME.typesText)}</div>
-      ${VISUALISER_ON ? `<a class="arrow-link" href="#/visualiser">Try colours in a room →</a>` : ""}
+      ${VISUALISER_ON ? `<a class="arrow-link" href="/visualiser">Try colours in a room →</a>` : ""}
     </div>
     <div class="cat-grid">${TYPES.map(typeTile).join("")}</div>
   </div></section>
@@ -776,7 +786,7 @@ function viewHome() {
         ${kicker("serviceKicker", "How we work")}
         ${head("serviceHeading", "Supplied and installed, properly")}
         ${para("serviceText", HOME.serviceText, "lede")}
-        ${pWrap(cta("serviceCta", "Discuss your project", "#/enquire", "btn btn-yellow"), "margin-top:24px")}
+        ${pWrap(cta("serviceCta", "Discuss your project", "/enquire", "btn btn-yellow"), "margin-top:24px")}
       </div>
     </div>
     <div style="margin-top:clamp(34px,5vw,60px)">${servicesGrid()}</div>
@@ -794,7 +804,7 @@ function viewHome() {
               change it was on a tab about a different page. */
           head("familyHeading", HOME.familyHeading)}
         ${para("familyText", HOME.familyText, "lede", "margin-top:14px")}
-        ${pWrap(cta("familyCta", "Discover our story →", "#/about", "btn btn-ghost"), "margin-top:22px")}
+        ${pWrap(cta("familyCta", "Discover our story →", "/about", "btn btn-ghost"), "margin-top:22px")}
       </div>
       <div class="split-media">${photo(siteImage("stairs", IMG.stairs), caption("stairs", "Wool twist carpet fitted to a staircase and landing"), "3-2")}</div>
     </div>
@@ -897,7 +907,7 @@ function styleTile(st, typeId, photos) {
      collections have no photograph showed an empty frame and nothing in /admin
      could fill it — there was no slot to upload to. There is one now. */
   const pic = siteImage(styleSlot(typeId, st), photos[st.id]);
-  return `<a class="style-tile" href="#/collections/${esc(typeId)}/${esc(st.id)}">
+  return `<a class="style-tile" href="/collections/${esc(typeId)}/${esc(st.id)}">
     <div class="style-ph">
       ${pic ? `<img src="${esc(pic)}" alt="${esc(caption(styleSlot(typeId, st), name))}"
         loading="lazy" onerror="this.remove()">` : ""}
@@ -921,13 +931,13 @@ function viewStyle(typeId, styleId) {
   const others = stylesFor(typeId).filter((s) => s.id !== st.id);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> /
-    <a href="#/collections/${esc(typeId)}">${esc(type.name)}</a> / ${esc(styleName(typeId, st))}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / <a href="/collections">Collections</a> /
+    <a href="/collections/${esc(typeId)}">${esc(type.name)}</a> / ${esc(styleName(typeId, st))}</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><p class="kicker">${esc(type.name)}</p>
         <h2>${esc(styleName(typeId, st))}</h2><p>${esc(styleBlurb(typeId, st))}</p></div>
-      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="/visualiser">See it in a room</a>` : ""}
     </div>
 
     ${st.list.map((r) => {
@@ -936,17 +946,17 @@ function viewStyle(typeId, styleId) {
          page — it is stock we can sell — but as a card, not an empty grid */
       if (!sw.length) return `<div class="style-range">
         <div class="style-range-head">
-          <div><h3><a href="#/range/${esc(r.id)}">${esc(r.name)}</a></h3>
+          <div><h3><a href="/range/${esc(r.id)}">${esc(r.name)}</a></h3>
             <p class="k">${esc(r.brand)} · shades in the showroom</p></div>
-          <a class="btn btn-ghost btn-sm" href="#/range/${esc(r.id)}">About this collection</a>
+          <a class="btn btn-ghost btn-sm" href="/range/${esc(r.id)}">About this collection</a>
         </div>
         <p class="empty-note">${esc(r.blurb)}</p>
       </div>`;
       return `<div class="style-range">
         <div class="style-range-head">
-          <div><h3><a href="#/range/${esc(r.id)}">${esc(r.name)}</a></h3>
+          <div><h3><a href="/range/${esc(r.id)}">${esc(r.name)}</a></h3>
             <p class="k">${esc(r.brand)} · ${sw.length} shade${sw.length === 1 ? "" : "s"}</p></div>
-          <a class="btn btn-ghost btn-sm" href="#/range/${esc(r.id)}">About this collection</a>
+          <a class="btn btn-ghost btn-sm" href="/range/${esc(r.id)}">About this collection</a>
         </div>
         <div class="swatch-grid">${sw.map((s) => swatchTile(s, { showRange: false })).join("")}</div>
       </div>`;
@@ -955,8 +965,8 @@ function viewStyle(typeId, styleId) {
     ${others.length ? `<div class="style-more">
       <p class="kicker">Or try</p>
       <div class="style-chips">${others.map((s) =>
-        `<a class="chip" href="#/collections/${esc(typeId)}/${esc(s.id)}">${esc(styleName(typeId, s))}<span class="n">${styleCount(s)}</span></a>`).join("")}
-        <a class="chip" href="#/collections/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
+        `<a class="chip" href="/collections/${esc(typeId)}/${esc(s.id)}">${esc(styleName(typeId, s))}<span class="n">${styleCount(s)}</span></a>`).join("")}
+        <a class="chip" href="/collections/${esc(typeId)}">Every ${esc(type.name.toLowerCase())} shade</a></div>
     </div>` : ""}
   </div></section>`;
 }
@@ -968,7 +978,7 @@ function viewCollections(typeId, styleId) {
 
   if (!type) {
     return `
-    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Collections</p></div>
+    <div class="wrap"><p class="crumbs"><a href="/">Home</a> / Collections</p></div>
     <section><div class="wrap">
       <!-- the saved keys stay "catalogue*": renaming them would throw away
            whatever the shop has already typed into those two boxes -->
@@ -1009,11 +1019,11 @@ function viewCollections(typeId, styleId) {
              <button class="linkish" data-clear="1">Clear filters</button></p>`);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> / ${esc(type.name)}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / <a href="/collections">Collections</a> / ${esc(type.name)}</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><h2>${esc(type.name)}</h2><p>${esc(say("type-" + type.id, type.blurb))}</p></div>
-      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="#/visualiser">See it in a room</a>` : ""}
+      ${VISUALISER_ON ? `<a class="btn btn-solid btn-sm" href="/visualiser">See it in a room</a>` : ""}
     </div>
 
     ${styles.length ? `<div class="styles">
@@ -1087,16 +1097,16 @@ function viewRange(id) {
   const swatches = allSwatches().filter((s) => s.rangeId === r.id);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / <a href="#/collections">Collections</a> /
-    <a href="${type ? type.route : "#/collections"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / <a href="/collections">Collections</a> /
+    <a href="${type ? type.route : "/collections"}">${esc(type ? type.name : r.type)}</a> / ${esc(r.name)}</p></div>
   <section><div class="wrap">
     <div class="range-hero">
       ${photo(rangePhoto(r), rangeCaption(r), "4-3")}
       <div><span class="rule"></span><h1>${esc(r.name)}</h1><p class="lede">${esc(r.blurb)}</p>
         <ul class="spec">${spec.map(([k, v]) => `<li><div><span class="sl">${esc(k)}</span>${esc(v)}</div></li>`).join("")}</ul>
         <p style="margin-top:26px">${VISUALISER_ON
-          ? `<a class="btn btn-solid" href="#/visualiser/${esc(r.id)}">See this range in a room</a>`
-          : `<a class="btn btn-solid" href="#/contact">Ask us about this range</a>`}</p></div>
+          ? `<a class="btn btn-solid" href="/visualiser/${esc(r.id)}">See this range in a room</a>`
+          : `<a class="btn btn-solid" href="/contact">Ask us about this range</a>`}</p></div>
     </div>
   </div></section>
   <section class="sec-alt"><div class="wrap">
@@ -1107,7 +1117,7 @@ function viewRange(id) {
       ? `<div class="swatch-grid">${swatches.map((s) => swatchTile(s, { showRange: false })).join("")}</div>`
       : `<p class="empty-note">We haven't got the shade names for this range on the site yet —
            ${esc(BUSINESS.name)} has the full book in the showroom.
-           <a class="arrow-link" href="#/contact">Ask us about it →</a></p>`}
+           <a class="arrow-link" href="/contact">Ask us about it →</a></p>`}
   </div></section>`;
 }
 
@@ -1115,13 +1125,13 @@ function viewFavourites(keys) {
   if (keys) favFromKeys(keys);
   if (!FAVS.length) {
     return `
-    <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My Favourites</p></div>
+    <div class="wrap"><p class="crumbs"><a href="/">Home</a> / My Favourites</p></div>
     <section><div class="wrap">
       <span class="rule"></span><p class="kicker">Nothing saved yet</p>
       <h2>Your shortlist is empty</h2>
       <p class="lede" style="margin-top:14px;max-width:56ch">Tap the ♥ on any colour and it lands here.
         The list stays on this device, so you can close the tab and pick up where you left off.</p>
-      <p style="margin-top:24px"><a class="btn btn-solid" href="#/collections">Browse collections</a></p>
+      <p style="margin-top:24px"><a class="btn btn-solid" href="/collections">Browse collections</a></p>
     </div></section>`;
   }
 
@@ -1129,7 +1139,7 @@ function viewFavourites(keys) {
   for (const f of FAVS) (byType[f.type] = byType[f.type] || []).push(f);
 
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / My Favourites</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / My Favourites</p></div>
   <section><div class="wrap">
     <div class="section-head">
       <div><span class="rule"></span><p class="kicker">${FAVS.length} shade${FAVS.length === 1 ? "" : "s"} saved</p>
@@ -1138,7 +1148,7 @@ function viewFavourites(keys) {
            into the showroom and we'll get those books out.</p></div>
       <div class="fav-actions">
         <button class="btn btn-ghost btn-sm" id="favShare">Copy link to my favourites</button>
-        <a class="btn btn-solid btn-sm" href="#/enquire" id="favEnquire">Ask us about these</a>
+        <a class="btn btn-solid btn-sm" href="/enquire" id="favEnquire">Ask us about these</a>
       </div>
     </div>
     ${Object.entries(byType).map(([t, list]) => {
@@ -1164,7 +1174,7 @@ function viewAbout() {
   const beside = paras.slice(0, 2), below = paras.slice(2);
   const para_ = (t) => `<p>${esc(t)}</p>`;
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / About us</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / About us</p></div>
   <section><div class="wrap">
     <div class="split split-top">
       <div class="split-copy"><span class="rule"></span>
@@ -1197,7 +1207,7 @@ function viewContact() {
      labelled line it is plainly one thing, and the switch plainly removes it. */
   const area = say("area", CONTACT.area);
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Visit us</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / Visit us</p></div>
   <section><div class="wrap">
     <div class="contact-grid">
       <div>
@@ -1214,7 +1224,7 @@ function viewContact() {
           ${area ? `<div class="info-row"><span class="il">We cover</span><span>${esc(area)}</span></div>` : ""}
           ${socialRow()}
         </div>
-        ${pWrap(cta("visitCta", "Send an enquiry", "#/enquire", "btn btn-solid"), "margin-top:26px")}
+        ${pWrap(cta("visitCta", "Send an enquiry", "/enquire", "btn btn-solid"), "margin-top:26px")}
       </div>
       <div>
         ${photo(siteImage("showroom", IMG.showroom), caption("showroom", "Inside the Hari's Carpets showroom"), "3-2")}
@@ -1237,7 +1247,7 @@ function viewContact() {
    it read as an afterthought; on its own it is the thing the page is for. */
 function viewEnquire() {
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Get in touch</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / Get in touch</p></div>
   <section><div class="wrap">
     <div class="enquire-grid">
       <div>
@@ -1250,7 +1260,7 @@ function viewEnquire() {
           <div class="info-row"><span class="il">Email</span><span><a href="mailto:${esc(say("email", CONTACT.email))}">${esc(say("email", CONTACT.email))}</a></span></div>
           <div class="info-row"><span class="il">Hours</span><span>${esc(say("hours", CONTACT.hours))}</span></div>
         </div>
-        <p style="margin-top:24px"><a class="arrow-link" href="#/contact">Or visit the showroom →</a></p>
+        <p style="margin-top:24px"><a class="arrow-link" href="/contact">Or visit the showroom →</a></p>
       </div>
       <div><div class="form-card">
         <h3 style="margin-bottom:10px">${esc(say("formHeading", "Submit an enquiry"))}</h3>
@@ -1290,13 +1300,13 @@ function viewEnquire() {
 function viewPortfolio() {
   const items = (SITE.portfolio || []).filter((p) => p && p.image);
   return `
-  <div class="wrap"><p class="crumbs"><a href="#/">Home</a> / Portfolio</p></div>
+  <div class="wrap"><p class="crumbs"><a href="/">Home</a> / Portfolio</p></div>
   <section><div class="wrap">
     <div class="section-head"><div><span class="rule"></span>
       ${kicker("portfolioKicker", "Our work")}
       ${head("portfolioHeading", "Recently installed")}
       ${para("portfolioText", PAGES.portfolioText)}</div>
-      ${pWrap(cta("portfolioCta", "Discuss your project", "#/enquire", "btn btn-solid btn-sm"))}</div>
+      ${pWrap(cta("portfolioCta", "Discuss your project", "/enquire", "btn btn-solid btn-sm"))}</div>
     ${items.length ? `<div class="folio">${items.map((p) => `
       <figure class="folio-item">
         ${photo(P(p.image), p.caption || p.title || "A floor installed by Hari's Carpets", "4-3")}
@@ -1312,7 +1322,7 @@ function viewPortfolio() {
 
 function viewNotFound() {
   return `<section><div class="wrap"><span class="rule"></span><p class="kicker">404</p>
-    <h2>We couldn't find that page</h2><p style="margin-top:14px"><a class="arrow-link" href="#/">Back to home →</a></p></div></section>`;
+    <h2>We couldn't find that page</h2><p style="margin-top:14px"><a class="arrow-link" href="/">Back to home →</a></p></div></section>`;
 }
 
 /* The visualiser lives in visualiser.js and is optional — see FEATURES.
@@ -1323,14 +1333,16 @@ const VISUALISER_ON = typeof FEATURES !== "undefined" && FEATURES.visualiser && 
 /* =========================================================================
    WHAT THE PAGE CALLS ITSELF
 
-   One <title> for nine pages is what a hash-routed site gets by default, and
-   it is wrong in three places at once: the browser tab, the bookmark somebody
-   saves, and the name a link takes when it is shared.
+   Every page now has an address of its own, so it needs a name of its own:
+   the browser tab, the bookmark somebody saves, the name a link takes when it
+   is shared, and — since the addresses are real — the entry a search engine
+   makes for it.
 
-   What this does NOT fix is indexing. A search engine does not treat what
-   comes after the # as a separate page — "/#/about" and "/" are one document
-   to Google — so this makes the site *readable*, not more indexable. The fix
-   for that is real paths instead of hash routes; see docs/outstanding.md.
+   The Worker has already written a title, description and canonical into the
+   document for this address before it reached the browser (worker-pages.js).
+   This is the same job done again from the live catalogue, which knows things
+   the Worker cannot: the name of a range the shop added this morning. The two
+   agree on every fixed page, and tools/smoke-test.mjs fails if they drift.
    ========================================================================= */
 const SHOP = "Hari's Carpets";
 
@@ -1382,22 +1394,90 @@ function nameThisPage(top, parts) {
   set('meta[property="og:description"]', desc);
   set('meta[property="og:title"]', title);
 
-  /* og:url and the canonical are deliberately left alone, pointing at the
-     site's own absolute root.
+  /* The canonical and og:url follow the address now, because there is an
+     address to follow. They are absolute and on the shop's own domain rather
+     than built from location: a share preview is fetched by somebody else's
+     server, which reads the file and mostly does not run this script, so what
+     it finds should be the real address of the page and not whichever host
+     this browser happens to be pointed at.
 
-     Rewriting them from location looked tidier and was wrong twice over. A
-     share preview is built by somebody else's server, which fetches the URL
-     and mostly does not run this script — so it reads whatever is in the file,
-     and the file should say the real address rather than whichever host the
-     page happened to be opened on. And every hash route *is* one document to a
-     crawler, so "/" is the honest canonical for all of them. */
+     Kept in step with what the Worker wrote into the document — a page that
+     tells Google one canonical in the HTML and another after rendering is the
+     one mistake worth more than everything else here put together. */
+  const path = "/" + (parts || []).join("/");
+  const canonical = "https://haris-carpets.co.uk" + (path === "/" ? "/" : path);
+  const link = document.querySelector('link[rel="canonical"]');
+  if (link) link.setAttribute("href", canonical);
+  set('meta[property="og:url"]', canonical);
 }
 
 /* =========================================================================
    ROUTER
+
+   Addresses are paths. The Worker answers every one of them with the document
+   and the right <title> already in it, so a direct load or a refresh of
+   /collections/lvt works exactly like a click, and a crawler that runs no
+   JavaScript still reads a real page. Inside the browser, a click on an
+   internal link is caught below and turned into a pushState, so navigation
+   stays instant and nothing is fetched twice.
    ========================================================================= */
+
+/* Every first segment this app knows how to draw. A link to anything else —
+   /privacy.html, /admin/, an R2 photo — is left to the browser, which is the
+   whole reason this list exists rather than "any link starting with /". */
+const APP_TOPS = ["collections", "catalogue", "portfolio", "range", "favourites",
+  "visualiser", "about", "contact", "enquire"];
+
+/* Where this copy of the site is served from, decided once, on arrival.
+   Empty everywhere real: the Worker only ever serves these pages from the
+   root, so if the address is /collections/lvt then /collections/lvt is the
+   page and not a folder. The only time it is not empty is index.html opened
+   directly — from disk, or out of a subdirectory in a local preview — and
+   then it is that directory, so links still resolve.
+
+   Computed from the first address rather than from each one: derive it from
+   location on every navigation and /collections/lvt looks like a page called
+   "lvt" inside a folder called "collections", which is exactly the bug that
+   sends the next click to /collections/about. */
+const BASE_PATH = location.pathname.endsWith("/index.html")
+  ? location.pathname.slice(0, -"index.html".length).replace(/\/$/, "")
+  : "";
+
+/* The current address, as segments. */
+function pathParts() {
+  let path = location.pathname;
+  if (BASE_PATH && path.startsWith(BASE_PATH)) path = path.slice(BASE_PATH.length);
+  return path.replace(/\/index\.html$/, "/").split("/").filter(Boolean);
+}
+
+const isAppPath = (path) => {
+  const top = path.replace(/^\//, "").split(/[/?#]/)[0];
+  return top === "" || APP_TOPS.includes(top);
+};
+
+function go(path, replace = false) {
+  const url = BASE_PATH + path;
+  if (url === location.pathname) { closeZoom(); window.scrollTo({ top: 0 }); return; }
+  history[replace ? "replaceState" : "pushState"](null, "", url);
+  closeZoom();
+  render();
+}
+
+/* Old links keep working. Every address this site has ever put in front of
+   anybody was a #/ one — printed, bookmarked, sent in a message, sitting in
+   somebody's browser history — and the server never sees a fragment, so this
+   is the only place it can be fixed. Rewritten in place, before the first
+   render, so the address bar shows the real path and nothing flashes. */
+function hashToPath() {
+  const h = location.hash;
+  if (!h || !h.startsWith("#/")) return false;
+  const path = h.slice(1).replace(/\/+$/, "") || "/";
+  history.replaceState(null, "", BASE_PATH + path);
+  return true;
+}
+
 function render() {
-  const parts = (location.hash.replace(/^#\/?/, "") || "").split("/").filter(Boolean);
+  const parts = pathParts();
   let html, top = parts[0];
   switch (top) {
     case undefined:      html = viewHome(); break;
@@ -1405,7 +1485,7 @@ function render() {
     /* "Catalogue" is what the trade calls it; a customer looking for a carpet
        is looking for a collection. The old path still resolves so anything
        already printed, linked or bookmarked lands on the right page. */
-    case "catalogue":    location.replace("#/collections" + parts.slice(1).map((p) => "/" + p).join("")); return;
+    case "catalogue":    go("/collections" + parts.slice(1).map((p) => "/" + p).join(""), true); return;
     case "portfolio":    html = viewPortfolio(); break;
     case "range":      html = viewRange(parts[1]); break;
     case "favourites": html = viewFavourites(parts[1]); break;
@@ -1419,10 +1499,10 @@ function render() {
   applyContentToChrome();
   nameThisPage(top, parts);
 
-  const hash = location.hash || "#/";
+  const here = "/" + parts.join("/");
   document.querySelectorAll(".nav a").forEach((a) => {
     const href = a.getAttribute("href");
-    a.classList.toggle("active", href === "#/" ? hash === "#/" : (hash === href || hash.startsWith(href + "/")));
+    a.classList.toggle("active", href === "/" ? here === "/" : (here === href || here.startsWith(href + "/")));
   });
   $(".nav")?.classList.remove("show");
   window.scrollTo({ top: 0, behavior: "auto" });
@@ -1487,10 +1567,10 @@ function wireEnquiry() {
 
     let body = null, ok = false;
     try {
-      const res = await fetch("api/enquiry", {
+      const res = await fetch(BASE_PATH + "/api/enquiry", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...data, t: opened, page: location.hash || "#/enquire" }),
+        body: JSON.stringify({ ...data, t: opened, page: location.hash || "/enquire" }),
       });
       body = await res.json().catch(() => null);
       ok = res.ok && body && body.ok;
@@ -1630,8 +1710,36 @@ document.addEventListener("click", (e) => {
   }
 });
 
+/* One listener for every internal link on the site, present and future — the
+   views are rebuilt from strings on every render, so anything bound to the
+   links themselves would have to be rebound each time. Modified clicks and
+   middle clicks are left alone: "open in a new tab" must keep working, and
+   that is a real address now, so it does.
+
+   Registered here, last, and it has to be last. Listeners run in the order
+   they were added, and some of the ones above act on a link *before* it is
+   followed — "Ask us about these" writes the shortlist into sessionStorage,
+   which the enquiry form then reads as it renders. A hash change used to
+   happen after every handler had run, so ordering never mattered; a
+   pushState that draws the next page immediately makes it matter. Put this
+   listener first and the form renders before the message is written. */
+document.addEventListener("click", (e) => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target.closest?.("a[href]");
+  if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+  const href = a.getAttribute("href");
+  if (!href || !href.startsWith("/") || href.startsWith("//")) return;
+  if (!isAppPath(href)) return;                 // a real file: let the browser go
+  e.preventDefault();
+  go(href);
+});
+
+window.addEventListener("popstate", () => { closeZoom(); render(); });
+
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeZoom(); });
-window.addEventListener("hashchange", () => { closeZoom(); render(); });
+/* A #/ link clicked inside the page: turn it into a real address and draw it,
+   the same as a fresh arrival on one. */
+window.addEventListener("hashchange", () => { if (hashToPath()) { closeZoom(); render(); } });
 /* Cloudflare Web Analytics, and only when a token has been set — see ANALYTICS
    in data.js. Injected rather than written into index.html so that "no token,
    no third-party request at all" is the default, and so the one place that
@@ -1650,8 +1758,9 @@ window.addEventListener("DOMContentLoaded", () => {
   mountAnalytics();
   if (!SAMPLES_ON) ["#trayBtn", "#tray", "#scrim"].forEach((s) => $(s)?.remove());
   favLoad();
+  hashToPath();
   if (!VISUALISER_ON) {
-    document.querySelectorAll('a[href^="#/visualiser"]').forEach((a) => a.remove());
+    document.querySelectorAll('a[href^="/visualiser"]').forEach((a) => a.remove());
   }
   render();
   favSyncCount();

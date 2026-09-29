@@ -5,18 +5,24 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
 
 ## Search
 
-- **The pages are hash routes, so Google indexes one page.** `#/collections`,
-  `#/about` and the rest are all the same document to a crawler — everything
-  after the `#` is not part of the URL as far as indexing goes. Titles,
-  descriptions and the sitemap are all correct now, but they cannot change
-  that: the site competes in search as a single home page.
+- **Range pages are `noindex` until the Worker can name them.** `/range/<id>`
+  is a real address that renders properly, but the Worker serves every one of
+  them the same generic title, because the catalogue lives in `data.js` and
+  the shop's own ranges live in R2 — neither of which it reads. Showing Google
+  sixty identical-looking pages that a visitor sees as sixty different ones is
+  worse than not showing them, so they carry `noindex, follow` for now.
 
-  The fix is real paths — `/collections/carpets` instead of
-  `#/collections/carpets` — which needs three things: `history.pushState` in
-  the router, every internal link rewritten, and the Worker serving
-  `index.html` for any path it does not recognise so a refresh or a direct
-  visit works. Perhaps half a day including the test suites, and it turns one
-  indexable page into nine. Worth doing before spending anything on ads.
+  The fix is to let the Worker read the catalogue — either by shipping a small
+  `pages.json` beside `data.js` or by parsing it once per deploy and caching —
+  and then one line in `describePath()`. Half a day, and it turns sixty
+  product pages on. See [`seo.md`](./seo.md).
+
+- **The old Wix URL list is incomplete.** `REDIRECTS` in `worker-pages.js`
+  covers every 404 Search Console has reported so far, the sitelinks Google is
+  still showing and the usual Wix shapes. The old sitemap had about 110 URLs
+  and it is no longer reachable — the domain points here now. Export the list
+  from Search Console (Indexing → Pages) or the Wayback Machine and each one
+  becomes a line in the table. See [`seo.md`](./seo.md).
 
 - **Opening hours are not in the structured data**, deliberately: the hours in
   `data.js` are still a placeholder, and hours are the one thing Google prints

@@ -1,8 +1,13 @@
 /**
  * End-to-end smoke test for the site.
  *
- *     npx http-server public -p 8899 &
- *     node tools/smoke-test.mjs [http://127.0.0.1:8899]
+ *     node tools/stub-api.mjs 8890 &
+ *     node tools/smoke-test.mjs http://127.0.0.1:8890
+ *
+ * The stub rather than a plain static server, and it has to be: the pages are
+ * real addresses now, and answering /collections/lvt with the document is a
+ * thing a static file server cannot do. The stub does it the way the Worker
+ * does, out of the same worker-pages.js.
  *
  * The point of this file is visibility, not just presence. An earlier version
  * of these checks asserted that a route produced HTML, which it always did —
@@ -14,7 +19,11 @@
 import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:8899";
-const U = (hash) => `${BASE}/index.html${hash}`;
+/* Real addresses. The stub serves them the way the Worker does — index.html
+   with its head rewritten for that path — so opening one here is the same
+   thing as a visitor typing it in, and a refresh is under test rather than
+   assumed. */
+const U = (path) => `${BASE}${path === "/" ? "/" : path}`;
 
 let pass = 0, fail = 0;
 const results = [];
@@ -43,25 +52,24 @@ async function visible(page, sel) {
 }
 
 const ROUTES = [
-  ["#/", "home"],
-  ["#/collections", "collections index"],
-  ["#/collections/carpets", "carpets"],
-  ["#/collections/wood", "wood"],
-  ["#/collections/lvt", "lvt"],
-  ["#/collections/vinyl", "vinyl"],
-  ["#/collections/rugs", "rugs"],
-  ["#/collections/carpets/easy-clean", "a carpet style"],
-  ["#/collections/carpets/loop", "another style"],
-  ["#/collections/wood/herringbone", "a wood style"],
-  ["#/collections/lvt/stone-effect", "an lvt style"],
-  ["#/collections/carpets/pattern", "an empty style 404s"],
-  ["#/portfolio", "portfolio"],
-  ["#/range/westex-elysian", "a range"],
-  ["#/favourites", "favourites"],
-  ["#/about", "about"],
-  ["#/contact", "visit us"],
-  ["#/enquire", "contact us"],
-  ["#/does-not-exist", "404"],
+  ["/", "home"],
+  ["/collections", "collections index"],
+  ["/collections/carpets", "carpets"],
+  ["/collections/wood", "wood"],
+  ["/collections/lvt", "lvt"],
+  ["/collections/vinyl", "vinyl"],
+  ["/collections/rugs", "rugs"],
+  ["/collections/carpets/easy-clean", "a carpet style"],
+  ["/collections/carpets/loop", "another style"],
+  ["/collections/wood/herringbone", "a wood style"],
+  ["/collections/lvt/stone-effect", "an lvt style"],
+  ["/collections/carpets/pattern", "an empty style 404s"],
+  ["/portfolio", "portfolio"],
+  ["/range/westex-elysian", "a range"],
+  ["/favourites", "favourites"],
+  ["/about", "about"],
+  ["/contact", "visit us"],
+  ["/enquire", "contact us"],
 ];
 
 /* The visualiser is an optional module — see FEATURES in data.js. These checks
@@ -137,7 +145,8 @@ console.log(`\nSmoke test against ${BASE}\n`);
 console.log("Routes render something a visitor can see:");
 const invisible = [];
 for (const [hash, label] of ROUTES) {
-  await page.goto(U(hash), { waitUntil: "networkidle" });
+  const res = await page.goto(U(hash), { waitUntil: "networkidle" });
+  check(("  served as a page: " + label).padEnd(34), res.status() === 200, String(res.status()));
   await page.waitForTimeout(500);
   await scrollThrough(page);
   const blocks = await page.evaluate(BLOCKS);
@@ -152,12 +161,71 @@ for (const [hash, label] of ROUTES) {
 check("nothing is left invisible after scrolling", invisible.length === 0,
   invisible.slice(0, 3).join(" | "));
 
+/* An address this site has never had is a 404, and has to stay one. The old
+   hash router answered every string with a page — "#/does-not-exist" drew a
+   friendly "we couldn't find that" *inside a 200 response*, which is a soft
+   404: Google keeps the URL, indexes the apology and reports it as an error.
+   Now the server answers before the app ever loads. */
+{
+  /* The 404 is the point of this one, so the watcher that fails the suite on a
+     404 is told to expect it. */
+  expectFailures = true;
+  const res = await page.goto(U("/does-not-exist"), { waitUntil: "domcontentloaded" });
+  check("an address the site has never had is a real 404", res.status() === 404, String(res.status()));
+  expectFailures = false;
+}
+
+/* The old Wix addresses. Still in Google, still on printed material, and until
+   these existed they were 404s that lost both the visitor and the ranking. */
+for (const [from, to] of [["/about-us-1", "/about"], ["/carpets", "/collections/carpets"],
+                          ["/lvt-1", "/collections/lvt"], ["/copy-of-carina-herringbone", "/collections/lvt"],
+                          ["/velvet", "/collections/carpets/velvet"]]) {
+  const res = await page.goto(U(from), { waitUntil: "networkidle" });
+  check(`${from} lands on ${to}`.padEnd(46),
+    res.status() === 200 && new URL(page.url()).pathname === to, new URL(page.url()).pathname);
+}
+
+/* What a crawler is handed, before a line of JavaScript runs. Fetched rather
+   than rendered on purpose: this is the document Google indexes, and the whole
+   point of serving real paths is that it differs from page to page. */
+for (const [path, title, canonical] of [
+  ["/", "Hari's Carpets — Carpet &amp; Flooring Showroom, Hounslow", "https://haris-carpets.co.uk/"],
+  ["/about", "About us — Hari's Carpets", "https://haris-carpets.co.uk/about"],
+  ["/contact", "Visit the showroom — Hari's Carpets, Hounslow", "https://haris-carpets.co.uk/contact"],
+  ["/enquire", "Get in touch — Hari's Carpets", "https://haris-carpets.co.uk/enquire"],
+  ["/portfolio", "Our work — Hari's Carpets", "https://haris-carpets.co.uk/portfolio"],
+  ["/collections", "Collections — Hari's Carpets", "https://haris-carpets.co.uk/collections"],
+  ["/collections/lvt", "LVT — Hari's Carpets, Hounslow", "https://haris-carpets.co.uk/collections/lvt"],
+  ["/collections/carpets/velvet", "Carpets — Hari's Carpets, Hounslow", "https://haris-carpets.co.uk/collections/carpets"],
+]) {
+  const html = await (await fetch(BASE + path)).text();
+  const got = /<title>([^<]*)<\/title>/.exec(html)?.[1] || "";
+  const can = /<link rel="canonical" href="([^"]*)"/.exec(html)?.[1] || "";
+  const h1 = /<h1>([^<]*)<\/h1>/.exec(html)?.[1] || "";
+  check(`${path} is served named`.padEnd(46), got === title, got);
+  check(`${path} declares its canonical`.padEnd(46), can === canonical, can);
+  check(`${path} has a heading without JavaScript`.padEnd(46), h1.length > 2, h1);
+}
+
+/* The title the Worker wrote and the title the app sets have to be the same
+   sentence. A page that says one thing to a crawler and another to a visitor
+   is the single thing Google is strict about, and the two live in different
+   files — worker-pages.js and the describe() above — so they can drift. */
+for (const path of ["/", "/about", "/contact", "/enquire", "/portfolio", "/collections", "/collections/lvt"]) {
+  const served = /<title>([^<]*)<\/title>/.exec(await (await fetch(BASE + path)).text())?.[1] || "";
+  await page.goto(U(path), { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const rendered = (await page.title()).replace(/&/g, "&amp;");
+  check(`${path} says the same thing after rendering`.padEnd(46), served === rendered,
+    served === rendered ? "" : `served ${served} / rendered ${rendered}`);
+}
+
 /* The catalogue is generated from supplier filenames, and every bug worth
    having in it so far has been a parsing one — a range name kept as a colour,
    the same range emitted twice, a photo filed as a swatch. These assert the
    shape of the data rather than the look of the page. */
 console.log("\nVisit us and Get in touch:");
-await page.goto(U("#/contact"), { waitUntil: "domcontentloaded" });
+await page.goto(U("/contact"), { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(900);
 const mapSrc = await page.evaluate(() =>
   document.querySelector(".map-embed iframe")?.getAttribute("src") || "");
@@ -165,16 +233,16 @@ check("the map is embedded", mapSrc.includes("google.com/maps/embed"), mapSrc.sl
 check("the map box has been given a size", await visible(page, ".map-embed"));
 check("the enquiry form has moved off this page",
   (await page.locator("#enquiry").count()) === 0);
-check("with a link to where it went", (await page.locator('a[href="#/enquire"]').count()) > 0);
+check("with a link to where it went", (await page.locator('a[href="/enquire"]').count()) > 0);
 
-await page.goto(U("#/enquire"), { waitUntil: "domcontentloaded" });
+await page.goto(U("/enquire"), { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(700);
 check("the form is on its own page", await visible(page, "#enquiry"));
 check("and it can be filled in", (await page.locator("#enquiry input, #enquiry textarea").count()) >= 4);
-check("with a way back to the showroom", (await page.locator('a[href="#/contact"]').count()) > 0);
+check("with a way back to the showroom", (await page.locator('a[href="/contact"]').count()) > 0);
 
 console.log("\nCollections data is sane:");
-await page.goto(U("#/collections"), { waitUntil: "networkidle" });
+await page.goto(U("/collections"), { waitUntil: "networkidle" });
 await page.waitForTimeout(500);
 const data = await page.evaluate(() => {
   const ids = CATALOGUE.map((r) => r.id);
@@ -226,7 +294,7 @@ check("no missing tiles", imgCheck.bad.length === 0,
   `${imgCheck.checked} checked${imgCheck.bad.length ? " — " + imgCheck.bad.slice(0, 3).join(", ") : ""}`);
 
 console.log("\nBrowse-by-style works:");
-await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
+await page.goto(U("/collections/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(1200);
 const tiles = await page.locator(".style-tile").count();
 check("style tiles offered", tiles >= 4, `${tiles} styles`);
@@ -241,14 +309,14 @@ check("no style promises 0 shades", emptyTiles === 0);
 
 await page.locator(".style-tile").first().click();
 await page.waitForTimeout(900);
-check("clicking a style opens it", /#\/collections\/carpets\/./.test(page.url()), page.url().split("#")[1]);
+check("clicking a style opens it", /\/collections\/carpets\/./.test(new URL(page.url()).pathname), page.url());
 check("style page shows shades", (await page.locator(".swatch").count()) > 5,
   `${await page.locator(".swatch").count()} shades`);
 check("shades are grouped by collection", (await page.locator(".style-range").count()) >= 1);
 check("offers the other styles", (await page.locator(".style-chips a").count()) >= 2);
 
 console.log("\nCollections works:");
-await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
+await page.goto(U("/collections/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(1400);
 const swatches = await page.locator(".swatch").count();
 check("shades render", swatches > 100, `${swatches} tiles`);
@@ -284,18 +352,19 @@ check("count increments", (await page.locator("#favCount").first().textContent()
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(700);
 check("survives a reload", (await page.locator("#favCount").first().textContent()) === "1");
-await page.goto(U("#/favourites"), { waitUntil: "networkidle" });
+await page.goto(U("/favourites"), { waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 check("list page shows the shade", (await page.locator(".swatch").count()) === 1);
 const link = await page.evaluate(() => favLink());
 const fresh = await openPage(browser);
-await fresh.goto(BASE + "/index.html" + link.split("#")[1] ? link : U("#/favourites"), { waitUntil: "networkidle" });
+/* favLink() is a real address now, so it is opened as one. */
+await fresh.goto(link, { waitUntil: "networkidle" });
 await fresh.waitForTimeout(700);
 check("share link restores on a clean browser", (await fresh.locator(".swatch").count()) >= 1);
 
 if (VISUALISER) {
   console.log("\nVisualiser works:");
-  await page.goto(U("#/visualiser"), { waitUntil: "networkidle" });
+  await page.goto(U("/visualiser"), { waitUntil: "networkidle" });
   await page.waitForTimeout(2800);
   check("canvas painted", await visible(page, "#visCanvas.ready"));
   check("room options offered", (await page.locator("#vzRooms button").count()) >= 2);
@@ -311,26 +380,26 @@ if (VISUALISER) {
   }
 } else {
   console.log("\nVisualiser is switched off:");
-  await page.goto(U("#/visualiser"), { waitUntil: "networkidle" });
+  await page.goto(U("/visualiser"), { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
   check("its route is a 404", (await page.evaluate(() =>
     document.querySelector("#app").textContent)).includes("couldn't find that page"));
-  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.goto(U("/"), { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   check("no link to it anywhere on the home page",
-    (await page.locator('a[href^="#/visualiser"]').count()) === 0);
-  await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
+    (await page.locator('a[href^="/visualiser"]').count()) === 0);
+  await page.goto(U("/collections/carpets"), { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
-  check("nor in Collections", (await page.locator('a[href^="#/visualiser"]').count()) === 0);
+  check("nor in Collections", (await page.locator('a[href^="/visualiser"]').count()) === 0);
   check("nor in the header or footer", (await page.evaluate(() =>
-    document.querySelectorAll('.site-header a[href^="#/visualiser"], footer a[href^="#/visualiser"]').length)) === 0);
+    document.querySelectorAll('.site-header a[href^="/visualiser"], footer a[href^="/visualiser"]').length)) === 0);
 }
 
 /* The banner carousel. A slide with height but no opacity is exactly the fault
    this file was written for, so these check which slide is actually on rather
    than how many exist. */
 console.log("\nThe banner carousel works:");
-await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.goto(U("/"), { waitUntil: "networkidle" });
 await page.waitForTimeout(900);
 const slideCount = await page.locator(".hero-slide").count();
 check("more than one banner picture", slideCount > 1, `${slideCount} slides`);
@@ -360,24 +429,24 @@ const words = await page.evaluate(() => ({
 check("the menu says Collections", words.nav.includes("Collections"));
 check("the menu says Contact us", words.nav.includes("Contact us"));
 const stillSaysIt = [];
-for (const hash of ["#/", "#/collections", "#/collections/carpets", "#/collections/carpets/easy-clean",
-                    "#/range/westex-elysian", "#/favourites", "#/about", "#/contact", "#/enquire"]) {
+for (const hash of ["/", "/collections", "/collections/carpets", "/collections/carpets/easy-clean",
+                    "/range/westex-elysian", "/favourites", "/about", "/contact", "/enquire"]) {
   await page.goto(U(hash), { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
   const text = await page.evaluate(() => document.body.innerText);
   if (/catalogue/i.test(text)) stillSaysIt.push(`${hash}: ${(text.match(/.{0,24}atalogue/i) || [""])[0]}`);
 }
 check("no page says Catalogue anywhere", stillSaysIt.length === 0, stillSaysIt[0] || "");
-await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.goto(U("/"), { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
-const cta = await page.locator('.hero-cta a[href="#/enquire"]').first();
+const cta = await page.locator('.hero-cta a[href="/enquire"]').first();
 check("the banner button asks for an enquiry",
   /enquir/i.test((await cta.textContent()).trim()), (await cta.textContent()).trim());
 
-await page.goto(U("#/catalogue/carpets"), { waitUntil: "networkidle" });
+await page.goto(U("/catalogue/carpets"), { waitUntil: "networkidle" });
 await page.waitForTimeout(900);
 check("the old catalogue link still lands somewhere",
-  page.url().endsWith("#/collections/carpets"), page.url().split("#")[1]);
+  new URL(page.url()).pathname === "/collections/carpets", page.url());
 check("and that page has shades on it", (await page.locator(".swatch").count()) > 50);
 
 console.log("\nEvery page says what it is:");
@@ -387,14 +456,14 @@ console.log("\nEvery page says what it is:");
      indexable — nothing can, short of real paths — it makes them legible. */
   const seen = [];
   for (const [hash, want] of [
-    ["#/", /Carpet & Flooring Showroom, Hounslow/],
-    ["#/collections", /^Collections —/],
-    ["#/collections/carpets", /^Carpets —/],
-    ["#/about", /^About us —/],
-    ["#/contact", /^Visit the showroom —/],
-    ["#/enquire", /^Get in touch —/],
-    ["#/portfolio", /^Our work —/],
-    ["#/favourites", /^My Favourites —/],
+    ["/", /Carpet & Flooring Showroom, Hounslow/],
+    ["/collections", /^Collections —/],
+    ["/collections/carpets", /^Carpets —/],
+    ["/about", /^About us —/],
+    ["/contact", /^Visit the showroom —/],
+    ["/enquire", /^Get in touch —/],
+    ["/portfolio", /^Our work —/],
+    ["/favourites", /^My Favourites —/],
   ]) {
     await page.goto(U(hash), { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
@@ -403,7 +472,7 @@ console.log("\nEvery page says what it is:");
   }
   check("each page has its own title", seen.length === 0, seen.join(" | "));
 
-  await page.goto(U("#/about"), { waitUntil: "networkidle" });
+  await page.goto(U("/about"), { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   const meta = await page.evaluate(() => ({
     description: document.querySelector('meta[name="description"]')?.content,
@@ -415,14 +484,15 @@ console.log("\nEvery page says what it is:");
     meta.description);
   check("and the sharing card follows it",
     /^About us —/.test(meta.ogTitle) && meta.ogDesc === meta.description, meta.ogTitle);
-  /* Left at the site's own root on purpose — see nameThisPage() in app.js.
-     A share preview is fetched by somebody else's server, which does not run
-     this script, and every hash route is one document to a crawler anyway. */
-  check("the canonical stays absolute and at the root",
-    meta.canonical === "https://haris-carpets.co.uk/", meta.canonical);
+  /* Absolute, on the shop's own domain, and pointing at this page — not at
+     the root, and not at 127.0.0.1. A share preview is fetched by somebody
+     else's server, so what it reads has to be the real address of the page
+     rather than whichever host this browser happens to be pointed at. */
+  check("the canonical is this page, absolute, on the real domain",
+    meta.canonical === "https://haris-carpets.co.uk/about", meta.canonical);
 
   /* A collection is the page somebody arrives on from a search for a range. */
-  await page.goto(U("#/range/westex-ultima"), { waitUntil: "networkidle" });
+  await page.goto(U("/range/westex-ultima"), { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
   check("a collection page names the collection and the mill",
     /Ultima/i.test(await page.title()) && /Westex/i.test(await page.title()),
@@ -470,7 +540,7 @@ console.log("\nThe site has an icon of its own:");
   /* Without these Google shows a blank page-shape next to the result. Each
      file is fetched rather than just found in the markup: a <link> to a 404 is
      the same as no icon at all, and worse because it looks done. */
-  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.goto(U("/"), { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   const links = await page.evaluate(() =>
     [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')]
@@ -500,7 +570,7 @@ console.log("\nThe site has an icon of its own:");
   }
 
   /* And what a shared link looks like. */
-  await page.goto(U("#/"), { waitUntil: "domcontentloaded" });
+  await page.goto(U("/"), { waitUntil: "domcontentloaded" });
   const og = await page.evaluate(() => Object.fromEntries(
     [...document.querySelectorAll("meta[property^='og:']")]
       .map((m) => [m.getAttribute("property"), m.getAttribute("content")])));
@@ -533,7 +603,7 @@ console.log("\nNo supplier codes anywhere a customer looks:");
     `${codes.range.length} range, ${codes.shade.length} shade`);
 
   const seen = [];
-  for (const hash of ["#/collections/carpets", `#/range/${codes.id}`, "#/favourites"]) {
+  for (const hash of ["/collections/carpets", `/range/${codes.id}`, "/favourites"]) {
     await page.goto(U(hash), { waitUntil: "networkidle" });
     await page.waitForTimeout(700);
     const text = await page.evaluate(() => document.body.innerText);
@@ -547,7 +617,7 @@ console.log("\nNo supplier codes anywhere a customer looks:");
     !/range code/i.test(await page.evaluate(() => document.body.innerText)));
 
   /* The lightbox is its own render and had the shade code under the name. */
-  await page.goto(U(`#/range/${codes.id}`), { waitUntil: "networkidle" });
+  await page.goto(U(`/range/${codes.id}`), { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
   await page.locator(".swatch").first().click();
   await page.waitForTimeout(600);
@@ -565,7 +635,7 @@ console.log("\nThe words the shop asked us to change:");
   /* Each of these is a line the owner sent back twice. A rename that only
      half-lands — the header but not the footer, the page but not the
      breadcrumb — is how it came back the second time. */
-  await page.goto(U("#/favourites"), { waitUntil: "networkidle" });
+  await page.goto(U("/favourites"), { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   /* Case-insensitively: the header button is uppercased in CSS, so innerText
      comes back shouting and an exact match would be testing the stylesheet. */
@@ -573,9 +643,9 @@ console.log("\nThe words the shop asked us to change:");
     /my favourites/i.test(await page.locator("#favBtn").innerText()),
     (await page.locator("#favBtn").innerText()).replace(/\n/g, " "));
   check("so does the footer link",
-    /^my favourites$/i.test((await page.locator('footer a[href="#/favourites"]').innerText()).trim()));
+    /^my favourites$/i.test((await page.locator('footer a[href="/favourites"]').innerText()).trim()));
   const anywhere = [];
-  for (const hash of ["#/", "#/favourites", "#/collections/carpets"]) {
+  for (const hash of ["/", "/favourites", "/collections/carpets"]) {
     await page.goto(U(hash), { waitUntil: "networkidle" });
     await page.waitForTimeout(400);
     const t = await page.evaluate(() => document.body.innerText);
@@ -584,7 +654,7 @@ console.log("\nThe words the shop asked us to change:");
   check("and nothing anywhere still says My list", anywhere.length === 0, anywhere.join(", "));
 
   /* The mill's range code (CC-AE) read as a fault on the card. */
-  await page.goto(U("#/collections/carpets"), { waitUntil: "networkidle" });
+  await page.goto(U("/collections/carpets"), { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   await page.locator('[data-view="ranges"]').click();
   await page.waitForTimeout(700);
@@ -603,7 +673,7 @@ console.log("\nThe words the shop asked us to change:");
 
   /* "London & the Home Counties" used to be glued onto the end of the Visit us
      paragraph with no way to tell where it came from. */
-  await page.goto(U("#/contact"), { waitUntil: "networkidle" });
+  await page.goto(U("/contact"), { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
   const rows = await page.evaluate(() =>
     [...document.querySelectorAll(".info-row .il")].map((e) => e.textContent.trim()));
@@ -614,7 +684,7 @@ console.log("\nThe words the shop asked us to change:");
 
 console.log("\nThe About page reads as one column, not a heading and a hole:");
 {
-  await page.goto(U("#/about"), { waitUntil: "networkidle" });
+  await page.goto(U("/about"), { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
   const gap = await page.evaluate(() => {
     const h = document.querySelector(".split-copy h2");
@@ -644,7 +714,7 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
   check("it is served as a real page", res.status() === 200, String(res.status()));
   /* One link in the footer, not two: deleting your information is a section of
      this page, so a second link was two names for one document. */
-  const legal = await page.goto(`${BASE}/index.html#/`, { waitUntil: "networkidle" })
+  const legal = await page.goto(U("/"), { waitUntil: "networkidle" })
     .then(() => page.waitForTimeout(700))
     .then(() => page.evaluate(() =>
       [...document.querySelectorAll(".fine-links a")].map((a) => a.textContent.trim())));
@@ -681,7 +751,7 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
 
   /* And the site itself must match the switch. Last in this block, because it
      navigates away from the policy page. */
-  await page.goto(U("#/"), { waitUntil: "networkidle" });
+  await page.goto(U("/"), { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
   const beacons = await page.evaluate(() =>
     document.querySelectorAll('script[src*="cloudflareinsights"]').length);
@@ -698,10 +768,10 @@ console.log("\nThe privacy policy is a page Meta and Google can read:");
 }
 
 console.log("\nThe portfolio page:");
-await page.goto(U("#/portfolio"), { waitUntil: "networkidle" });
+await page.goto(U("/portfolio"), { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
-check("it is in the menu", (await page.locator('.nav a[href="#/portfolio"]').count()) === 1);
-check("and in the footer", (await page.locator('footer a[href="#/portfolio"]').count()) === 1);
+check("it is in the menu", (await page.locator('.nav a[href="/portfolio"]').count()) === 1);
+check("and in the footer", (await page.locator('footer a[href="/portfolio"]').count()) === 1);
 /* Nothing is shipped for this page — a portfolio of stock photography would be
    a lie — so with no admin overlay it must say so rather than show empty frames. */
 check("with no jobs added it says so rather than showing empty frames",
@@ -710,7 +780,7 @@ check("with no jobs added it says so rather than showing empty frames",
 check("and the page is still worth landing on", await visible(page, "#app section"));
 
 console.log("\nThe address is an address, not a run-on line:");
-await page.goto(U("#/contact"), { waitUntil: "networkidle" });
+await page.goto(U("/contact"), { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
 const lines = await page.evaluate(() =>
   (document.querySelector(".info-row a[href*='maps']")?.innerHTML || "").split(/<br\s*\/?>/i).length);
@@ -723,7 +793,7 @@ const footLines = await page.evaluate(() =>
 check("and so is the one in the footer", footLines === 4, `${footLines} lines`);
 
 console.log("\nThe enquiry form does not lie to anyone:");
-await page.goto(U("#/enquire"), { waitUntil: "networkidle" });
+await page.goto(U("/enquire"), { waitUntil: "networkidle" });
 await page.waitForTimeout(700);
 const formText = await page.evaluate(() => document.querySelector("#app").innerText);
 check("nothing on the page says demo", !/demo/i.test(formText),
@@ -741,9 +811,16 @@ check("there is a honeypot field", hp !== null);
    input that CSS has taken out of the layout instead. */
 check("it is a real input a bot will fill in, hidden with CSS", hp?.type === "text" && !hp?.inView);
 
-/* This file runs against a plain static server, so there is no Worker to take
-   the enquiry. That is the point: whatever goes wrong, the visitor must be told
-   the truth and must not lose what they typed. */
+/* The stub is told to refuse the next enquiry. That is the point of this
+   block: whatever goes wrong at the far end, the visitor must be told the
+   truth and must not lose what they typed.
+
+   It used to get this for free, by running against a static server with no
+   API behind it at all. That stopped being possible when the pages became
+   real addresses — a static server answers /collections/lvt with a 404 — so
+   the failure is now asked for deliberately, which is a better test anyway:
+   it proves the refusal path rather than the absence of a back end. */
+await fetch(`${BASE}/_enquiry?mode=fail`);
 expectFailures = true;
 await page.fill("#n", "Test Visitor");
 await page.fill("#e", "test@example.com");
@@ -767,7 +844,7 @@ check("with their message already in it", await page.evaluate(() =>
 expectFailures = false;
 
 console.log("\nThe footer:");
-await page.goto(U("#/"), { waitUntil: "networkidle" });
+await page.goto(U("/"), { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
 const marks = await page.locator("#footSocials a").count();
 check("social links are in the footer", marks >= 3, `${marks} links`);
@@ -793,7 +870,7 @@ check("the footer rule is exactly as wide as the wordmark",
 
 console.log("\nMobile:");
 const mob = await openPage(browser, { viewport: { width: 390, height: 844 } });
-for (const hash of ["#/", "#/collections/carpets", "#/enquire"]) {
+for (const hash of ["/", "/collections/carpets", "/enquire"]) {
   await mob.goto(U(hash), { waitUntil: "networkidle" });
   await mob.waitForTimeout(700);
   const scrolls = await mob.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);

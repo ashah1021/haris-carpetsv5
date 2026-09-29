@@ -463,7 +463,12 @@
      or what the site was built with. */
   function currentImage(slot, fallback) {
     const own = DOC.images?.[slot];
-    return { src: own ? "../assets/" + own : fallback, replaced: Boolean(own) };
+    /* Root-absolute, both of them. The site's own picture paths became
+       root-absolute when the pages became real addresses, and the admin sits
+       at /admin/ — so prefixing "../" to a path that already starts with a
+       slash produced "..//assets/…" and the preview quietly removed itself
+       (the img carries onerror="this.remove()"). */
+    return { src: own ? "/assets/" + own : fallback, replaced: Boolean(own) };
   }
 
   function photoCard(slot, title, note, fallback, altFallback) {
@@ -499,7 +504,7 @@
     <h3 class="mg-photo-head">Around the site</h3>
     <div class="mg-photos">
       ${IMG_SLOTS.map(([slot, title, note]) =>
-        photoCard(slot, title, note, "../" + IMG[slot], title)).join("")}
+        photoCard(slot, title, note, IMG[slot], title)).join("")}
     </div>
 
     <h3 class="mg-photo-head">Style tiles</h3>
@@ -514,7 +519,7 @@
           return photoCard(`style-${type}-${st.id}`,
             said(`styleName-${type}-${st.id}`, st.name),
             (TYPES.find((t) => t.id === type) || {}).name || type,
-            borrowed ? "../" + borrowed : "",
+            borrowed || "",
             said(`styleName-${type}-${st.id}`, st.name));
         })).join("")}
     </div>
@@ -526,7 +531,7 @@
     <div class="mg-photos" id="photoRows">
       ${ranges.map((r) => `<div data-search="${esc((r.name + " " + r.brand).toLowerCase())}">
         ${photoCard("range:" + r.id, DOC.overrides[r.id]?.name || r.name,
-                    r.brand, "../" + r.photo, r.alt || r.name)}
+                    r.brand, r.photo, r.alt || r.name)}
       </div>`).join("")}
     </div>`;
   }
@@ -637,7 +642,7 @@
       ${[...ig.posts, {}].slice(0, 12).map((p, i) => `
         <div class="mg-photo">
           <div class="mg-photo-img">${p.image
-            ? `<img src="../assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
+            ? `<img src="/assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
           <div class="mg-photo-body">
             <b>${p.image ? `Post ${i + 1}` : "Add a post"}</b>
             <input type="text" class="mg-iglink" data-igpost="${i}" value="${esc(p.link || "")}"
@@ -674,7 +679,7 @@
       ${[...items, {}].slice(0, 24).map((p, i) => `
         <div class="mg-photo">
           <div class="mg-photo-img">${p.image
-            ? `<img src="../assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
+            ? `<img src="/assets/${esc(p.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</div>
           <div class="mg-photo-body">
             <b>${p.image ? `Job ${i + 1}` : "Add a job"}</b>
             <input type="text" class="mg-iglink" data-folio="${i}" data-part="title"
