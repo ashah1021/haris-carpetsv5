@@ -116,16 +116,15 @@
   // every canonical here claims it — the bare domain had no A record, so
   // every page on www redirected to nothing and the site was down.
   //
-  // Today: www.haris-carpets.co.uk has the records, haris-carpets.co.uk has
-  // none. The right fix is to add the bare domain as a custom domain on this
-  // Worker — everything already declares it as the canonical — and then set
-  // this to "haris-carpets.co.uk". Until somebody does that and checks it in
-  // a browser, leave it empty.
+  // Set 29/09/2026, after the bare domain was added as a custom domain on this
+  // Worker and both forms were loaded in a browser. The bare domain is the one
+  // every canonical, the OG tags, the JSON-LD and the sitemap already claim,
+  // so www goes to it.
   //
   // It only ever moves between the www and bare form of one domain. See
-  // worker-pages.js.
+  // worker-pages.js. Empty it to switch the redirect off.
   "vars": {
-    "CANONICAL_HOST": "",
+    "CANONICAL_HOST": "haris-carpets.co.uk",
     "CF_ACCOUNT_ID": "7876be11f4e20ce325457563957f468b",
     "CF_SITE_TAG": "55df637f7e88441e85c0f264feb652d1",
     "ACCESS_TEAM_DOMAIN": "hariscarpets.cloudflareaccess.com",
