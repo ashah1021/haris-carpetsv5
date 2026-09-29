@@ -853,6 +853,11 @@
       <div class="mg-dropped" style="display:block">
         <b>${STATS.configured ? "Visitor numbers are not working" : "Not switched on yet"}</b>
         <p>${esc(STATS.reason || "")}</p>
+        ${Array.isArray(STATS.saw) && STATS.saw.length ? `<p style="font-size:13px;opacity:.8">
+          What this Worker can see, by name: <code>${esc(STATS.saw.join(", "))}</code>.
+          If the one you added is not in that list it went somewhere else — a
+          different Worker, the account's Secrets Store, or a modal that was
+          closed before its Deploy button was pressed.</p>` : ""}
         <p>See the "Counting visitors" section of docs/admin.md.</p>
       </div>`;
     }

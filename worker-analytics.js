@@ -117,6 +117,23 @@ const rows = (list, key) => (Array.isArray(list) ? list : [])
  * identify() in worker-admin.js, and belongs there: how the shop's website is
  * doing is the shop's business and nobody else's.
  */
+/**
+ * The names of everything this Worker can see, and no values.
+ *
+ * "I added the secret and it still says to set it" has three causes that look
+ * identical from the outside: it went on a different Worker, the dashboard
+ * modal was closed before its own Deploy button was pressed, or it was typed
+ * with a different name. Listing the names tells them apart in one glance —
+ * a near miss shows up, and nothing at all means it never reached this Worker.
+ *
+ * Names only. A binding name is not a secret: they are all in wrangler.jsonc
+ * already, and this route is behind identify() in any case. A value is never
+ * read here, and must never be.
+ */
+function bindingNames(env) {
+  try { return Object.keys(env).sort(); } catch { return []; }
+}
+
 export async function analyticsRoute(request, env, ctx) {
   const gaps = missing(env);
   if (gaps.length) {
@@ -124,6 +141,7 @@ export async function analyticsRoute(request, env, ctx) {
       configured: false,
       reason: `Visitor numbers are not switched on yet. Still to set: ${gaps.join(", ")}.`,
       needs: gaps,
+      saw: bindingNames(env),
     });
   }
 

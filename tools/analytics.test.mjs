@@ -72,6 +72,19 @@ console.log("Nothing set up yet — it says which part:");
   const partial = await (await an.analyticsRoute(req(), { CF_ACCOUNT_ID: "a" }, ctx)).json();
   check("with one of three set, it names the other two", partial.needs.length === 2,
     partial.needs.join(", "));
+
+  /* "I added the secret and it still says to set it" has three causes that
+     look identical: a different Worker, a modal closed before its Deploy
+     button, or a different name. Listing what the Worker can see tells them
+     apart — and must list names only, never a value. */
+  const typo = await (await an.analyticsRoute(req(),
+    { CF_ACCOUNT_ID: "a", CF_SITE_TAG: "t", CF_ANALYTICS_TOKEN_: "sekrit-value" }, ctx)).json();
+  check("it lists what the Worker can actually see",
+    typo.saw.includes("CF_ANALYTICS_TOKEN_"), (typo.saw || []).join(", "));
+  check("so a near-miss name is visible rather than guessed at",
+    typo.saw.length === 3 && !typo.saw.includes("CF_ANALYTICS_TOKEN"));
+  check("and never a value, only a name",
+    !JSON.stringify(typo).includes("sekrit-value"));
 }
 
 console.log("\nA working request:");
