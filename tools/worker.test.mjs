@@ -118,10 +118,31 @@ await check('a redirect goes straight to its destination, never via another', as
     if (pages.redirectFor(to.split('#')[0])) throw new Error(from+' redirects to a redirect');
   }
 });
-await check('www goes to the bare domain, once', async()=>{
+/* The outage this pair exists for: an unconditional www -> bare redirect,
+   shipped while the bare domain had no A record, sent every page on the only
+   hostname that worked to one that did not resolve. Nothing is redirected
+   now unless somebody has named the hostname they checked. */
+await check('with no canonical host set, www is served, not redirected', async()=>{
   const r = await worker.fetch(new Request('https://www.haris-carpets.co.uk/about'), makeEnv(), ctx);
+  eq(r.status, 200, 'status');
+  if (!(await r.text()).includes("About us")) throw new Error('not the About page');
+});
+await check('once it is set, the other form of the domain goes there', async()=>{
+  const env = { ...makeEnv(), CANONICAL_HOST: 'haris-carpets.co.uk' };
+  const r = await worker.fetch(new Request('https://www.haris-carpets.co.uk/about'), env, ctx);
   eq(r.status, 301, 'status');
   eq(r.headers.get('location'), 'https://haris-carpets.co.uk/about', 'destination');
+  /* and the other way round, if that is the one that answers */
+  const env2 = { ...makeEnv(), CANONICAL_HOST: 'www.haris-carpets.co.uk' };
+  const r2 = await worker.fetch(new Request('https://haris-carpets.co.uk/about'), env2, ctx);
+  eq(r2.headers.get('location'), 'https://www.haris-carpets.co.uk/about', 'reverse');
+});
+await check('and it never sends anyone to a different domain', async()=>{
+  const env = { ...makeEnv(), CANONICAL_HOST: 'haris-carpets.co.uk' };
+  for (const host of ['haris-carpetsv5.workers.dev', 'hariscarpets.co.uk', 'x.test']) {
+    const r = await worker.fetch(new Request(`https://${host}/about`), env, ctx);
+    eq(r.status, 200, host + ' is served as itself');
+  }
 });
 await check('a real path is a real page, with its own canonical', async()=>{
   const r = await worker.fetch(req('/about'), makeEnv(), ctx);

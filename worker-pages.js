@@ -328,14 +328,28 @@ export async function pageRoute(request, env, ctx) {
 
   const url = new URL(request.url);
 
-  /* One hostname, so the ranking is not split between two. Google has indexed
-     the bare domain — which is what every canonical, the OG tags and the
-     JSON-LD already say — so www goes there and not the other way round.
-     workers.dev is left alone on purpose: it is the way back in if the zone
-     ever misbehaves. */
-  if (url.hostname.startsWith("www.")) {
+  /* One hostname, so the ranking is not split between two — but only once
+     somebody has confirmed, in the DNS, which of the two answers.
+
+     This shipped as an unconditional "www goes to the bare domain", on the
+     reasoning that Google displays the bare domain and every canonical here
+     already claims it. The bare domain had no A record. Every page on the
+     hostname that did work then redirected to one that did not resolve, and
+     the site was down until it was reverted. A redirect cannot check whether
+     its destination exists, so it does not get to guess: CANONICAL_HOST is
+     empty in wrangler.jsonc and nothing is redirected until it is set to a
+     hostname somebody has loaded in a browser.
+
+     It only ever moves between the www and the bare form of one domain, so
+     setting it wrongly can send a visitor to those two places and nowhere
+     else — and workers.dev is untouched either way, which is the way back in
+     if the zone misbehaves. */
+  const canonicalHost = (env.CANONICAL_HOST || "").trim().toLowerCase();
+  const here = url.hostname.toLowerCase();
+  const bare = (h) => h.replace(/^www\./, "");
+  if (canonicalHost && here !== canonicalHost && bare(here) === bare(canonicalHost)) {
     const to = new URL(url);
-    to.hostname = url.hostname.slice(4);
+    to.hostname = canonicalHost;
     return Response.redirect(to.toString(), 301);
   }
 
