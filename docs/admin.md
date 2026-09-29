@@ -289,6 +289,19 @@ secret alone. Four things it is, in the order worth checking:
 4. **Not deployed.** The dashboard needs the **Deploy** button after adding;
    `wrangler secret put` does it for you.
 
+The tab tells you which of those it is. Below the message it lists **the name
+of every binding the Worker can see** — names only, never values — so:
+
+- a near-miss name (`CF_ANALYTICS_TOKEN_`) is a typo, and visible at a glance;
+- a list with no sign of it means the value never reached this Worker.
+
+And it gives you a check that cannot be got wrong. `ADMIN_PASSWORD` and
+`INSTAGRAM_TOKEN` are in that list, because they are secrets on this Worker.
+**Find the Variables and Secrets page where those two are listed** — that is
+the right Worker, and adding the token there works. If the page you were using
+does not show them, you were on a different Worker or in the account's Secrets
+Store, which is where this actually went on 29/09/2026.
+
 What this message is *not* is a wrong or under-permissioned token. If the token
 is present but lacks **Account Analytics: Read**, Cloudflare's own error comes
 through to the screen instead — see `QUERY` below.

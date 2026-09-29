@@ -60,9 +60,6 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   §"Still do this: give the sending domain an SPF record" of
   [`go-live.md`](./go-live.md). Without them the notification is far more likely
   to be junked.
-- **Set the Visitors tab's API token.** `CF_ANALYTICS_TOKEN`, as a **Secret**
-  rather than a plaintext variable — a plaintext one is erased by the next
-  deploy. See the "Counting visitors" section of [`admin.md`](./admin.md).
 - **Rotate the R2 API key pair.** The credentials were pasted into a chat
   transcript, so treat them as burned. Cloudflare dashboard → R2 → Manage API
   tokens. Then update `~/.config/rclone/rclone.conf` and any local env vars.
