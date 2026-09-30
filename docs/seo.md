@@ -48,6 +48,12 @@ Searching Google for `site:haris-carpets.co.uk` lists what it actually holds.
 That is how the table was filled, and it is how to extend it — the Wayback
 Machine has the same list if Google's is thin.
 
+**Confirm every consequential row with a second, differently worded search.**
+One search result read once is how the first pass got eight rules wrong. The
+rows that decide which section somebody lands in — the carpet styles and the
+wood/laminate/LVT/vinyl cluster — were each confirmed twice, by a `site:`
+query and then by a phrase from the page's own copy.
+
 Do not read the old slugs. **They do not describe their own pages.** Wix slugs
 and Wix page titles drifted apart on this site, and only the title says what
 the page was about:
@@ -61,8 +67,9 @@ the page was about:
 | `/lvt-1` | Flooring – Wood, LVT & Laminate | `/collections` |
 | `/copy-of-lvt` | **Wood** | `/collections/wood` |
 | `/copy-of-lvt-1` | **Laminate** | `/collections/wood` |
-| `/copy-of-artisan-1` | **ASHDOWN** | `/collections/lvt` |
-| `/copy-of-ashdown` | **Charisma** | `/collections/lvt` |
+| `/copy-of-artisan-1` | **Ashdown** | `/collections/vinyl` |
+| `/copy-of-ashdown` | **Charisma** | `/collections/vinyl` |
+| `/copy-of-carina-tile-click` | **Aurora Plank Dryback** | `/collections/lvt` |
 
 The first two are each other's names. Guessing from the slug would have sent
 everyone looking for a twist pile to the easy-clean carpets and the other way

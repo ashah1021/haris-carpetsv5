@@ -197,7 +197,7 @@ export const REDIRECTS = {
   "/services": "/collections",
 
   /* the old Carina product pages — Carina is an LVT range */
-  "/copy-of-carina-tile-click": "/collections/lvt",
+  "/copy-of-carina-tile-click": "/collections/lvt",     /* "Aurora Plank Dryback" — another crossover, LVT either way */
   "/copy-of-carina-herringbone": "/collections/lvt",
   "/copy-of-carina-plank-dryback": "/collections/lvt",
   "/carina": "/collections/lvt",
