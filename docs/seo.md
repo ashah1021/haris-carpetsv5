@@ -42,18 +42,33 @@ Three rules for what goes on the right:
 Redirect chains are checked in `tools/worker.test.mjs`: nothing in the table
 may point at something that is itself redirected.
 
-### What is still to do here
+### Where the list came from, and the trap in it
 
-The old Wix sitemap had roughly **110 URLs** and it is no longer reachable —
-the domain points here now. To get the full list, either:
+Searching Google for `site:haris-carpets.co.uk` lists what it actually holds.
+That is how the table was filled, and it is how to extend it — the Wayback
+Machine has the same list if Google's is thin.
 
-1. **Search Console**, on the old property, Pages → export; or
-2. the **Wayback Machine**: `web.archive.org/web/*/haris-carpets.co.uk/*`.
+Do not read the old slugs. **They do not describe their own pages.** Wix slugs
+and Wix page titles drifted apart on this site, and only the title says what
+the page was about:
 
-Send either list over and each URL becomes a line in the table. What is in
-there now covers the confirmed 404s, the sitelinks Google is still showing
-(About Us, Contact Us, Flooring, Brands, Easy Clean, Velvet) and the shapes
-Wix sites take.
+| Old URL | Its title | So it goes to |
+|---|---|---|
+| `/twist-pile` | **Easy Clean** | `/collections/carpets/easy-clean` |
+| `/wool-loop` | **Wool Twist Pile** | `/collections/carpets/wool-twist` |
+| `/vinyl` | **Lvt** | `/collections/lvt` |
+| `/vinyl-flooring` | Vinyl Flooring London | `/collections/vinyl` |
+| `/lvt-1` | Flooring – Wood, LVT & Laminate | `/collections` |
+| `/copy-of-lvt` | **Wood** | `/collections/wood` |
+| `/copy-of-lvt-1` | **Laminate** | `/collections/wood` |
+| `/copy-of-artisan-1` | **ASHDOWN** | `/collections/lvt` |
+| `/copy-of-ashdown` | **Charisma** | `/collections/lvt` |
+
+The first two are each other's names. Guessing from the slug would have sent
+everyone looking for a twist pile to the easy-clean carpets and the other way
+round, and it would have looked right in a code review. Every rule in the
+table carries the title it was matched on as a comment, so the next person can
+check the reasoning rather than the spelling.
 
 ---
 

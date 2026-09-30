@@ -99,7 +99,9 @@ await check('the home page is served with its own title', async()=>{
 });
 await check('an old Wix path is a permanent redirect to the nearest page', async()=>{
   for (const [from, to] of [['/about-us-1','/about'], ['/contact-us-1','/contact'],
-                            ['/carpets','/collections/carpets'], ['/lvt-1','/collections/lvt'],
+                            ['/carpets','/collections/carpets'], ['/lvt-1','/collections'],
+                            ['/twist-pile','/collections/carpets/easy-clean'],
+                            ['/wool-loop','/collections/carpets/wool-twist'],
                             ['/copy-of-carina-herringbone','/collections/lvt'],
                             ['/velvet','/collections/carpets/velvet']]) {
     const r = await worker.fetch(req(from), makeEnv(), ctx);
@@ -126,6 +128,17 @@ await check('with no canonical host set, www is served, not redirected', async()
   const r = await worker.fetch(new Request('https://www.haris-carpets.co.uk/about'), makeEnv(), ctx);
   eq(r.status, 200, 'status');
   if (!(await r.text()).includes("About us")) throw new Error('not the About page');
+});
+await check('an old path on www is one redirect, not two', async()=>{
+  /* Every URL Google holds for this site is a www one. Answering the host and
+     the path as two 301s made a chain out of every single one of them. */
+  const env = { ...makeEnv(), CANONICAL_HOST: 'haris-carpets.co.uk' };
+  const r = await worker.fetch(new Request('https://www.haris-carpets.co.uk/twist-pile'), env, ctx);
+  eq(r.status, 301, 'status');
+  eq(r.headers.get('location'), 'https://haris-carpets.co.uk/collections/carpets/easy-clean', 'destination');
+  /* and the destination is not itself a redirect */
+  const again = await worker.fetch(new Request(r.headers.get('location')), env, ctx);
+  eq(again.status, 200, 'the destination is a page, not another hop');
 });
 await check('once it is set, the other form of the domain goes there', async()=>{
   const env = { ...makeEnv(), CANONICAL_HOST: 'haris-carpets.co.uk' };

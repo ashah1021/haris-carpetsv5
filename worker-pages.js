@@ -152,12 +152,18 @@ export const REDIRECTS = {
   "/laminate-1": "/collections/wood",
   "/engineered-wood": "/collections/wood",
   "/lvt": "/collections/lvt",
-  "/lvt-1": "/collections/lvt",
+  /* "Flooring - Wood, LVT & Laminate" — a hub over three of our categories,
+     so it goes to the hub rather than to one of the three. */
+  "/lvt-1": "/collections",
   "/luxury-vinyl": "/collections/lvt",
   "/luxury-vinyl-tiles": "/collections/lvt",
   "/karndean": "/collections/lvt",
   "/amtico": "/collections/lvt",
-  "/vinyl": "/collections/vinyl",
+  /* Not a mistake: the old /vinyl page was titled "Lvt". Wix slugs and Wix
+     page titles drifted apart on this site and the title is the evidence of
+     what the page was about, so the redirects follow the titles. */
+  "/vinyl": "/collections/lvt",
+  "/vinyl-flooring": "/collections/vinyl",   /* "Vinyl Flooring London" */
   "/vinyl-1": "/collections/vinyl",
   "/sheet-vinyl": "/collections/vinyl",
   "/rugs": "/collections/rugs",
@@ -165,6 +171,11 @@ export const REDIRECTS = {
   "/luxury-rugs": "/collections/rugs",
 
   /* the sitelinks Google still shows, which are carpet styles here */
+  "/twist-pile": "/collections/carpets/easy-clean",     /* titled "Easy Clean" */
+  "/wool-loop": "/collections/carpets/wool-twist",      /* titled "Wool Twist Pile" */
+  "/copy-2-of-wool-loop": "/collections/carpets",       /* "Stripe & Pattern" — we have no such style */
+  "/stripe": "/collections/carpets",
+  "/pattern": "/collections/carpets",
   "/velvet": "/collections/carpets/velvet",
   "/velvet-1": "/collections/carpets/velvet",
   "/saxony": "/collections/carpets/velvet",
@@ -193,6 +204,29 @@ export const REDIRECTS = {
   "/carina-tile-click": "/collections/lvt",
   "/carina-herringbone": "/collections/lvt",
   "/carina-plank-dryback": "/collections/lvt",
+  "/copy-of-carina-plank-click-1": "/collections/lvt",
+  "/copy-of-carina-plank-dryback-1": "/collections/lvt",
+  "/carina-plank-click": "/collections/lvt",
+
+  /* The other Wix product pages in the index. Every one of these was found
+     with a site: search rather than guessed, and the comment is the title
+     Google holds for it — which is the only reliable clue to what it was,
+     because none of these slugs describes its own page. */
+  "/copy-of-lvt": "/collections/wood",                  /* "Wood" */
+  "/copy-of-lvt-1": "/collections/wood",                /* "Laminate" */
+  "/copy-of-pictora-ii": "/collections/lvt",            /* "Versatility" */
+  "/pictora-ii": "/collections/lvt",
+  "/copy-of-elite-xl": "/collections/lvt",              /* "Artisan" */
+  "/elite-xl": "/collections/lvt",
+  "/copy-of-ashdown": "/collections/lvt",               /* "Charisma" */
+  "/ashdown": "/collections/lvt",
+  "/copy-of-artisan-1": "/collections/lvt",             /* "ASHDOWN" */
+  "/artisan": "/collections/lvt",
+  "/artisan-1": "/collections/lvt",
+  "/copy-of-aurora-herringbone": "/collections/lvt",    /* "Aurora Plank Click" */
+  "/aurora-herringbone": "/collections/lvt",
+  "/aurora-plank-click": "/collections/lvt",
+  "/sirona-plank-dryback": "/collections/lvt",
 
   /* gallery / our work */
   "/gallery": "/portfolio",
@@ -328,35 +362,31 @@ export async function pageRoute(request, env, ctx) {
 
   const url = new URL(request.url);
 
-  /* One hostname, so the ranking is not split between two — but only once
-     somebody has confirmed, in the DNS, which of the two answers.
+  /* One hostname and the new path, in a single hop.
 
-     This shipped as an unconditional "www goes to the bare domain", on the
-     reasoning that Google displays the bare domain and every canonical here
-     already claims it. The bare domain had no A record. Every page on the
-     hostname that did work then redirected to one that did not resolve, and
-     the site was down until it was reverted. A redirect cannot check whether
-     its destination exists, so it does not get to guess: CANONICAL_HOST is
-     empty in wrangler.jsonc and nothing is redirected until it is set to a
-     hostname somebody has loaded in a browser.
+     Both of these are redirects and they used to be two: the host first, the
+     path second. Every URL Google holds for this site is a www one, so every
+     old address cost a visitor two round trips and Google a redirect chain —
+     the thing the whole exercise was meant to avoid. They are worked out
+     together and answered once.
 
-     It only ever moves between the www and the bare form of one domain, so
-     setting it wrongly can send a visitor to those two places and nowhere
-     else — and workers.dev is untouched either way, which is the way back in
-     if the zone misbehaves. */
+     CANONICAL_HOST is empty in wrangler.jsonc until somebody has loaded the
+     hostname in a browser. It shipped once as an unconditional "www goes to
+     the bare domain" while the bare domain had no A record, and every page on
+     the hostname that worked redirected to one that did not resolve. A
+     redirect cannot check that its destination exists, so it does not guess.
+     It only ever moves between the www and bare form of one domain, and
+     workers.dev is untouched either way. */
   const canonicalHost = (env.CANONICAL_HOST || "").trim().toLowerCase();
   const here = url.hostname.toLowerCase();
   const bare = (h) => h.replace(/^www\./, "");
-  if (canonicalHost && here !== canonicalHost && bare(here) === bare(canonicalHost)) {
-    const to = new URL(url);
-    to.hostname = canonicalHost;
-    return Response.redirect(to.toString(), 301);
-  }
+  const wantHost = canonicalHost && bare(here) === bare(canonicalHost) ? canonicalHost : here;
+  const wantPath = redirectFor(url.pathname);
 
-  const old = redirectFor(url.pathname);
-  if (old) {
-    const to = new URL(old, url.origin);
-    to.search = url.search;
+  if (wantPath || wantHost !== here) {
+    const to = new URL(wantPath || url.pathname + url.search, url.origin);
+    if (wantPath) to.search = url.search;
+    to.hostname = wantHost;
     return Response.redirect(to.toString(), 301);
   }
 

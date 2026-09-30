@@ -17,12 +17,11 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   and then one line in `describePath()`. Half a day, and it turns sixty
   product pages on. See [`seo.md`](./seo.md).
 
-- **The old Wix URL list is incomplete.** `REDIRECTS` in `worker-pages.js`
-  covers every 404 Search Console has reported so far, the sitelinks Google is
-  still showing and the usual Wix shapes. The old sitemap had about 110 URLs
-  and it is no longer reachable — the domain points here now. Export the list
-  from Search Console (Indexing → Pages) or the Wayback Machine and each one
-  becomes a line in the table. See [`seo.md`](./seo.md).
+- **Keep watching Search Console for old URLs.** `REDIRECTS` in
+  `worker-pages.js` now covers everything a `site:haris-carpets.co.uk` search
+  turns up, matched on each page's Google *title* rather than its slug — the
+  two disagree on that site, see [`seo.md`](./seo.md). Anything that appears in
+  **Indexing → Pages → Not found (404)** later is one more line in the table.
 
 - **Opening hours are not in the structured data**, deliberately: the hours in
   `data.js` are still a placeholder, and hours are the one thing Google prints
