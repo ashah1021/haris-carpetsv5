@@ -208,22 +208,46 @@ export const REDIRECTS = {
   "/copy-of-carina-plank-dryback-1": "/collections/lvt",
   "/carina-plank-click": "/collections/lvt",
 
-  /* The other Wix product pages in the index. Every one of these was found
-     with a site: search rather than guessed, and the comment is the title
-     Google holds for it — which is the only reliable clue to what it was,
-     because none of these slugs describes its own page. */
+  /* The other Wix product pages in the index.
+     -------------------------------------------------------------------
+     Two things have to be read off each of these, and neither is the URL:
+
+       the TITLE  — what the page became. Wix "copy of X" pages keep the
+                    slug of whatever page was duplicated to make them, so
+                    /copy-of-ashdown is the Charisma page and
+                    /copy-of-artisan-1 is the Ashdown page. They are each
+                    other's names and the slugs say nothing.
+       the PRODUCT — what that range actually is. These are Furlong Flooring
+                    ranges: Versatility, Artisan, Charisma and Ashdown are
+                    felt-back sheet vinyl, Elite XL is a 12mm laminate, and
+                    the Carina / Aurora / Sirona "Plank Click", "Plank
+                    Dryback" and "Tile Click" pages are LVT.
+
+     Both were checked with a search before each rule was written. Filing
+     them by the slug, or by "vinyl-ish, so LVT", sends somebody looking for
+     a felt-back vinyl into the luxury vinyl tile. Comment format below is
+     title, then what the range is. */
+
+  /* felt-back sheet vinyl -> Vinyl */
+  "/copy-of-pictora-ii": "/collections/vinyl",          /* "Versatility" — felt-back vinyl */
+  "/pictora-ii": "/collections/vinyl",
+  "/pictora": "/collections/vinyl",
+  "/versatility": "/collections/vinyl",
+  "/copy-of-elite-xl": "/collections/vinyl",            /* "Artisan" — textured vinyl */
+  "/artisan": "/collections/vinyl",
+  "/artisan-1": "/collections/vinyl",
+  "/copy-of-ashdown": "/collections/vinyl",             /* "Charisma" — felt-back vinyl */
+  "/charisma": "/collections/vinyl",
+  "/copy-of-artisan-1": "/collections/vinyl",           /* "ASHDOWN" — vinyl */
+  "/ashdown": "/collections/vinyl",
+
+  /* laminate -> Wood & Laminate */
+  "/elite-xl": "/collections/wood",                     /* Elite XL — 12mm laminate */
   "/copy-of-lvt": "/collections/wood",                  /* "Wood" */
   "/copy-of-lvt-1": "/collections/wood",                /* "Laminate" */
-  "/copy-of-pictora-ii": "/collections/lvt",            /* "Versatility" */
-  "/pictora-ii": "/collections/lvt",
-  "/copy-of-elite-xl": "/collections/lvt",              /* "Artisan" */
-  "/elite-xl": "/collections/lvt",
-  "/copy-of-ashdown": "/collections/lvt",               /* "Charisma" */
-  "/ashdown": "/collections/lvt",
-  "/copy-of-artisan-1": "/collections/lvt",             /* "ASHDOWN" */
-  "/artisan": "/collections/lvt",
-  "/artisan-1": "/collections/lvt",
-  "/copy-of-aurora-herringbone": "/collections/lvt",    /* "Aurora Plank Click" */
+
+  /* luxury vinyl tile -> LVT */
+  "/copy-of-aurora-herringbone": "/collections/lvt",    /* "Aurora Plank Click" — LVT */
   "/aurora-herringbone": "/collections/lvt",
   "/aurora-plank-click": "/collections/lvt",
   "/sirona-plank-dryback": "/collections/lvt",

@@ -285,11 +285,16 @@ const STYLES = {
     { id: "easy-clean", name: "Easy-Clean Carpets",
       blurb: "Stain-resistant synthetic piles that take a spill, a dog and a toddler without flinching.",
       ranges: [
-        "cormar-carpets-apollo-elite",    /* [ask] polypropylene */
-        "cormar-carpets-apollo-plus",     /* [ask] polypropylene */
-        "cormar-carpets-primo-grande",    /* [ask] Primo is Cormar's synthetic family */
-        "cormar-carpets-primo-tweeds",    /* [ask] */
-        "cormar-carpets-primo-ultra",     /* [ask] */
+        /* [old site] Hari's previous website listed its own Easy Clean range
+           by name — Apollo Comfort, Apollo Elite, Apollo Plus, Primo Tweeds,
+           Inglewood Saxony, Primo Choice — and described them as
+           polypropylene twist piles. Three of these are on that list, so they
+           are the shop's own filing rather than a guess. */
+        "cormar-carpets-apollo-elite",    /* [old site] named as Easy Clean */
+        "cormar-carpets-apollo-plus",     /* [old site] named as Easy Clean */
+        "cormar-carpets-primo-tweeds",    /* [old site] named as Easy Clean */
+        "cormar-carpets-primo-grande",    /* [ask] same Primo family, not named */
+        "cormar-carpets-primo-ultra",     /* [ask] same Primo family, not named */
       ] },
 
     { id: "wool-twist", name: "Wool Twist-Pile Carpets",

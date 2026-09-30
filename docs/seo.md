@@ -66,9 +66,25 @@ the page was about:
 
 The first two are each other's names. Guessing from the slug would have sent
 everyone looking for a twist pile to the easy-clean carpets and the other way
-round, and it would have looked right in a code review. Every rule in the
-table carries the title it was matched on as a comment, so the next person can
-check the reasoning rather than the spelling.
+round, and it would have looked right in a code review.
+
+**And the title alone is not enough either.** Wix "copy of X" pages keep the
+slug of whatever page was duplicated to make them, so `/copy-of-ashdown` is
+the *Charisma* page and `/copy-of-artisan-1` is the *Ashdown* page — but
+knowing that still does not say where either belongs. These are Furlong
+Flooring ranges, and what matters is what the range **is**:
+
+| Range | What it actually is | Section |
+|---|---|---|
+| Versatility, Artisan, Charisma, Ashdown | felt-back sheet vinyl | `/collections/vinyl` |
+| Elite XL | 12mm laminate | `/collections/wood` |
+| Carina, Aurora, Sirona — Plank Click, Plank Dryback, Tile Click | LVT | `/collections/lvt` |
+
+The first pass filed all of them under LVT because they are vinyl-ish and the
+old site's flooring pages are tangled. Somebody searching for Charisma would
+have arrived in luxury vinyl tile, which is a different product at a different
+price. So every rule was written from two checks, not one: the page's title,
+and then what that range is. Both are in the comment beside the rule.
 
 ---
 
