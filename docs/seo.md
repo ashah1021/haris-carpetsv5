@@ -71,6 +71,13 @@ the page was about:
 | `/copy-of-ashdown` | **Charisma** | `/collections/vinyl` |
 | `/copy-of-carina-tile-click` | **Aurora Plank Dryback** | `/collections/lvt` |
 
+And one rule matched on what the visitor clicked rather than on what the old
+page held: **Contact Us** goes to `/enquire`, the page this site calls Contact
+us, not to `/contact`, which is Visit us. The old Wix page carried the address,
+so matching it on content pointed it at the map. Somebody clicking "Contact Us"
+in a search result wants to get in touch, and `/enquire` links to the showroom
+at the foot of it. `/find-us` and `/opening-hours` still go to Visit us.
+
 The first two are each other's names. Guessing from the slug would have sent
 everyone looking for a twist pile to the easy-clean carpets and the other way
 round, and it would have looked right in a code review.

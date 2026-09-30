@@ -98,7 +98,7 @@ await check('the home page is served with its own title', async()=>{
   if (!html.includes('<h1>')) throw new Error('no server-rendered heading');
 });
 await check('an old Wix path is a permanent redirect to the nearest page', async()=>{
-  for (const [from, to] of [['/about-us-1','/about'], ['/contact-us-1','/contact'],
+  for (const [from, to] of [['/about-us-1','/about'], ['/contact-us-1','/enquire'],
                             ['/carpets','/collections/carpets'], ['/lvt-1','/collections'],
                             ['/twist-pile','/collections/carpets/easy-clean'],
                             ['/wool-loop','/collections/carpets/wool-twist'],

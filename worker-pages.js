@@ -130,10 +130,19 @@ export const REDIRECTS = {
   "/about-1": "/about",
   "/aboutus": "/about",
   "/our-story": "/about",
-  "/contact-us-1": "/contact",
-  "/contact-us": "/contact",
-  "/contact-1": "/contact",
-  "/contactus": "/contact",
+  /* "Contact Us" goes to the page this site calls Contact us, which is the
+     enquiry form at /enquire — not /contact, which is Visit us: the address,
+     the hours and the map. The old Wix page carried the address, so matching
+     on content sent it to Visit us; matching on what the visitor clicked
+     sends it to the form. Somebody who clicked "Contact Us" wants to get in
+     touch, and /enquire offers the showroom in a link at the foot of it.
+
+     The two below are about visiting rather than contacting, so they keep
+     going to Visit us. */
+  "/contact-us-1": "/enquire",
+  "/contact-us": "/enquire",
+  "/contact-1": "/enquire",
+  "/contactus": "/enquire",
   "/find-us": "/contact",
   "/opening-hours": "/contact",
   "/get-a-quote": "/enquire",
