@@ -3,6 +3,20 @@
 `hariscarpets.co.uk` (no hyphen) still shows the old Wix site. This is how to
 change that, what it risks, and which of the two ways is worth doing.
 
+## The one thing that is not optional
+
+**The shop's DNS for this domain is hosted by Wix** — its nameservers are
+`ns10.wixdns.net` and `ns11.wixdns.net`. Cancel the Wix subscription while that
+is still true and the zone goes with it: not just the old website, but the MX
+record. **`sales@hariscarpets.co.uk` would stop receiving mail**, and the cause
+would not be obvious to anyone looking at the mailbox.
+
+So Option 2 below is not a nice-to-have. It is a prerequisite for cancelling
+Wix. It is simply not urgent *today* — the deadline is the cancellation, and
+that date is the shop's to choose.
+
+---
+
 **Read this first: the small job is almost certainly the right job.** The whole
 benefit here is that somebody typing the old address reaches the new site.
 Google has not indexed that domain, so there is no ranking to recover and
