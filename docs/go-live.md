@@ -118,6 +118,42 @@ In Wix it is set to *"Redirects to primary domain"*, and that redirect is Wix's
 doing. **It stops working the day the Wix site is cancelled**, so point this
 domain at the new site before cancelling anything.
 
+#### Rechecked 06/10/2026 — it still serves the old site
+
+The shop asked why this address shows the old website. Measured, not guessed:
+
+| | |
+|---|---|
+| Nameservers | `ns10.wixdns.net`, `ns11.wixdns.net` — **not Cloudflare** |
+| A records | `185.230.63.107 / .171 / .186` — Wix's own hosting |
+| `www` | CNAME → `cdn3.wixdns.net` |
+
+So it is not a redirect that has broken. The domain resolves to Wix, and Wix
+serves the old site from it. Nothing about it passes through Cloudflare or this
+Worker, and no change in this repository can reach it.
+
+Mail on it is untouched and working: MX still Microsoft 365, SPF still
+`include:spf.protection.outlook.com -all`, `autodiscover` still Outlook,
+`_dmarc` still Wix's `p=reject` with strict alignment.
+
+**It costs nothing in search.** A `site:hariscarpets.co.uk` query returns no
+pages, so Google has not indexed it: there is no duplicate of the old site
+competing with the new one, and no ranking split. This is an experience fix for
+whoever types the old address or has it on a card — worth doing, not urgent.
+
+Two ways to do it, and the order matters more than the method:
+
+1. **At Wix, no DNS move.** The redirect setting is already there and pointing
+   at the wrong place. Changing where it points is the whole job, and the
+   shop's email never comes near it. It dies with the Wix subscription.
+2. **Move the zone to Cloudflare**, then a zone-level Redirect Rule sending
+   `hariscarpets.co.uk/*` to `https://haris-carpets.co.uk/$1` as a 301 (a
+   redirect-only zone needs one proxied record to answer on — the usual trick
+   is an AAAA at the apex pointing to `100::`, proxied). Permanent, free, and
+   it outlives Wix. But it is the Microsoft 365 migration described above:
+   every record in the table lands in Cloudflare **first**, nameservers change
+   **second**. Reverse those two and the shop's email stops.
+
 ---
 
 ## The mailbox on the website domain — asked, and clear

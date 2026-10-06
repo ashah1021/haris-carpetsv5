@@ -55,10 +55,11 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   sending domain out of there. Until that is confirmed, treat the Enquiries tab
   as the only delivery and check it daily; the tab is never affected by a failed
   send.
-- **Add SPF and DMARC to the `haris-carpets.co.uk` zone.** Two TXT records, in
-  §"Still do this: give the sending domain an SPF record" of
-  [`go-live.md`](./go-live.md). Without them the notification is far more likely
-  to be junked.
+- ~~Add SPF and DMARC to the `haris-carpets.co.uk` zone.~~ **Done** — both are
+  live as of 06/10/2026: `v=spf1 include:_spf.mx.cloudflare.net ~all` and
+  `_dmarc` at `p=none` with reports going to `sales@hariscarpets.co.uk`.
+  `p=none` is monitoring only, which is the right place to start; tighten it to
+  `quarantine` once the reports show nothing legitimate failing.
 - **Rotate the R2 API key pair.** The credentials were pasted into a chat
   transcript, so treat them as burned. Cloudflare dashboard → R2 → Manage API
   tokens. Then update `~/.config/rclone/rclone.conf` and any local env vars.
