@@ -146,7 +146,10 @@ Two ways to do it, and the order matters more than the method:
 1. **At Wix, no DNS move.** The redirect setting is already there and pointing
    at the wrong place. Changing where it points is the whole job, and the
    shop's email never comes near it. It dies with the Wix subscription.
-2. **Move the zone to Cloudflare**, then a zone-level Redirect Rule sending
+2. **Move the zone to Cloudflare** — the full procedure, the record
+   inventory, the verification and the rollback are in
+   [`mailbox-domain-move.md`](./mailbox-domain-move.md). In short: a
+   zone-level Redirect Rule sending
    `hariscarpets.co.uk/*` to `https://haris-carpets.co.uk/$1` as a 301 (a
    redirect-only zone needs one proxied record to answer on — the usual trick
    is an AAAA at the apex pointing to `100::`, proxied). Permanent, free, and

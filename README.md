@@ -19,6 +19,7 @@ Assets with a small Worker in front, and one R2 bucket.
 | [`docs/architecture.md`](docs/architecture.md) | picking up the code |
 | [`docs/go-live.md`](docs/go-live.md) | moving the domain off Wix onto this site |
 | [`docs/seo.md`](docs/seo.md) | the page addresses, the old Wix ones, and what Google does with them |
+| [`docs/mailbox-domain-move.md`](docs/mailbox-domain-move.md) | pointing hariscarpets.co.uk at the site without stopping the shop's email |
 | [`docs/handover.md`](docs/handover.md) | taking over the Cloudflare account |
 | [`docs/photography.md`](docs/photography.md) | regenerating the catalogue from a supplier's photography |
 | [`docs/outstanding.md`](docs/outstanding.md) | wondering what is parked and why |
