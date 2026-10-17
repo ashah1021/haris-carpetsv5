@@ -92,9 +92,18 @@ The idea was that the domain is already set in Wix to *"Redirects to primary
 domain"*, so changing where it points would be the whole job, with no DNS
 change and no risk to the mailbox.
 
-**Wix does not offer it.** The only redirect available is to the *primary*
-domain, which is this domain — there is no option to forward it to an external
-site. Wix's own documentation for sending a domain somewhere outside Wix is
+**Wix does not offer it, and the setting that looks like it does is a trap.**
+In the Wix domains panel `hariscarpets.co.uk` reads *"Redirects to primary
+domain"*, and the primary domain is `haris-carpets.co.uk` — so it appears to be
+configured correctly already. It is not working, and it cannot: that redirect
+is served by Wix, and Wix only serves it while the primary domain is a site Wix
+hosts. `haris-carpets.co.uk` moved to Cloudflare on 28/09/2026, so Wix has
+nothing to redirect to and falls back to serving the old site. The Wix panel
+still shows that domain stuck at *"Domain connecting"*, waiting since September
+for DNS that will never point at it.
+
+There is no field anywhere in Wix for an external destination. Tested
+17/10/2026. Wix's own documentation for sending a domain somewhere outside Wix is
 ["connect to an external site via pointing"](https://support.wix.com/en/article/connecting-a-wix-domain-to-an-external-site),
 which means changing the A records to the external host's IPs.
 
