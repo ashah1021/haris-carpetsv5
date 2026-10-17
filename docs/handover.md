@@ -59,15 +59,49 @@ lost but tidiness.
 
 ### 4. Cloudflare. Last, because it ends your access. (15 min)
 
-**Route A — change the account's email to Hari's**, then he sets his own
-password and turns on two-factor. Everything keeps working: the account id and
-site tag in `wrangler.jsonc` stay valid, and the R2 bucket, every secret, the
-Access application and the custom domains are untouched.
+**One Cloudflare login can hold several accounts, and this one does.** Under
+`aryan2403.shah@gmail.com` there are four: a personal one, `astech`, `AS-Tech`
+and `inaartworld`. Hari's Carpets lives in exactly one of them.
 
-Route B — a new Cloudflare account — means editing `wrangler.jsonc`, recreating
-every secret, re-uploading the bucket and re-adding both domains. That is an
-afternoon, not fifteen minutes. §3 and §4 below are written for it if you have
-no choice.
+> **Do not change the email on the login.** That is the advice for somebody
+> with a single account, and following it here would hand over all four —
+> including other clients' work. What gets handed over is **membership of one
+> account**, not the login.
+
+**Find the right account first.** Open each one and look at the address bar: the
+long string after `dash.cloudflare.com/` is the account id. The one you want is
+
+```
+7876be11f4e20ce325457563957f468b
+```
+
+That is the same id as `CF_ACCOUNT_ID` in `wrangler.jsonc`, which is what the
+Visitors tab reads its numbers with. If an account's URL does not match, it is
+not this site's account — close it and try the next.
+
+**Then, in that account only:**
+
+1. **Manage Account → Members → Invite.** Hari's email address, role **Super
+   Administrator**. He needs a free Cloudflare login to accept; the invitation
+   email walks him through creating one.
+2. He accepts, and turns on two-factor authentication.
+3. **Check he can actually see all of it** before you go: Workers & Pages →
+   `haris-carpetsv5`, its Settings → Builds, R2 → the `haris-carpets` bucket,
+   and the `haris-carpets.co.uk` zone under Domains.
+4. **Then remove yourself from that account** — Members → your row → Remove.
+   Or stay on as a member if you are still supporting the site; that is a
+   commercial decision, not a technical one. Your other three accounts are
+   untouched either way.
+
+**Check the billing before you hand it over.** Whatever is attached to that
+account becomes Hari's. The site is built to run on free tiers — Workers,
+Cloudflare Web Analytics, Email Routing and the first 10 GB of R2 all cost
+nothing — but if the photography has pushed R2 past its free storage, there is
+a card on the account that needs to become his.
+
+If member invitations are not available on that account's plan, the fallback is
+§§2–4 below: rebuild in a new account. Check before assuming — it is an
+afternoon of difference.
 
 ### What to hand him, once those are done
 
