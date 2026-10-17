@@ -86,22 +86,31 @@ Two consequences:
 
 ---
 
-## Option 1 — change it in Wix. Fifteen minutes, no risk to email.
+## Option 1 — change it in Wix. Tried on 17/10/2026. Not available.
 
-The domain is already set in Wix to *"Redirects to primary domain"*. That
-setting is still there and still pointing at the old site. Changing where it
-points is the entire job.
+The idea was that the domain is already set in Wix to *"Redirects to primary
+domain"*, so changing where it points would be the whole job, with no DNS
+change and no risk to the mailbox.
 
-1. Wix dashboard → **Domains** → `hariscarpets.co.uk`.
-2. Find the redirect/forwarding setting. Point it at
-   `https://haris-carpets.co.uk`.
-3. Check it in a private window.
+**Wix does not offer it.** The only redirect available is to the *primary*
+domain, which is this domain — there is no option to forward it to an external
+site. Wix's own documentation for sending a domain somewhere outside Wix is
+["connect to an external site via pointing"](https://support.wix.com/en/article/connecting-a-wix-domain-to-an-external-site),
+which means changing the A records to the external host's IPs.
 
-**No DNS record changes. No nameserver change. The mailbox is never touched.**
+**That route does not work here either, and it is worth knowing why before
+somebody tries it.** Cloudflare only answers for hostnames belonging to a zone
+it holds. It does not hold `hariscarpets.co.uk`. Point the A records at
+Cloudflare's IPs and every visitor gets a Cloudflare error page instead of the
+old site — worse than leaving it alone.
 
-What it does not do: it dies the day the Wix subscription is cancelled. So it
-buys time rather than finishing the job — which is fine, because the deadline
-is the Wix cancellation, not today.
+**An MX record cannot do it.** MX is mail routing: it tells other mail servers
+where to deliver email, and has no effect on where a browser goes. It is the
+natural thing to reach for in a DNS panel that offers nothing else, and it does
+nothing. (Attempted 17/10/2026; Wix rejected it with a server error, which was
+luck rather than good sense on anyone's part.)
+
+So Option 2 is the only route, and the deadline below is real.
 
 ---
 

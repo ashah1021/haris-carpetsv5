@@ -24,14 +24,23 @@ the one below it.
 Both were pasted into chat transcripts. Handing over an account with burned
 credentials passes the problem to somebody who does not know it exists.
 
-### 2. Point hariscarpets.co.uk at the site — the Wix way, not the zone move. (15 min)
+### 2. hariscarpets.co.uk — tried, not fixable today. Hand it over. (0 min)
 
-Wix dashboard → **Domains** → `hariscarpets.co.uk` → set the redirect to
-`https://haris-carpets.co.uk`. Check it in a private window.
+**Wix offers no way to forward this domain to an external site.** Checked on
+17/10/2026: the only redirect it exposes points at the primary domain, which is
+this domain. Pointing the A records at Cloudflare instead does not work either
+— Cloudflare will not answer for a zone it does not hold, so visitors get a
+Cloudflare error rather than the old site.
 
-**Do not do the zone move today.** It moves the shop's email, and doing that on
-the same day you give away the account that can fix it is the worst possible
-timing. The redirect gets the visible result now.
+That leaves moving the domain's DNS to Cloudflare, and **that is not a
+handover-day job**: it moves the shop's email on the same day you give away the
+account that could fix it.
+
+So this goes across as a documented outstanding item, not a loose end. What the
+new owner needs to be told, in one sentence: *Wix hosts this domain's DNS, so
+cancelling Wix stops `sales@hariscarpets.co.uk` receiving mail — move it to
+Cloudflare first.* The procedure is in
+[`mailbox-domain-move.md`](./mailbox-domain-move.md).
 
 What it does not do is survive the Wix subscription being cancelled — and
 neither does the shop's email, because Wix hosts that domain's DNS. That is the
