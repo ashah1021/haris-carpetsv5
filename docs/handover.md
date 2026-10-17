@@ -8,6 +8,77 @@ assumes you know what the pieces are.
 
 ---
 
+## 0. Doing it today, in order
+
+Four jobs. The order is not arbitrary — each one is harder or impossible after
+the one below it.
+
+### 1. Rotate the two exposed credentials. Before anything is handed to anyone. (20 min)
+
+- **R2 API token** — Cloudflare → R2 → Manage API tokens → revoke the old pair,
+  create a new one. Only `tools/sync-r2.py` uses it, from a laptop.
+- **Meta App Secret** — developers.facebook.com → the app → Settings → Basic →
+  Reset. If `INSTAGRAM_APP_SECRET` is set as a Worker secret, set the new value
+  and redeploy.
+
+Both were pasted into chat transcripts. Handing over an account with burned
+credentials passes the problem to somebody who does not know it exists.
+
+### 2. Point hariscarpets.co.uk at the site — the Wix way, not the zone move. (15 min)
+
+Wix dashboard → **Domains** → `hariscarpets.co.uk` → set the redirect to
+`https://haris-carpets.co.uk`. Check it in a private window.
+
+**Do not do the zone move today.** It moves the shop's email, and doing that on
+the same day you give away the account that can fix it is the worst possible
+timing. The redirect gets the visible result now.
+
+What it does not do is survive the Wix subscription being cancelled — and
+neither does the shop's email, because Wix hosts that domain's DNS. That is the
+deadline, and it belongs on the new owner's list with the reason attached. See
+[`mailbox-domain-move.md`](./mailbox-domain-move.md).
+
+### 3. GitHub. Before Cloudflare. (20 min, plus one deploy to prove it)
+
+**Transferring the repository breaks the Cloudflare build connection** — it is
+bound to the repo at its old address — so this has to be fixed and verified
+while you still have the Cloudflare account.
+
+1. Hari creates a free GitHub account, or names one he already has.
+2. GitHub → the repo → Settings → General → Danger Zone → **Transfer
+   ownership** → his username.
+3. Cloudflare → Worker `haris-carpetsv5` → Settings → **Builds** → reconnect to
+   the repository at its new owner, re-authorising the Cloudflare GitHub App.
+4. **Push a commit and watch it deploy.** A one-line change to a comment is
+   enough. Do not skip this: an unverified build connection is a site that
+   silently stops updating, and nobody notices until an edit fails to appear.
+
+If Hari cannot make a GitHub account today, add him as an **admin collaborator**
+instead and transfer later. The build connection keeps working, and nothing is
+lost but tidiness.
+
+### 4. Cloudflare. Last, because it ends your access. (15 min)
+
+**Route A — change the account's email to Hari's**, then he sets his own
+password and turns on two-factor. Everything keeps working: the account id and
+site tag in `wrangler.jsonc` stay valid, and the R2 bucket, every secret, the
+Access application and the custom domains are untouched.
+
+Route B — a new Cloudflare account — means editing `wrangler.jsonc`, recreating
+every secret, re-uploading the bucket and re-adding both domains. That is an
+afternoon, not fifteen minutes. §3 and §4 below are written for it if you have
+no choice.
+
+### What to hand him, once those are done
+
+Logins for **Cloudflare**, **GitHub**, **123 Reg** (the domains),
+**Meta/Facebook developer**, **Instagram**, and the **Microsoft 365** mailbox —
+plus this folder of documents. Start him on
+[`work-instructions.md`](./work-instructions.md); it is the only one he needs to
+run the shop's website day to day.
+
+---
+
 ## 1. What exists
 
 Fill the right-hand column in before you start. Half the pain in a handover is
@@ -24,7 +95,8 @@ discovering on the day that nobody knows who holds an account.
 | **GitHub repository** | `ashah1021/haris-carpetsv5` — the source of truth | github.com | |
 | **Meta app** | the Instagram feed on the home page | developers.facebook.com | |
 | Instagram account | `@hariscarpets`, Business or Creator, tied to a Facebook Page | instagram.com | |
-| **Domain** `haris-carpets.co.uk` | **registered and hosted at Wix**, not Cloudflare | Wix | |
+| **Domain** `haris-carpets.co.uk` | registered at 123 Reg, DNS on **Cloudflare** since 28/09/2026 | 123 Reg + Cloudflare | |
+| **Domain** `hariscarpets.co.uk` | the mailbox domain — DNS still **hosted by Wix** | Wix | |
 | Mailbox `sales@hariscarpets.co.uk` | where replies to enquiries come from | | |
 | Google Business listing | the reviews are copied from it by hand | | |
 
@@ -33,7 +105,7 @@ Two domains that look alike and are not: the mailbox is **hariscarpets.co.uk**
 
 ### What is not needed
 
-No email provider account, no analytics, no CDN, no npm registry, no CI service
+No email provider account, no third-party analytics, no CDN, no npm registry, no CI service
 beyond Cloudflare's own build, and no framework or dependency of any kind. The
 site has no third-party JavaScript. That is a deliberately small surface to hand
 over, and it is worth keeping small.
@@ -273,16 +345,20 @@ Carry these across; they are all live.
       value and redeploy.
 - [ ] **The Meta app's Terms of Service URL still points at facebook.com.** It
       needs to point somewhere on this site before the app can be published.
-- [ ] **Decide about the enquiry notification email.** Nothing emails the shop
-      today. Either set `RESEND_KEY` now, or wait until the domain is on
-      Cloudflare and use Cloudflare's own sending — the second one keeps every
-      customer's details inside accounts the shop controls, and needs one line
-      added to the Privacy Policy either way.
+- [x] ~~Decide about the enquiry notification email.~~ **Done** — Cloudflare
+      emails the shop a copy of every enquiry, and the Privacy Policy says so.
+      SPF and DMARC are live on the website domain.
 - [ ] **The `[ask]` style assignments** in the `STYLES` table at the top of
-      `public/data.js` — eight collections are filed by what those ranges
-      usually are, not by what Hari has confirmed.
-- [ ] **Portfolio photographs**, **real Google reviews**, and **two of the three
-      banner pictures**, which are still stand-ins.
+      `public/data.js` — **five** collections are still filed by what those
+      ranges usually are rather than by what Hari has confirmed. Three were
+      settled by the old website, which named its own Easy Clean range.
+- [ ] **Striped & Patterned Carpets** exists as a style and is deliberately
+      empty, so it does not render. Hari says which collections belong in it,
+      or it stays gone.
+- [ ] **Two of the three banner pictures** are still stand-ins.
+- [ ] **Point `hariscarpets.co.uk` at the site properly**, before the Wix
+      subscription is cancelled — Wix hosts that domain's DNS, so cancelling
+      takes the shop's email with it. [`mailbox-domain-move.md`](./mailbox-domain-move.md).
 
 ---
 
