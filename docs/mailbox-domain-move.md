@@ -1,211 +1,103 @@
-# Moving hariscarpets.co.uk — and why not to, yet
+# The mailbox domain: hariscarpets.co.uk
 
-`hariscarpets.co.uk` (no hyphen) still shows the old Wix site. This is how to
-change that, what it risks, and which of the two ways is worth doing.
-
-## The one thing that is not optional
-
-**The shop's DNS for this domain is hosted by Wix** — its nameservers are
-`ns10.wixdns.net` and `ns11.wixdns.net`. Cancel the Wix subscription while that
-is still true and the zone goes with it: not just the old website, but the MX
-record. **`sales@hariscarpets.co.uk` would stop receiving mail**, and the cause
-would not be obvious to anyone looking at the mailbox.
-
-So Option 2 below is not a nice-to-have. It is a prerequisite for cancelling
-Wix. It is simply not urgent *today* — the deadline is the cancellation, and
-that date is the shop's to choose.
+`sales@hariscarpets.co.uk` is Microsoft 365. This is where its DNS lives, what
+happened to it on 18/10/2026, and what is still worth doing.
 
 ---
 
-**Read this first: the small job is almost certainly the right job.** The whole
-benefit here is that somebody typing the old address reaches the new site.
-Google has not indexed that domain, so there is no ranking to recover and
-nothing competing with the new site. Against that, the big job puts the shop's
-email — the thing the business actually runs on — in play for an afternoon.
-
----
-
-## What is actually on that domain
-
-Read off public DNS on 06/10/2026. Everything below is published and visible
-from outside, so the inventory needs no logins to produce — only to change.
-
-### The mailbox — Microsoft 365. Four records, and they are the ones that matter.
-
-| Name | Type | Value |
-|---|---|---|
-| `@` | MX 10 | `hariscarpets-co-uk.mail.protection.outlook.com` |
-| `@` | TXT | `v=spf1 include:spf.protection.outlook.com -all` |
-| `@` | TXT | `MS=ms37166624` |
-| `autodiscover` | CNAME | `autodiscover.outlook.com` |
-
-Lose the MX and mail to `sales@hariscarpets.co.uk` stops arriving — within
-minutes, and senders get bounces. Lose the SPF and outgoing mail starts being
-junked. Lose `MS=` and Microsoft may eventually consider the domain
-unverified. Lose `autodiscover` and Outlook clients stop configuring
-themselves, which is an annoyance rather than an outage.
-
-**Microsoft 365 DKIM is not set up.** There are no `selector1`/`selector2`
-CNAMEs pointing at `onmicrosoft.com`. The domain's outgoing mail is protected
-by SPF alone.
-
-### Wix's own email machinery — and this is the catch
-
-| Name | Type | Value |
-|---|---|---|
-| `s1._domainkey` | CNAME | `…s005.ascendbywix.com` |
-| `s2._domainkey` | CNAME | `…s005.ascendbywix.com` |
-| `sel1._domainkey` | CNAME + TXT | `…s005.ascendbywix.com` + a DKIM key |
-| `sg` | CNAME, TXT, MX | `…ascendbywix.com`, SPF `include:sendgrid.net`, MX `mx.sendgrid.net` |
-| `default._domainkey` | TXT | a DKIM key |
-| `_dmarc` | TXT | `v=DMARC1; p=reject; rua=mailto:postmaster@wix.com; adkim=s; aspf=s` |
-
-**These belong to Wix, not to the shop.** `ascendbywix.com` is Wix's email
-platform and the `sg` records are its SendGrid relay. The DMARC record reports
-to Wix's own postmaster address. They exist so Wix can send marketing mail as
-`@hariscarpets.co.uk`.
-
-Two consequences:
-
-- Carrying them into Cloudflare copies across records that point at a service
-  the shop may be about to cancel. They would keep working until the Wix
-  account goes, then quietly rot.
-- The DMARC is `p=reject` with **strict alignment** — the strictest setting
-  there is. Any mail claiming to be from this domain that does not align
-  exactly is rejected outright, not junked. Whoever owns that record owns
-  whether the shop's mail is deliverable, and today that is Wix.
-
-### Leftovers
-
-| Name | Type | Value | What it looks like |
-|---|---|---|---|
-| `mail` | CNAME / A / TXT | `eu.hostmice.com`, `51.38.118.84`, its own SPF | an older webmail host, probably dead |
-| `@` | TXT | `mail.hariscarpets.co.uk CNAME srvr1.hostmice.com` | somebody pasted an instruction into a TXT record |
-| `@` | A ×3 | `185.230.63.107 / .171 / .186` | Wix hosting — this is what serves the old site |
-| `www` | CNAME | `cdn3.wixdns.net` | Wix CDN |
-
----
-
-## Option 1 — change it in Wix. Tried on 17/10/2026. Not available.
-
-The idea was that the domain is already set in Wix to *"Redirects to primary
-domain"*, so changing where it points would be the whole job, with no DNS
-change and no risk to the mailbox.
-
-**Wix does not offer it, and the setting that looks like it does is a trap.**
-In the Wix domains panel `hariscarpets.co.uk` reads *"Redirects to primary
-domain"*, and the primary domain is `haris-carpets.co.uk` — so it appears to be
-configured correctly already. It is not working, and it cannot: that redirect
-is served by Wix, and Wix only serves it while the primary domain is a site Wix
-hosts. `haris-carpets.co.uk` moved to Cloudflare on 28/09/2026, so Wix has
-nothing to redirect to and falls back to serving the old site. The Wix panel
-still shows that domain stuck at *"Domain connecting"*, waiting since September
-for DNS that will never point at it.
-
-There is no field anywhere in Wix for an external destination. Tested
-17/10/2026. Wix's own documentation for sending a domain somewhere outside Wix is
-["connect to an external site via pointing"](https://support.wix.com/en/article/connecting-a-wix-domain-to-an-external-site),
-which means changing the A records to the external host's IPs.
-
-**That route does not work here either, and it is worth knowing why before
-somebody tries it.** Cloudflare only answers for hostnames belonging to a zone
-it holds. It does not hold `hariscarpets.co.uk`. Point the A records at
-Cloudflare's IPs and every visitor gets a Cloudflare error page instead of the
-old site — worse than leaving it alone.
-
-**An MX record cannot do it.** MX is mail routing: it tells other mail servers
-where to deliver email, and has no effect on where a browser goes. It is the
-natural thing to reach for in a DNS panel that offers nothing else, and it does
-nothing. (Attempted 17/10/2026; Wix rejected it with a server error, which was
-luck rather than good sense on anyone's part.)
-
-So Option 2 is the only route, and the deadline below is real.
-
----
-
-## Option 2 — move the zone to Cloudflare
-
-Permanent, free to run, outlives Wix. Also the one that can stop the shop's
-email. Do it on a weekday morning, never on a Friday, and never the day before
-the shop needs its inbox.
-
-### Before you touch anything
-
-- [ ] You can sign in to the **registrar** (where the domain is bought — 123
-      Reg for the other two) to change nameservers. Without this, stop: the
-      move cannot be completed or undone.
-- [ ] You can sign in to **Microsoft 365 admin** (`admin.microsoft.com`), or
-      you know who can and they are reachable that day. You do not need it to
-      do the move. You need it if mail breaks, and "we will work it out later"
-      is not a plan for a business's email.
-- [ ] Screenshot the entire Wix DNS panel. Every record, including the ones in
-      the tables above. This is the rollback.
-- [ ] Write down the current nameservers (`ns10.wixdns.net`,
-      `ns11.wixdns.net`). This is the other half of the rollback.
-- [ ] Confirm whether the shop uses **Wix email marketing**. If it sends
-      newsletters through Wix, the `ascendbywix`/`sg` records have to come
-      across or those stop. If it does not, leave them behind.
-
-### The move, in order
-
-The order is the whole risk. Records first, nameservers second. Reversed, the
-domain lands in an empty Cloudflare zone and the mail stops the moment DNS
-propagates.
-
-1. **Cloudflare → Add a site → `hariscarpets.co.uk`.** Free plan. Cloudflare
-   scans the existing zone and imports what it can find.
-2. **Check the import against the tables above, record by record.** The scan
-   is good, not perfect — it misses records it cannot guess the name of.
-   Everything in *The mailbox* must be present and exact. A typo in the MX is
-   indistinguishable from deleting it.
-3. **Set the website records to DNS-only (grey cloud) for now**, or delete the
-   three Wix A records and the `www` CNAME outright — you are not keeping Wix
-   hosting. For a redirect-only zone, add `AAAA @ 100::` **proxied (orange)**;
-   that is Cloudflare's documented placeholder so the zone has something to
-   answer on.
-4. **Leave every mail record DNS-only.** MX, SPF, DKIM and `autodiscover` must
-   never be proxied. Cloudflare will not proxy an MX, but it will happily
-   proxy `autodiscover`, which breaks Outlook setup.
-5. **Change the nameservers at the registrar** to the two Cloudflare gives you.
-6. **Wait.** Cloudflare emails when the zone is active — usually minutes, up to
-   24 hours. Do not change anything else while waiting.
-7. **Add the redirect.** Rules → Redirect Rules → Create:
-   - When incoming requests match: *Hostname* equals `hariscarpets.co.uk`
-     (add a second condition for `www.hariscarpets.co.uk`)
-   - Then: Dynamic redirect to
-     `concat("https://haris-carpets.co.uk", http.request.uri.path)`
-   - Status **301**, preserve query string on.
-
-### Verifying — do all of these, in this order
-
-- [ ] **Send a mail to `sales@hariscarpets.co.uk` from an outside address**
-      (a personal Gmail). It must arrive. This is the test that matters.
-- [ ] **Send one from `sales@hariscarpets.co.uk` to that outside address.** It
-      must arrive, and not in Junk.
-- [ ] Open `https://hariscarpets.co.uk/` in a private window → lands on
-      `haris-carpets.co.uk`.
-- [ ] `https://www.hariscarpets.co.uk/about-us-1` → lands on the new About
-      page, in one hop.
-- [ ] Outlook on a phone or desktop still connects without being re-set-up.
-- [ ] Check again the next morning. DNS problems often show up a cache later.
-
-### If mail stops
-
-Do not debug. **Put the nameservers back** at the registrar to
-`ns10.wixdns.net` / `ns11.wixdns.net`. The old zone is still there and still
-correct; mail resumes as the change propagates. Then work out what was wrong
-with the Cloudflare copy at leisure, with the screenshots.
-
----
-
-## What it costs to run afterwards
+## Current state
 
 | | |
 |---|---|
-| Cloudflare DNS + redirect rules | **£0** — the free plan covers all of it |
-| Domain registration | unchanged, wherever it is registered now |
-| Microsoft 365 mailbox | unchanged — the subscription has nothing to do with DNS |
-| Wix | **this is where the saving is**, once the old site can be cancelled |
+| Registrar | **to be confirmed** — see the gap below |
+| DNS hosted at | **GoDaddy** (`ns39` / `ns40.domaincontrol.com`) |
+| Mail | Microsoft 365, working |
+| Wix | **holds nothing this domain depends on** |
 
-Nothing in this adds a recurring cost. Option 2 is what makes cancelling Wix
-safe, so it pays for itself the month the Wix plan stops.
+Verified with an external lookup, not from a registrar panel: `mx:hariscarpets.co.uk`
+at mxtoolbox.com returns `hariscarpets-co-uk.mail.protection.outlook.com` at
+Microsoft's addresses, answered by `ns32.domaincontrol.com`.
+
+### The records
+
+| Type | Name | Value |
+|---|---|---|
+| MX | `@` | `hariscarpets-co-uk.mail.protection.outlook.com` (priority 0) |
+| TXT | `@` | `v=spf1 include:spf.protection.outlook.com -all` |
+| TXT | `@` | `MS=ms37166624` — Microsoft's domain verification |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:sales@hariscarpets.co.uk` |
+| CNAME | `autodiscover` | `autodiscover.outlook.com` |
+
+**Wix can be cancelled.** The deadline that used to hang over this — Wix hosted
+the DNS, so cancelling would have stopped the mailbox — no longer applies.
+
+---
+
+## What happened on 18/10/2026
+
+Worth keeping, because three of these cost hours and all three are easy to
+repeat.
+
+**The domain's DNS moved to GoDaddy without the mail records.** Setting up a
+redirect for this domain moved where it was answered from. The new zone had no
+MX, so incoming mail stopped. Outgoing mail kept working throughout, which is
+why it looked like a partial failure and was not: **outbound mail never
+consults the MX record**, so "sending works" proves nothing about DNS. Only
+receiving tests it.
+
+**Nobody got a bounce, and that was good news.** With no MX published, sending
+servers fall back to the domain's A record, find a web server that does not
+speak SMTP, and queue the message. Gmail retries for roughly 24–48 hours. Mail
+sent during the outage was delivered once the MX went back in.
+
+**The records went into the wrong domain first.** The shop owns three similar
+names and one of them, `hariscarpets.uk`, is parked at GoDaddy. An hour went
+into editing its zone. The giveaway was in the records themselves: that zone
+held `CNAME www → hariscarpets.uk`, which is the ordinary "www points at the
+apex" record for *that* domain and makes no sense in any other.
+
+**The SPF record was saved without a space** — `v=spf1include:…` instead of
+`v=spf1 include:…`. It looks right at a glance and parses as nothing, so
+Microsoft's servers were not authorised to send as the domain.
+
+The lesson running through all four: **a registrar panel shows what is
+configured, not what is published.** Check with an external lookup
+(mxtoolbox.com) against the domain name you actually mean.
+
+---
+
+## Still worth doing
+
+- [ ] **Write down the registrar for each of the three domains.** GoDaddy,
+      123 Reg and Wix have all been involved and nobody has recorded which
+      holds what. This matters more than it sounds: if Wix is the *registrar*
+      for any of them, cancelling the Wix plan risks the domain itself at
+      renewal, which is far worse than losing DNS.
+
+      | Domain | Registrar | DNS at |
+      |---|---|---|
+      | `haris-carpets.co.uk` | ? | Cloudflare |
+      | `hariscarpets.co.uk` | ? | GoDaddy |
+      | `hariscarpets.uk` | ? | GoDaddy |
+
+- [ ] **Set up DKIM for Microsoft 365.** It has never been configured — the
+      DKIM records that used to exist on this domain belonged to Wix's
+      marketing platform, not the mailbox. `admin.microsoft.com` → Settings →
+      Domains generates two CNAMEs. SPF plus DKIM plus DMARC is the full set,
+      and it is what keeps mail out of Junk reliably.
+
+- [ ] **Then tighten DMARC**, and not before. It is deliberately at `p=none`,
+      which is monitoring only. Mail-checking tools flag that as a fault and
+      recommend `quarantine` or `reject` — **ignore them until DKIM is on**.
+      A reject policy with no DKIM is the setting that throws away the shop's
+      own mail. Once DKIM is live and the reports show nothing legitimate
+      failing, move to `p=quarantine`, then `p=reject`.
+
+- [ ] **Tidy `hariscarpets.uk`.** It still holds a Microsoft MX, an SPF and an
+      `MS=` record that were added to it by mistake and belong to a different
+      domain. Harmless, but confusing to the next person.
+
+- [ ] **Decide what `hariscarpets.co.uk` should show.** It currently serves a
+      parked page or a redirect from GoDaddy's forwarding layer rather than
+      from its own records, and `www` points at `hariscarpets.uk`. Neither is
+      deliberate.

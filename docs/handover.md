@@ -24,27 +24,17 @@ the one below it.
 Both were pasted into chat transcripts. Handing over an account with burned
 credentials passes the problem to somebody who does not know it exists.
 
-### 2. hariscarpets.co.uk — tried, not fixable today. Hand it over. (0 min)
+### 2. hariscarpets.co.uk — done. (0 min)
 
-**Wix offers no way to forward this domain to an external site.** Checked on
-17/10/2026: the only redirect it exposes points at the primary domain, which is
-this domain. Pointing the A records at Cloudflare instead does not work either
-— Cloudflare will not answer for a zone it does not hold, so visitors get a
-Cloudflare error rather than the old site.
+Done on 18/10/2026. The domain redirects to the site, its DNS is at GoDaddy,
+and the Microsoft 365 mail records are in place and verified with an external
+lookup.
 
-That leaves moving the domain's DNS to Cloudflare, and **that is not a
-handover-day job**: it moves the shop's email on the same day you give away the
-account that could fix it.
-
-So this goes across as a documented outstanding item, not a loose end. What the
-new owner needs to be told, in one sentence: *Wix hosts this domain's DNS, so
-cancelling Wix stops `sales@hariscarpets.co.uk` receiving mail — move it to
-Cloudflare first.* The procedure is in
-[`mailbox-domain-move.md`](./mailbox-domain-move.md).
-
-What it does not do is survive the Wix subscription being cancelled — and
-neither does the shop's email, because Wix hosts that domain's DNS. That is the
-deadline, and it belongs on the new owner's list with the reason attached. See
+**Wix can be cancelled.** The deadline that used to sit here — Wix hosted this
+domain's DNS, so cancelling would have stopped `sales@hariscarpets.co.uk` — no
+longer applies. One thing to settle first: nobody has recorded which registrar
+holds each of the three domains, and if Wix is the registrar for any of them,
+cancelling risks the domain itself. See
 [`mailbox-domain-move.md`](./mailbox-domain-move.md).
 
 ### 3. GitHub. Before Cloudflare. (20 min, plus one deploy to prove it)

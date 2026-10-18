@@ -40,13 +40,21 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
   stops a name that looks like the shop's being picked up by somebody else once
   it drops; letting it go should be a decision rather than something that just
   happens. See the table at the top of [`go-live.md`](./go-live.md).
-- **Point `hariscarpets.co.uk` at the website**, once it is live and settled.
-  People will type it. It is the mailbox domain and the shop's email is
-  **Microsoft 365** — MX, SPF, DMARC at `p=reject`, four DKIM records, an M365
-  verification string, autodiscover, and a SendGrid delegation. Moving it is an
-  M365 DNS migration, not a copy: its own afternoon with the Microsoft admin
-  open, nowhere near go-live day. The full inventory is in
-  [`go-live.md`](./go-live.md).
+- ~~Point `hariscarpets.co.uk` at the website.~~ **Done 18/10/2026.** It
+  redirects, its DNS is at GoDaddy, and the Microsoft 365 mail records are in
+  place and verified with an external lookup. **Wix can be cancelled** — the
+  deadline that used to sit on this no longer applies. Three things follow
+  from it, below.
+- **Record which registrar holds each of the three domains.** GoDaddy, 123 Reg
+  and Wix have all been involved and nobody has written it down. If Wix is the
+  *registrar* for any of them, cancelling the plan risks the domain itself at
+  renewal — worse than losing DNS.
+- **Set up DKIM for the mailbox**, then tighten DMARC off `p=none`, in that
+  order and never the reverse. Mail-checking tools flag `p=none` as a fault and
+  recommend a reject policy; a reject policy without DKIM throws away the
+  shop's own mail. See [`mailbox-domain-move.md`](./mailbox-domain-move.md).
+- **Tidy `hariscarpets.uk`.** It holds a Microsoft MX, an SPF and an `MS=`
+  record added to it by mistake, which belong to the other domain.
 - **Prove the enquiry email arrives.** Cloudflare now emails the shop a copy of
   every enquiry as well as storing it (`send_email` in `wrangler.jsonc`,
   `worker-enquiry.js`). Send a test one and confirm it reaches
