@@ -521,9 +521,8 @@ carried.
 **Skipped.** Cloudflare decided not to run it at all. Two reasons matter:
 
 - *The branch is not built.* Once **Settings → Builds → Branch control** is set
-  to build `main` only, every push to a `claude/…` working branch shows as
-  Skipped. That is correct and expected — the working branch is not what gets
-  deployed. Before branch control is set, every push builds **twice**, once per
+  to build `main` only, every push to a working branch shows as Skipped.
+  That is correct and expected — a working branch is not what gets deployed. Before branch control is set, every push builds **twice**, once per
   branch, which is where the queue comes from.
 - *The commit was superseded.* Same as Cancelled, recorded differently.
 

@@ -38,9 +38,7 @@ except ImportError:
 
 BUCKET = "haris-carpets"
 PREFIX = os.environ.get("INGEST_PREFIX", "incoming/")
-WORK = os.environ.get(
-    "INGEST_DIR",
-    "/tmp/claude-0/-home-user-haris-carpetsv5/dccb9a3b-d3c8-54da-a745-06a1c9d6e887/scratchpad/incoming")
+WORK = os.environ.get("INGEST_DIR", os.path.expanduser("~/haris-incoming"))
 SHEET_COLS, SHEET_ROWS, THUMB = 4, 3, 420
 
 

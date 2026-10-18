@@ -29,9 +29,9 @@ alt text. So the site is always presentable, even part-way through a photo shoot
 | `vinyl-utility.jpg` | Vinyl category | 4:3 |
 | `rug-living-room.jpg` | Rugs category | 4:3 |
 
-## Current status: AI-generated stand-ins
+## Current status: stand-ins, not the shop's own photographs
 
-The images fetched by `fetch-images.sh` are **AI-generated placeholders**, not real
+The images fetched by `fetch-images.sh` are **placeholders**, not real
 photographs of the shop. They are there so the layout can be judged with real
 imagery in it. Before this goes anywhere near a customer, replace them with:
 

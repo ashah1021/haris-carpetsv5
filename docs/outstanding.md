@@ -144,5 +144,5 @@ Parked deliberately, not forgotten. The transfer checklist is separate — see
 - `FEATURES.samples` is off pending confirmation that Hari's offer a postal
   sample service.
 - No stairs scene in the visualiser: the supplier packs contain no staircase
-  photograph, and the AI stand-in needs a hand-cut mask (see
+  photograph, and the stand-in image needs a hand-cut mask (see
   `docs/photography.md` for why the automatic route cannot do it).

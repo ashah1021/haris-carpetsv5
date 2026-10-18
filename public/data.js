@@ -10,8 +10,9 @@
      - Carpet, wood and LVT colours are MEASURED from the supplier swatch
        photography by tools/build-catalogue.py — they are not eyeballed.
      - Vinyl and rugs are still invented: no colour chips arrived for either.
-     - Photography in /assets is AI-generated stand-in imagery. Replace with
-       real showroom + supplier roomset shots. See assets/README.md.
+     - Photography in /assets is stand-in imagery, not the shop's own.
+       Replace with real showroom + supplier roomset shots before this is
+       shown to customers. See assets/README.md.
    ============================================================================ */
 
 /* ----------------------------------------------------------------------------
